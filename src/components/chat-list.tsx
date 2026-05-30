@@ -1,13 +1,15 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { Familiar, SessionRow } from "@/lib/types";
 
+const PROJECT_ROOT =
+  process.env.NEXT_PUBLIC_COVEN_PROJECT_ROOT ??
+  "/Users/buns/Documents/GitHub/OpenCoven/coven-cave";
+
 type Props = {
-  familiar: Familiar;
+  familiar: Familiar | null;
   sessions: SessionRow[];
-  onOpen: (sessionId: string) => void;
-  onNewChat: () => void;
 };
 
 function age(iso: string): string {
@@ -21,12 +23,61 @@ function age(iso: string): string {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-export function ChatList({ familiar, sessions, onOpen, onNewChat }: Props) {
+export function ChatList({ familiar, sessions }: Props) {
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [newChatBusy, setNewChatBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const mine = useMemo(() => {
+    if (!familiar) return [];
     return sessions
       .filter((s) => s.familiarId === familiar.id)
       .sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1));
-  }, [sessions, familiar.id]);
+  }, [sessions, familiar]);
+
+  const openInTui = async (sessionId: string) => {
+    setBusyId(sessionId);
+    setError(null);
+    try {
+      const res = await fetch("/api/launch", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ mode: "attach", sessionId }),
+      });
+      const json = await res.json();
+      if (!json.ok) setError(json.error ?? "launch failed");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "launch failed");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const newChat = async () => {
+    setNewChatBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/launch", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ mode: "chat", cwd: PROJECT_ROOT }),
+      });
+      const json = await res.json();
+      if (!json.ok) setError(json.error ?? "launch failed");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "launch failed");
+    } finally {
+      setNewChatBusy(false);
+    }
+  };
+
+  if (!familiar) {
+    return (
+      <section className="flex h-full items-center justify-center bg-zinc-950 text-sm text-zinc-500">
+        Pick a familiar from the rail to see their chats.
+      </section>
+    );
+  }
 
   return (
     <section className="flex h-full flex-col bg-zinc-950">
@@ -42,12 +93,19 @@ export function ChatList({ familiar, sessions, onOpen, onNewChat }: Props) {
           </div>
         </div>
         <button
-          onClick={onNewChat}
-          className="rounded-md bg-violet-600 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-violet-500"
+          onClick={newChat}
+          disabled={newChatBusy}
+          className="rounded-md bg-violet-600 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-violet-500 disabled:opacity-50"
         >
-          + New chat
+          {newChatBusy ? "opening…" : "+ New chat"}
         </button>
       </header>
+
+      {error ? (
+        <div className="border-b border-amber-700/40 bg-amber-900/20 px-4 py-1.5 text-xs text-amber-200">
+          {error}
+        </div>
+      ) : null}
 
       <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
         {mine.length === 0 ? (
@@ -61,21 +119,25 @@ export function ChatList({ familiar, sessions, onOpen, onNewChat }: Props) {
               <span className="font-mono text-zinc-400">{familiar.model}</span>.
             </p>
             <button
-              onClick={onNewChat}
-              className="mt-5 rounded-md bg-violet-600 px-4 py-1.5 text-xs font-medium text-white transition-colors hover:bg-violet-500"
+              onClick={newChat}
+              disabled={newChatBusy}
+              className="mt-5 rounded-md bg-violet-600 px-4 py-1.5 text-xs font-medium text-white transition-colors hover:bg-violet-500 disabled:opacity-50"
             >
-              + New chat
+              {newChatBusy ? "opening…" : "+ New chat in Coven Code"}
             </button>
           </div>
         ) : (
           <ul className="space-y-1">
             {mine.map((s) => {
               const running = s.status === "running";
+              const busy = busyId === s.id;
               return (
                 <li key={s.id}>
                   <button
-                    onClick={() => onOpen(s.id)}
-                    className="group flex w-full items-start gap-3 rounded-lg border border-transparent px-3 py-2 text-left transition-colors hover:border-zinc-800 hover:bg-zinc-900/60"
+                    onClick={() => openInTui(s.id)}
+                    disabled={busy}
+                    className="group flex w-full items-start gap-3 rounded-lg border border-transparent px-3 py-2 text-left transition-colors hover:border-zinc-800 hover:bg-zinc-900/60 disabled:opacity-60"
+                    title="Open this session in Coven Code TUI"
                   >
                     <span
                       className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${
@@ -88,7 +150,7 @@ export function ChatList({ familiar, sessions, onOpen, onNewChat }: Props) {
                           {s.title || "(untitled chat)"}
                         </span>
                         <span className="shrink-0 font-mono text-[10px] text-zinc-500">
-                          {age(s.updated_at)}
+                          {busy ? "opening…" : age(s.updated_at)}
                         </span>
                       </span>
                       <span className="mt-0.5 flex items-center gap-2 text-[10px] text-zinc-500">
@@ -105,6 +167,10 @@ export function ChatList({ familiar, sessions, onOpen, onNewChat }: Props) {
           </ul>
         )}
       </div>
+
+      <footer className="border-t border-zinc-800 px-4 py-2 text-[10px] text-zinc-600">
+        Click a session to open it in Coven Code (external terminal).
+      </footer>
     </section>
   );
 }

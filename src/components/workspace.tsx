@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Group, Panel, Separator, usePanelRef } from "react-resizable-panels";
 import { FamiliarRail } from "@/components/familiar-rail";
-import { ChatRouter } from "@/components/chat-router";
+import { ChatList } from "@/components/chat-list";
 import { InspectorPane } from "@/components/inspector-pane";
 import { DaemonBar } from "@/components/daemon-bar";
 import type { Familiar, SessionRow } from "@/lib/types";
@@ -116,11 +116,7 @@ export function Workspace() {
         <Separator className={handleClass} />
 
         <Panel id="chat" defaultSize="50%" minSize="28%">
-          <ChatRouter
-            familiar={active}
-            sessions={sessions}
-            onResponseNeededChange={setFamiliarResponse}
-          />
+          <ChatList familiar={active} sessions={sessions} />
         </Panel>
 
         <Separator className={handleClass} />
