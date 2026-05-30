@@ -177,7 +177,7 @@ export function BoardView({ familiars, sessions, activeFamiliarId, onJumpToSessi
     <section className="flex h-full flex-col bg-zinc-950 text-zinc-200">
       <header className="flex flex-wrap items-center gap-3 border-b border-zinc-900 px-5 py-3">
         <div>
-          <h1 className="text-base font-semibold text-zinc-100">Coven Board</h1>
+          <h1 className="text-base font-semibold text-zinc-100">Board</h1>
           <p className="text-[11px] text-zinc-500">
             Queue work for familiars. {filtered.length} of {cards.length} card
             {cards.length === 1 ? "" : "s"} shown.
