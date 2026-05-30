@@ -403,7 +403,7 @@ export function Workspace() {
       const familiar = familiars.find((f) => f.id === familiarId);
       const latestSession = sessions
         .filter((s) => s.familiarId === familiarId)
-        .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1))[0];
+        .sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1))[0];
       ephemeral.push({
         id: `eph:response-needed:${familiarId}`,
         kind: "response-needed",
