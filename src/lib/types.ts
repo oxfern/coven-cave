@@ -2,7 +2,6 @@ export type Familiar = {
   id: string;
   name?: string;
   display_name: string;
-  emoji: string;
   role: string;
   description?: string;
   pronouns?: string;

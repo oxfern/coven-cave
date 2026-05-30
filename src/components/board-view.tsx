@@ -400,7 +400,7 @@ function CardItem({
       <div className="mt-2 flex items-center gap-2 text-[10px] text-zinc-500">
         {familiar ? (
           <span title={`${familiar.display_name} · ${familiar.harness ?? "?"}`}>
-            {familiar.emoji} {familiar.display_name}
+            {familiar.display_name}
           </span>
         ) : (
           <span className="text-zinc-600">unassigned</span>

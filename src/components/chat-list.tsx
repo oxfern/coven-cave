@@ -61,7 +61,6 @@ export function ChatList({ familiar, sessions, daemonRunning, onOpen, onNewChat 
     <section className="flex h-full flex-col bg-zinc-950 text-zinc-200">
       <header className="flex items-center gap-2 border-b border-zinc-900 px-5 py-2.5 text-[11px] text-zinc-400">
         <span className="flex items-center gap-1.5">
-          <span className="text-base">{familiar.emoji}</span>
           <span className="font-medium text-zinc-100">{familiar.display_name}</span>
         </span>
         <span className="text-zinc-700">·</span>

@@ -196,7 +196,7 @@ export function NewCardModal({
                 { value: "", label: "Default agent" },
                 ...familiars.map((f) => ({
                   value: f.id,
-                  label: `${f.emoji} ${f.display_name} · ${f.harness ?? "?"}`,
+                  label: `${f.display_name} · ${f.harness ?? "?"}`,
                 })),
               ]}
             />

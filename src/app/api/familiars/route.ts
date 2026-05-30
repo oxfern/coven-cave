@@ -7,7 +7,6 @@ export const dynamic = "force-dynamic";
 type DaemonFamiliar = {
   id: string;
   display_name: string;
-  emoji: string;
   role: string;
   description?: string;
   pronouns?: string;
@@ -19,7 +18,7 @@ type DaemonFamiliar = {
 
 export async function GET() {
   const [res, config] = await Promise.all([
-    callDaemon<DaemonFamiliar[]>({ path: "/api/v1/familiars" }),
+    callDaemon<(DaemonFamiliar & { emoji?: string })[]>({ path: "/api/v1/familiars" }),
     loadConfig(),
   ]);
   if (!res.ok) {
@@ -28,7 +27,7 @@ export async function GET() {
       { status: 503 },
     );
   }
-  const familiars = (res.data ?? []).map((f) => {
+  const familiars = (res.data ?? []).map(({ emoji: _emoji, ...f }) => {
     const binding = bindingFor(config, f.id);
     return { ...f, harness: binding.harness, model: binding.model, note: binding.note };
   });

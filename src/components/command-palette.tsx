@@ -304,7 +304,6 @@ export function CommandPalette({
                 >
                   {row.kind === "familiar" ? (
                     <>
-                      <span className="text-lg">{row.familiar.emoji}</span>
                       <span className="flex flex-1 flex-col">
                         <span className="text-zinc-100">{row.familiar.display_name}</span>
                         <span className="text-[10px] uppercase tracking-widest text-zinc-500">
@@ -316,7 +315,7 @@ export function CommandPalette({
                   ) : null}
                   {row.kind === "session" ? (
                     <>
-                      <span className="text-lg">{row.familiar?.emoji ?? "✦"}</span>
+                      <span className="text-lg">✦</span>
                       <span className="flex min-w-0 flex-1 flex-col">
                         <span className="truncate text-zinc-100">
                           {row.session.title || "(untitled chat)"}
@@ -331,7 +330,6 @@ export function CommandPalette({
                   ) : null}
                   {row.kind === "card" ? (
                     <>
-                      <span className="text-lg">🗂️</span>
                       <span className="flex min-w-0 flex-1 flex-col">
                         <span className="truncate text-zinc-100">{row.card.title}</span>
                         <span className="truncate text-[10px] text-zinc-500">
@@ -345,7 +343,6 @@ export function CommandPalette({
                   ) : null}
                   {row.kind === "coven-memory" ? (
                     <>
-                      <span className="text-lg">{row.familiar?.emoji ?? "🧠"}</span>
                       <span className="flex min-w-0 flex-1 flex-col">
                         <span className="truncate text-zinc-100">{row.entry.title}</span>
                         <span className="truncate text-[10px] text-zinc-500">
@@ -358,7 +355,6 @@ export function CommandPalette({
                   ) : null}
                   {row.kind === "fs-memory" ? (
                     <>
-                      <span className="text-lg">📝</span>
                       <span className="flex min-w-0 flex-1 flex-col">
                         <span className="truncate text-zinc-100">{row.entry.relPath}</span>
                         <span className="truncate text-[10px] text-zinc-500">

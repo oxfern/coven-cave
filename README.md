@@ -48,7 +48,8 @@ You'll need the `coven` daemon running locally so Cave has something to talk to.
 
 ## App identity
 
-- **Product:** Cave
+- **Brand:** Cave
+- **macOS app name:** CovenCave
 - **Bundle:** `ai.opencoven.cave`
 - **Repo:** `OpenCoven/coven-cave`
 
@@ -65,4 +66,4 @@ AGPL + MIT dual license — same as the rest of the Coven.
 
 ---
 
-_The Coven lives in the Cave._ 🕯️
+_The Coven lives in the Cave._

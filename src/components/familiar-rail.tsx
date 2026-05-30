@@ -102,7 +102,6 @@ export function FamiliarRail({
                     : "text-zinc-300 hover:bg-zinc-800/40"
                 }`}
               >
-                <span className="text-lg leading-none">{f.emoji}</span>
                 <span className="flex flex-1 flex-col min-w-0">
                   <span className="flex items-center gap-1.5 truncate">
                     <span className="truncate">{f.display_name}</span>
