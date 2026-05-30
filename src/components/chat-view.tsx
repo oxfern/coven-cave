@@ -486,7 +486,7 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
               </div>
               <div className="flex items-center gap-2 text-zinc-500">
                 <span className="flex items-center gap-1 rounded-full border border-zinc-800 px-2 py-1 text-[11px]">
-                  <span className="text-violet-300">◆</span>
+                  <span className="text-purple-300">◆</span>
                   <span className="font-mono text-zinc-300">{familiar.model ?? "—"}</span>
                 </span>
                 <button

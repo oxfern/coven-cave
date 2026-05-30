@@ -1,28 +1,64 @@
 #!/usr/bin/env bash
-# Copy the Next.js standalone server into src-tauri/resources/server/ so
-# the Tauri bundle can ship it alongside the .app. Run after `next build`.
+# Build + assemble the Next.js standalone server with a flat, complete
+# node_modules so it can boot from inside the Tauri .app bundle without any
+# pnpm symlink magic. Output: src-tauri/resources/server/.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-SRC="$ROOT/.next/standalone"
+DEST="$ROOT/src-tauri/resources/server"
 STATIC="$ROOT/.next/static"
 PUBLIC="$ROOT/public"
-DEST="$ROOT/src-tauri/resources/server"
+NPM_STAGE="$ROOT/.next/sidecar-npm-stage"
 
-if [ ! -f "$SRC/server.js" ]; then
-  echo "==> running pnpm build to produce standalone output"
-  (cd "$ROOT" && pnpm build)
-fi
+echo "==> next build"
+(cd "$ROOT" && pnpm build) >&2
 
-if [ ! -f "$SRC/server.js" ]; then
-  echo "ERROR: $SRC/server.js still missing after build" >&2
+STANDALONE="$ROOT/.next/standalone"
+if [ ! -f "$STANDALONE/server.js" ]; then
+  echo "ERROR: $STANDALONE/server.js missing after build" >&2
   exit 1
 fi
 
+# Next.js + pnpm leaves a node_modules full of pnpm-style broken symlinks
+# (.pnpm/* paths) that don't survive the copy into the .app bundle. Install
+# production deps cleanly via npm in a staging dir using the standalone's
+# package.json, then we'll splice that node_modules in.
+echo "==> installing prod deps with npm in staging dir"
+rm -rf "$NPM_STAGE"
+mkdir -p "$NPM_STAGE"
+cp "$STANDALONE/package.json" "$NPM_STAGE/package.json"
+(
+  cd "$NPM_STAGE" && npm install --omit=dev --no-audit --no-fund \
+    --no-package-lock --ignore-scripts
+) >&2
+
+echo "==> copying standalone tree → $DEST"
 rm -rf "$DEST"
 mkdir -p "$DEST"
-echo "==> copying standalone server → $DEST"
-cp -a "$SRC/." "$DEST/"
+# Skip the standalone's broken pnpm-style node_modules; we'll bring in the
+# fresh npm one instead.
+(cd "$STANDALONE" && find . -mindepth 1 -maxdepth 1 ! -name node_modules \
+   -exec cp -a {} "$DEST/" \;)
+
+echo "==> grafting fresh node_modules → $DEST/node_modules"
+cp -a "$NPM_STAGE/node_modules" "$DEST/node_modules"
+
+# But Next.js's compiled server.js requires the standalone's own internal
+# next package layout. Merge any package the standalone shipped that npm
+# didn't reinstall (rare, but cheap to do).
+if [ -d "$STANDALONE/node_modules" ]; then
+  echo "==> backfilling any pnpm-only packages from standalone"
+  (cd "$STANDALONE/node_modules" && find . -maxdepth 2 -mindepth 1 -type d \
+     ! -path "./.pnpm*" -print0 2>/dev/null \
+     | while IFS= read -r -d '' pkg; do
+        rel="${pkg#./}"
+        if [ ! -e "$DEST/node_modules/$rel" ]; then
+          mkdir -p "$DEST/node_modules/$(dirname "$rel")"
+          cp -aL "$STANDALONE/node_modules/$rel" \
+            "$DEST/node_modules/$rel" 2>/dev/null || true
+        fi
+      done)
+fi
 
 if [ -d "$STATIC" ]; then
   mkdir -p "$DEST/.next/static"
@@ -36,25 +72,13 @@ if [ -d "$PUBLIC" ]; then
   cp -a "$PUBLIC/." "$DEST/public/"
 fi
 
-# Next.js's tracer misses runtime-required packages loaded via its own
-# require-hook (e.g. @swc/helpers/_/_interop_require_default). Force-copy
-# the package out of the source node_modules as a safety net even if
-# outputFileTracingIncludes catches it.
-copy_runtime_dep() {
-  local PKG="$1"
-  local SRC_PKG="$ROOT/node_modules/$PKG"
-  if [ ! -d "$SRC_PKG" ]; then
-    # pnpm hoists into .pnpm/<pkg>@<ver>/node_modules/<pkg>
-    SRC_PKG=$(find "$ROOT/node_modules/.pnpm" -maxdepth 3 -type d -path "*/$PKG" 2>/dev/null | head -n1)
+# Sanity check
+for must in node_modules/@next/env node_modules/@swc/helpers/_; do
+  if [ ! -e "$DEST/$must" ]; then
+    echo "==> ! bundle still missing $must — sidecar will not boot" >&2
+    exit 1
   fi
-  if [ -d "$SRC_PKG" ]; then
-    mkdir -p "$DEST/node_modules/$PKG"
-    cp -a "$SRC_PKG/." "$DEST/node_modules/$PKG/"
-    echo "==> ensured runtime dep: $PKG"
-  else
-    echo "==> ! could not locate runtime dep: $PKG" >&2
-  fi
-}
-copy_runtime_dep "@swc/helpers"
+done
 
-echo "==> sidecar bundle ready"
+rm -rf "$NPM_STAGE"
+echo "==> sidecar bundle ready ($(du -sh "$DEST" | cut -f1))"

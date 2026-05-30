@@ -139,7 +139,7 @@ export function NewCardModal({
                 }}
                 className={`rounded-md border px-3 py-1.5 text-sm transition-colors ${
                   active
-                    ? "border-violet-500 bg-violet-500/20 text-violet-100"
+                    ? "border-purple-500 bg-purple-500/20 text-purple-100"
                     : "border-zinc-800 bg-zinc-900 text-zinc-300 hover:bg-zinc-800"
                 }`}
               >
@@ -155,7 +155,7 @@ export function NewCardModal({
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Card title"
             autoFocus
-            className="w-full rounded-md border border-zinc-800 bg-zinc-900/40 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-violet-600"
+            className="w-full rounded-md border border-zinc-800 bg-zinc-900/40 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-purple-600"
           />
         </Field>
 
@@ -165,7 +165,7 @@ export function NewCardModal({
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Notes, acceptance criteria, links"
             rows={6}
-            className="w-full resize-y rounded-md border border-zinc-800 bg-zinc-900/40 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-violet-600"
+            className="w-full resize-y rounded-md border border-zinc-800 bg-zinc-900/40 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-purple-600"
           />
         </Field>
 
@@ -221,7 +221,7 @@ export function NewCardModal({
             value={labels}
             onChange={(e) => setLabels(e.target.value)}
             placeholder="ui, docs"
-            className="w-full rounded-md border border-zinc-800 bg-zinc-900/40 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-violet-600"
+            className="w-full rounded-md border border-zinc-800 bg-zinc-900/40 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-purple-600"
           />
         </Field>
 
@@ -274,7 +274,7 @@ function Select({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full appearance-none rounded-md border border-zinc-800 bg-zinc-900/40 px-3 py-2 pr-8 text-sm text-zinc-100 outline-none focus:border-violet-600"
+        className="w-full appearance-none rounded-md border border-zinc-800 bg-zinc-900/40 px-3 py-2 pr-8 text-sm text-zinc-100 outline-none focus:border-purple-600"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value} className="bg-zinc-900">

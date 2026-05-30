@@ -10,7 +10,36 @@ type PaletteIntent =
   | { kind: "new-chat"; familiarId?: string }
   | { kind: "slash"; command: string; args?: string }
   | { kind: "back-to-list" }
-  | { kind: "open-tui-session"; sessionId: string };
+  | { kind: "open-tui-session"; sessionId: string }
+  | { kind: "open-board" }
+  | { kind: "focus-card"; cardId: string }
+  | { kind: "open-memory-file"; path: string };
+
+type Card = {
+  id: string;
+  title: string;
+  status: string;
+  priority: string;
+  familiarId: string | null;
+  labels: string[];
+};
+
+type CovenMemoryEntry = {
+  id: string;
+  familiar_id: string;
+  title: string;
+  path: string;
+  updated_at: string;
+  excerpt?: string;
+};
+
+type FsMemoryEntry = {
+  root: string;
+  rootLabel: string;
+  relPath: string;
+  fullPath: string;
+  modified: string;
+};
 
 type Props = {
   open: boolean;
@@ -24,7 +53,19 @@ type Props = {
 type Row =
   | { id: string; kind: "familiar"; familiar: Familiar }
   | { id: string; kind: "session"; session: SessionRow; familiar: Familiar | null }
+  | { id: string; kind: "card"; card: Card; familiar: Familiar | null }
+  | { id: string; kind: "coven-memory"; entry: CovenMemoryEntry; familiar: Familiar | null }
+  | { id: string; kind: "fs-memory"; entry: FsMemoryEntry }
   | { id: string; kind: "command"; name: string; hint: string; intent: PaletteIntent };
+
+const RESULT_LIMITS = {
+  familiar: 6,
+  session: 6,
+  card: 6,
+  covenMemory: 5,
+  fsMemory: 8,
+  command: 6,
+};
 
 export function CommandPalette({
   open,
@@ -36,15 +77,38 @@ export function CommandPalette({
 }: Props) {
   const [query, setQuery] = useState("");
   const [activeIdx, setActiveIdx] = useState(0);
+  const [cards, setCards] = useState<Card[]>([]);
+  const [covenMemory, setCovenMemory] = useState<CovenMemoryEntry[]>([]);
+  const [fsMemory, setFsMemory] = useState<FsMemoryEntry[]>([]);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
+  // Fetch the searchable corpora once on first open. Cheap calls; refreshed
+  // every time the palette opens so the index doesn't go stale.
   useEffect(() => {
-    if (open) {
-      setQuery("");
-      setActiveIdx(0);
-      const t = setTimeout(() => inputRef.current?.focus(), 10);
-      return () => clearTimeout(t);
-    }
+    if (!open) return;
+    setQuery("");
+    setActiveIdx(0);
+    const t = setTimeout(() => inputRef.current?.focus(), 10);
+
+    void (async () => {
+      try {
+        const [boardRes, covenRes, fsRes] = await Promise.all([
+          fetch("/api/board", { cache: "no-store" }),
+          fetch("/api/coven-memory", { cache: "no-store" }),
+          fetch("/api/memory", { cache: "no-store" }),
+        ]);
+        const board = await boardRes.json();
+        const coven = await covenRes.json();
+        const fs = await fsRes.json();
+        if (board.ok) setCards(board.cards ?? []);
+        if (coven.ok) setCovenMemory(coven.entries ?? []);
+        if (fs.ok) setFsMemory(fs.entries ?? []);
+      } catch {
+        /* keep what we had */
+      }
+    })();
+
+    return () => clearTimeout(t);
   }, [open]);
 
   useEffect(() => {
@@ -61,6 +125,7 @@ export function CommandPalette({
 
   const rows: Row[] = useMemo(() => {
     const q = query.trim().toLowerCase();
+
     const familiarRows: Row[] = familiars
       .filter(
         (f) =>
@@ -69,7 +134,7 @@ export function CommandPalette({
           f.role.toLowerCase().includes(q) ||
           (f.harness ?? "").toLowerCase().includes(q),
       )
-      .slice(0, 8)
+      .slice(0, RESULT_LIMITS.familiar)
       .map((f) => ({ id: `f:${f.id}`, kind: "familiar", familiar: f }));
 
     const sessionRows: Row[] = sessions
@@ -82,7 +147,7 @@ export function CommandPalette({
           (s.familiarId ?? "").toLowerCase().includes(q)
         );
       })
-      .slice(0, 8)
+      .slice(0, RESULT_LIMITS.session)
       .map((s) => ({
         id: `s:${s.id}`,
         kind: "session",
@@ -90,10 +155,57 @@ export function CommandPalette({
         familiar: familiars.find((f) => f.id === s.familiarId) ?? null,
       }));
 
+    const cardRows: Row[] = cards
+      .filter(
+        (c) =>
+          !q ||
+          c.title.toLowerCase().includes(q) ||
+          (c.labels ?? []).some((l) => l.toLowerCase().includes(q)) ||
+          c.status.toLowerCase().includes(q) ||
+          c.priority.toLowerCase().includes(q),
+      )
+      .slice(0, RESULT_LIMITS.card)
+      .map((c) => ({
+        id: `card:${c.id}`,
+        kind: "card",
+        card: c,
+        familiar: familiars.find((f) => f.id === c.familiarId) ?? null,
+      }));
+
+    const covenMemoryRows: Row[] = covenMemory
+      .filter(
+        (e) =>
+          !q ||
+          e.title.toLowerCase().includes(q) ||
+          (e.excerpt ?? "").toLowerCase().includes(q) ||
+          e.familiar_id.toLowerCase().includes(q),
+      )
+      .slice(0, RESULT_LIMITS.covenMemory)
+      .map((e) => ({
+        id: `cm:${e.id}`,
+        kind: "coven-memory",
+        entry: e,
+        familiar: familiars.find((f) => f.id === e.familiar_id) ?? null,
+      }));
+
+    const fsMemoryRows: Row[] = fsMemory
+      .filter(
+        (e) =>
+          !q ||
+          e.relPath.toLowerCase().includes(q) ||
+          e.rootLabel.toLowerCase().includes(q),
+      )
+      .slice(0, RESULT_LIMITS.fsMemory)
+      .map((e) => ({ id: `fm:${e.fullPath}`, kind: "fs-memory", entry: e }));
+
     const cmdRows: Row[] = SLASH_COMMANDS.filter(
-      (c) => !q || c.name.includes(q) || c.description.toLowerCase().includes(q),
+      (c) =>
+        !q ||
+        c.name.includes(q) ||
+        (c.aliases ?? []).some((a) => a.includes(q)) ||
+        c.description.toLowerCase().includes(q),
     )
-      .slice(0, 8)
+      .slice(0, RESULT_LIMITS.command)
       .map((c) => ({
         id: `c:${c.name}`,
         kind: "command",
@@ -102,8 +214,15 @@ export function CommandPalette({
         intent: { kind: "slash", command: c.name },
       }));
 
-    return [...familiarRows, ...sessionRows, ...cmdRows];
-  }, [familiars, sessions, query, activeFamiliarId]);
+    return [
+      ...familiarRows,
+      ...sessionRows,
+      ...cardRows,
+      ...covenMemoryRows,
+      ...fsMemoryRows,
+      ...cmdRows,
+    ];
+  }, [familiars, sessions, cards, covenMemory, fsMemory, query, activeFamiliarId]);
 
   useEffect(() => {
     if (activeIdx >= rows.length) setActiveIdx(Math.max(0, rows.length - 1));
@@ -118,6 +237,14 @@ export function CommandPalette({
         sessionId: row.session.id,
         familiarId: row.session.familiarId ?? null,
       });
+    } else if (row.kind === "card") {
+      onIntent({ kind: "open-board" });
+      // Focus card after the view switches
+      setTimeout(() => onIntent({ kind: "focus-card", cardId: row.card.id }), 0);
+    } else if (row.kind === "coven-memory") {
+      onIntent({ kind: "open-memory-file", path: row.entry.path });
+    } else if (row.kind === "fs-memory") {
+      onIntent({ kind: "open-memory-file", path: row.entry.fullPath });
     } else {
       onIntent(row.intent);
     }
@@ -147,7 +274,7 @@ export function CommandPalette({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="mt-[12vh] w-[560px] max-w-[92vw] overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 shadow-2xl"
+        className="mt-[12vh] w-[640px] max-w-[92vw] overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 shadow-2xl"
       >
         <input
           ref={inputRef}
@@ -157,7 +284,7 @@ export function CommandPalette({
             setActiveIdx(0);
           }}
           onKeyDown={onComposerKey}
-          placeholder="Jump to a familiar, chat, or command…"
+          placeholder="Search familiars · chats · cards · memory · commands…"
           className="w-full border-b border-zinc-800 bg-transparent px-4 py-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-500"
         />
         <ul className="max-h-[60vh] overflow-y-auto py-1">
@@ -200,6 +327,45 @@ export function CommandPalette({
                         </span>
                       </span>
                       <span className="text-[10px] text-zinc-500">open</span>
+                    </>
+                  ) : null}
+                  {row.kind === "card" ? (
+                    <>
+                      <span className="text-lg">🗂️</span>
+                      <span className="flex min-w-0 flex-1 flex-col">
+                        <span className="truncate text-zinc-100">{row.card.title}</span>
+                        <span className="truncate text-[10px] text-zinc-500">
+                          {row.card.status} · {row.card.priority}
+                          {row.familiar ? ` · ${row.familiar.display_name}` : ""}
+                          {row.card.labels.length ? ` · ${row.card.labels.join(", ")}` : ""}
+                        </span>
+                      </span>
+                      <span className="text-[10px] text-zinc-500">card</span>
+                    </>
+                  ) : null}
+                  {row.kind === "coven-memory" ? (
+                    <>
+                      <span className="text-lg">{row.familiar?.emoji ?? "🧠"}</span>
+                      <span className="flex min-w-0 flex-1 flex-col">
+                        <span className="truncate text-zinc-100">{row.entry.title}</span>
+                        <span className="truncate text-[10px] text-zinc-500">
+                          {row.entry.familiar_id} · {row.entry.updated_at}
+                          {row.entry.excerpt ? ` · ${row.entry.excerpt.slice(0, 70)}` : ""}
+                        </span>
+                      </span>
+                      <span className="text-[10px] text-zinc-500">memory</span>
+                    </>
+                  ) : null}
+                  {row.kind === "fs-memory" ? (
+                    <>
+                      <span className="text-lg">📝</span>
+                      <span className="flex min-w-0 flex-1 flex-col">
+                        <span className="truncate text-zinc-100">{row.entry.relPath}</span>
+                        <span className="truncate text-[10px] text-zinc-500">
+                          {row.entry.rootLabel}
+                        </span>
+                      </span>
+                      <span className="text-[10px] text-zinc-500">file</span>
                     </>
                   ) : null}
                   {row.kind === "command" ? (

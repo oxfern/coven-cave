@@ -96,7 +96,7 @@ export function DaemonBar({
           <button
             onClick={start}
             disabled={busy}
-            className="rounded-md bg-violet-600 px-2.5 py-1 text-[11px] font-medium text-white transition-colors hover:bg-violet-500 disabled:opacity-50"
+            className="rounded-md bg-purple-600 px-2.5 py-1 text-[11px] font-medium text-white transition-colors hover:bg-purple-500 disabled:opacity-50"
           >
             {busy ? "starting…" : "start daemon"}
           </button>

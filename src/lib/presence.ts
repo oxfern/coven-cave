@@ -21,7 +21,7 @@ export type Presence = {
 const PRESETS: Record<PresenceState, Pick<Presence, "label" | "pill" | "dot">> = {
   focused: { label: "focused", pill: "bg-emerald-500/15 text-emerald-300", dot: "bg-emerald-400" },
   blocked: { label: "needs reply", pill: "bg-amber-500/20 text-amber-200", dot: "bg-amber-400" },
-  dreaming: { label: "dreaming", pill: "bg-violet-500/15 text-violet-200", dot: "bg-violet-400" },
+  dreaming: { label: "dreaming", pill: "bg-purple-500/15 text-purple-200", dot: "bg-purple-400" },
   failed: { label: "failed", pill: "bg-rose-500/20 text-rose-200", dot: "bg-rose-400" },
   offline: { label: "offline", pill: "bg-zinc-700/40 text-zinc-400", dot: "bg-zinc-600" },
   missing: { label: "missing", pill: "bg-rose-700/30 text-rose-200", dot: "bg-rose-500" },

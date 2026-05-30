@@ -64,7 +64,7 @@ export function InspectorPane({ familiar }: Props) {
             onClick={() => setTab(t)}
             className={`flex-1 px-3 py-3 uppercase tracking-widest transition-colors ${
               tab === t
-                ? "border-b-2 border-violet-500 text-zinc-100"
+                ? "border-b-2 border-purple-500 text-zinc-100"
                 : "text-zinc-500 hover:text-zinc-300"
             }`}
           >
@@ -240,7 +240,7 @@ function MemoryTab({ familiar }: { familiar: Familiar | null }) {
             }}
             className={`rounded px-2 py-0.5 text-[10px] uppercase tracking-widest transition-colors ${
               mode === m
-                ? "bg-violet-600/80 text-white"
+                ? "bg-purple-600/80 text-white"
                 : "border border-zinc-700 text-zinc-400 hover:bg-zinc-800"
             }`}
           >
@@ -256,7 +256,7 @@ function MemoryTab({ familiar }: { familiar: Familiar | null }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={mode === "coven" ? "Filter coven memory…" : "Filter memory files…"}
-          className="w-full rounded-md border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-violet-600"
+          className="w-full rounded-md border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-purple-600"
         />
       </div>
 
@@ -296,7 +296,7 @@ function MemoryTab({ familiar }: { familiar: Familiar | null }) {
                     : `${process.env.NEXT_PUBLIC_COVEN_MEMORY_ROOT ?? "/Users/buns/.coven/memory"}/${e.path}`;
                   setOpenPath(guessed);
                 }}
-                className="mt-1 text-[10px] text-violet-300 hover:text-violet-200"
+                className="mt-1 text-[10px] text-purple-300 hover:text-purple-200"
               >
                 open file →
               </button>
@@ -377,7 +377,7 @@ function ToolsTab() {
           <div className="flex items-center justify-between">
             <span className="font-semibold text-zinc-200">{s.name}</span>
             {s.category ? (
-              <span className="rounded bg-violet-600/30 px-1.5 py-0.5 text-[10px] text-violet-200">
+              <span className="rounded bg-purple-600/30 px-1.5 py-0.5 text-[10px] text-purple-200">
                 {s.category}
               </span>
             ) : null}

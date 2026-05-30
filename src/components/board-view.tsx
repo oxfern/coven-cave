@@ -24,7 +24,7 @@ type Card = {
 const COLUMNS: { id: CardStatus; label: string; accent: string }[] = [
   { id: "inbox", label: "Inbox", accent: "border-sky-500/40" },
   { id: "running", label: "Running", accent: "border-emerald-500/60" },
-  { id: "review", label: "Review", accent: "border-violet-500/60" },
+  { id: "review", label: "Review", accent: "border-purple-500/60" },
 ];
 
 const PRIORITIES: { id: CardPriority; label: string; pill: string }[] = [
@@ -190,7 +190,7 @@ export function BoardView({ familiars, sessions, activeFamiliarId, onJumpToSessi
               onClick={() => setScopeToFamiliar((v) => !v)}
               className={`rounded-full border px-3 py-1 text-[11px] transition-colors ${
                 scopeToFamiliar
-                  ? "border-violet-500 bg-violet-500/20 text-violet-100"
+                  ? "border-purple-500 bg-purple-500/20 text-purple-100"
                   : "border-zinc-800 bg-zinc-900 text-zinc-300 hover:bg-zinc-800"
               }`}
               title="Show only the active familiar's cards"
@@ -256,7 +256,7 @@ export function BoardView({ familiars, sessions, activeFamiliarId, onJumpToSessi
                 onDrop={(e) => handleDrop(e, col.id)}
                 className={`flex h-full min-w-0 flex-1 basis-0 flex-col rounded-xl border bg-zinc-900/30 transition-colors ${
                   isDropTarget
-                    ? "border-violet-500/60 bg-violet-500/5"
+                    ? "border-purple-500/60 bg-purple-500/5"
                     : "border-zinc-900"
                 }`}
               >
@@ -286,7 +286,7 @@ export function BoardView({ familiars, sessions, activeFamiliarId, onJumpToSessi
                     <li
                       className={`rounded-md border border-dashed px-3 py-4 text-center text-[11px] transition-colors ${
                         isDropTarget
-                          ? "border-violet-500/40 text-violet-300"
+                          ? "border-purple-500/40 text-purple-300"
                           : "border-zinc-800 text-zinc-600"
                       }`}
                     >

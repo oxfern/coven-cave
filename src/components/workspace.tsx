@@ -122,6 +122,24 @@ export function Workspace() {
       });
       return;
     }
+    if (intent.kind === "open-board") {
+      setMode("board");
+      return;
+    }
+    if (intent.kind === "focus-card") {
+      // The board doesn't currently expose an imperative API; instead we use
+      // a URL hash that BoardView can listen for in a future polish pass.
+      window.location.hash = `card-${intent.cardId}`;
+      return;
+    }
+    if (intent.kind === "open-memory-file") {
+      // Switch to Chats view (memory inspector lives in the right pane), and
+      // surface the path via a hash that InspectorPane can wire to in a
+      // follow-up commit; for now this is a no-op visual placeholder.
+      setMode("chats");
+      window.location.hash = `memory:${encodeURIComponent(intent.path)}`;
+      return;
+    }
     if (intent.kind === "slash") {
       // Map slash commands directly to local actions
       switch (intent.command) {
@@ -203,7 +221,7 @@ export function Workspace() {
 
   const active = familiars.find((f) => f.id === activeId) ?? null;
   const handleClass =
-    "w-px bg-zinc-800 transition-colors hover:bg-violet-500/60 data-[resize-handle-state=drag]:bg-violet-500";
+    "w-px bg-zinc-800 transition-colors hover:bg-purple-500/60 data-[resize-handle-state=drag]:bg-purple-500";
 
   return (
     <div className="flex h-screen w-screen flex-col bg-zinc-950 text-zinc-100">
