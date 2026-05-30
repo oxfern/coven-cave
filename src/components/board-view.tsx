@@ -219,8 +219,8 @@ export function BoardView({ familiars, sessions, activeFamiliarId }: Props) {
         </div>
       ) : null}
 
-      <div className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden">
-        <div className="flex h-full min-w-max gap-3 px-5 py-4">
+      <div className="min-h-0 flex-1 overflow-hidden">
+        <div className="flex h-full w-full gap-3 px-5 py-4">
           {COLUMNS.map((col) => {
             const rows = grouped.get(col.id) ?? [];
             const isDropTarget = dropTarget === col.id;
@@ -230,7 +230,7 @@ export function BoardView({ familiars, sessions, activeFamiliarId }: Props) {
                 onDragOver={(e) => handleDragOver(e, col.id)}
                 onDragLeave={() => handleDragLeave(col.id)}
                 onDrop={(e) => handleDrop(e, col.id)}
-                className={`flex h-full w-[300px] shrink-0 flex-col rounded-xl border bg-zinc-900/30 transition-colors ${
+                className={`flex h-full min-w-0 flex-1 basis-0 flex-col rounded-xl border bg-zinc-900/30 transition-colors ${
                   isDropTarget
                     ? "border-violet-500/60 bg-violet-500/5"
                     : "border-zinc-900"
