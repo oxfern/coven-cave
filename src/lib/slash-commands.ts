@@ -8,6 +8,8 @@ export type SlashCommand = {
 
 export const SLASH_COMMANDS: SlashCommand[] = [
   { name: "/new", hint: "new chat", description: "Start a fresh chat with the active familiar." },
+  { name: "/board", hint: "Coven Board", description: "Open the Coven Board kanban view." },
+  { name: "/chats", hint: "Chats", description: "Switch back to the Chats view." },
   { name: "/sessions", hint: "open list", description: "Go back to the chat list." },
   { name: "/tui", hint: "open in Coven Code", description: "Open the current session in the external Coven Code TUI." },
   { name: "/clear", hint: "clear transcript", description: "Clear the local view (does not delete the daemon session)." },

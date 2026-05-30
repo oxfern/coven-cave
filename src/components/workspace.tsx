@@ -7,7 +7,10 @@ import { ChatRouter, type ChatRouterHandle } from "@/components/chat-router";
 import { InspectorPane } from "@/components/inspector-pane";
 import { DaemonBar } from "@/components/daemon-bar";
 import { CommandPalette, type PaletteIntent } from "@/components/command-palette";
+import { BoardView } from "@/components/board-view";
 import type { Familiar, SessionRow } from "@/lib/types";
+
+type Mode = "chats" | "board";
 
 export function Workspace() {
   const leftRef = usePanelRef();
@@ -20,6 +23,7 @@ export function Workspace() {
   const [daemonRunning, setDaemonRunning] = useState<boolean>(false);
   const [responseNeeded, setResponseNeeded] = useState<Set<string>>(new Set());
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [mode, setMode] = useState<Mode>("chats");
   const responseNeededRef = useRef(responseNeeded);
   responseNeededRef.current = responseNeeded;
 
@@ -122,9 +126,17 @@ export function Workspace() {
       // Map slash commands directly to local actions
       switch (intent.command) {
         case "/new":
+          setMode("chats");
           routerRef.current?.newChat();
           return;
+        case "/board":
+          setMode("board");
+          return;
+        case "/chats":
+          setMode("chats");
+          return;
         case "/sessions":
+          setMode("chats");
           routerRef.current?.goToList();
           return;
         case "/tui": {
@@ -166,6 +178,23 @@ export function Workspace() {
         onRunningChange={setDaemonRunning}
       />
 
+      <nav className="flex items-center gap-1 border-b border-zinc-900 bg-zinc-950 px-3 py-1.5 text-[11px]">
+        {(["chats", "board"] as const).map((m) => (
+          <button
+            key={m}
+            onClick={() => setMode(m)}
+            className={`rounded-md px-3 py-1 transition-colors ${
+              mode === m
+                ? "bg-zinc-800 text-zinc-100"
+                : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
+            }`}
+          >
+            {m === "chats" ? "Chats" : "Coven Board"}
+          </button>
+        ))}
+        <span className="ml-auto text-[10px] text-zinc-600">⌘K palette · ⌘B rail · ⇧⌘B inspector</span>
+      </nav>
+
       <Group orientation="horizontal" className="flex-1 min-h-0 flex">
         <Panel
           panelRef={leftRef}
@@ -189,13 +218,21 @@ export function Workspace() {
         <Separator className={handleClass} />
 
         <Panel id="chat" defaultSize="50%" minSize="28%">
-          <ChatRouter
-            ref={routerRef}
-            familiar={active}
-            sessions={sessions}
-            daemonRunning={daemonRunning}
-            onSessionStarted={loadSessions}
-          />
+          {mode === "chats" ? (
+            <ChatRouter
+              ref={routerRef}
+              familiar={active}
+              sessions={sessions}
+              daemonRunning={daemonRunning}
+              onSessionStarted={loadSessions}
+            />
+          ) : (
+            <BoardView
+              familiars={familiars}
+              sessions={sessions}
+              activeFamiliarId={activeId}
+            />
+          )}
         </Panel>
 
         <Separator className={handleClass} />
@@ -215,7 +252,7 @@ export function Workspace() {
 
       <footer className="flex items-center justify-between border-t border-zinc-800 px-3 py-1 text-[10px] text-zinc-500">
         <span>CovenCave · v0</span>
-        <span>⌘K palette · ⌘B rail · ⇧⌘B inspector · / slash commands</span>
+        <span>mode · {mode === "chats" ? "Chats" : "Coven Board"}</span>
       </footer>
 
       <CommandPalette
