@@ -2,11 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { InboxItem } from "@/lib/cave-inbox";
+import type { Familiar } from "@/lib/types";
+import type { InboxPrefs, SoundMode } from "@/lib/cave-inbox-prefs";
 
 type Props = {
   items: InboxItem[];
+  familiars: Familiar[];
+  prefs: InboxPrefs;
   onOpenInbox: () => void;
   onOpenItem?: (item: InboxItem) => void;
+  onPrefsChanged: () => void;
 };
 
 function relTime(iso: string | null | undefined): string {
@@ -20,9 +25,47 @@ function relTime(iso: string | null | undefined): string {
   return `${Math.round(hrs / 24)}d ago`;
 }
 
-export function NotificationBell({ items, onOpenInbox, onOpenItem }: Props) {
+export function NotificationBell({
+  items,
+  familiars,
+  prefs,
+  onOpenInbox,
+  onOpenItem,
+  onPrefsChanged,
+}: Props) {
   const [open, setOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement | null>(null);
+
+  const familiarName = useCallback(
+    (id: string | null | undefined) =>
+      id ? familiars.find((f) => f.id === id)?.display_name ?? id : null,
+    [familiars],
+  );
+
+  const toggleMute = useCallback(
+    async (familiarId: string) => {
+      await fetch("/api/inbox/prefs", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ toggleMuteFor: familiarId }),
+      });
+      onPrefsChanged();
+    },
+    [onPrefsChanged],
+  );
+
+  const setSound = useCallback(
+    async (mode: SoundMode, name?: string) => {
+      await fetch("/api/inbox/prefs", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ sound: { mode, name } }),
+      });
+      onPrefsChanged();
+    },
+    [onPrefsChanged],
+  );
 
   // Items shown in the dropdown: most-recent fired + the loudest pending alerts
   // (response-needed bridge first). Cap to 10.
@@ -93,16 +136,91 @@ export function NotificationBell({ items, onOpenInbox, onOpenItem }: Props) {
             <span className="text-[10px] uppercase tracking-widest text-zinc-500">
               Notifications
             </span>
-            <button
-              onClick={() => {
-                setOpen(false);
-                onOpenInbox();
-              }}
-              className="text-[10px] text-purple-300 hover:text-purple-200"
-            >
-              open inbox →
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setSettingsOpen((v) => !v)}
+                className="text-[10px] text-zinc-400 hover:text-zinc-200"
+                title="Notification settings"
+              >
+                ⚙
+              </button>
+              <button
+                onClick={() => {
+                  setOpen(false);
+                  onOpenInbox();
+                }}
+                className="text-[10px] text-purple-300 hover:text-purple-200"
+              >
+                open inbox →
+              </button>
+            </div>
           </div>
+
+          {settingsOpen ? (
+            <div className="border-b border-zinc-800 bg-zinc-900/40 p-3 text-[11px]">
+              <div className="mb-2 text-[10px] uppercase tracking-widest text-zinc-500">
+                Sound
+              </div>
+              <div className="mb-3 flex flex-wrap gap-1">
+                {(
+                  [
+                    { mode: "default" as SoundMode, label: "Default" },
+                    { mode: "silent" as SoundMode, label: "Silent" },
+                    { mode: "named" as SoundMode, label: "Glass", name: "Glass" },
+                    { mode: "named" as SoundMode, label: "Pop", name: "Pop" },
+                    { mode: "named" as SoundMode, label: "Funk", name: "Funk" },
+                  ] as const
+                ).map((opt) => {
+                  const active =
+                    prefs.sound.mode === opt.mode &&
+                    (opt.mode !== "named" ||
+                      prefs.sound.name === ("name" in opt ? opt.name : undefined));
+                  return (
+                    <button
+                      key={opt.label}
+                      onClick={() =>
+                        setSound(opt.mode, "name" in opt ? opt.name : undefined)
+                      }
+                      className={`rounded border px-2 py-0.5 text-[10px] ${
+                        active
+                          ? "border-purple-500 bg-purple-500/20 text-purple-100"
+                          : "border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="mb-1.5 text-[10px] uppercase tracking-widest text-zinc-500">
+                Muted familiars
+              </div>
+              <ul className="max-h-32 space-y-0.5 overflow-y-auto">
+                {familiars.length === 0 ? (
+                  <li className="text-[10px] text-zinc-600">No familiars yet.</li>
+                ) : null}
+                {familiars.map((f) => {
+                  const muted = prefs.mutedFamiliars.includes(f.id);
+                  return (
+                    <li key={f.id} className="flex items-center justify-between">
+                      <span className="truncate text-zinc-300">{f.display_name}</span>
+                      <button
+                        onClick={() => toggleMute(f.id)}
+                        className={`rounded border px-1.5 py-0.5 text-[10px] ${
+                          muted
+                            ? "border-amber-600 bg-amber-500/15 text-amber-200"
+                            : "border-zinc-700 text-zinc-400 hover:bg-zinc-800"
+                        }`}
+                      >
+                        {muted ? "muted" : "mute"}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ) : null}
           <ul className="max-h-[420px] overflow-y-auto p-2 text-xs">
             {recent.length === 0 ? (
               <li className="px-2 py-6 text-center text-[11px] text-zinc-600">
@@ -138,7 +256,7 @@ export function NotificationBell({ items, onOpenInbox, onOpenItem }: Props) {
                     </div>
                   </div>
                 </div>
-                <div className="mt-1.5 flex gap-1">
+                <div className="mt-1.5 flex flex-wrap gap-1">
                   {onOpenItem ? (
                     <BellBtn
                       onClick={() => {
@@ -154,6 +272,13 @@ export function NotificationBell({ items, onOpenInbox, onOpenItem }: Props) {
                       <BellBtn onClick={() => void snooze(it.id)}>Snooze 10m</BellBtn>
                       <BellBtn onClick={() => void dismiss(it.id)}>Dismiss</BellBtn>
                     </>
+                  ) : null}
+                  {it.familiarId ? (
+                    <BellBtn onClick={() => void toggleMute(it.familiarId!)}>
+                      {prefs.mutedFamiliars.includes(it.familiarId)
+                        ? `unmute ${familiarName(it.familiarId)}`
+                        : `mute ${familiarName(it.familiarId)}`}
+                    </BellBtn>
                   ) : null}
                 </div>
               </li>

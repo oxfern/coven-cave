@@ -15,6 +15,7 @@ import { NewReminderModal, draftFromSlashArgs } from "@/components/new-reminder-
 import { InboxToastStack, toastFromItem, type Toast } from "@/components/inbox-toast";
 import { nativeNotify } from "@/lib/native-notify";
 import type { InboxItem } from "@/lib/cave-inbox";
+import type { InboxPrefs } from "@/lib/cave-inbox-prefs";
 import type { Familiar, SessionRow } from "@/lib/types";
 
 type Mode = "chats" | "board" | "plugins" | "inbox";
@@ -33,6 +34,11 @@ export function Workspace() {
   const [mode, setMode] = useState<Mode>("chats");
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [inboxItems, setInboxItems] = useState<InboxItem[]>([]);
+  const [inboxPrefs, setInboxPrefs] = useState<InboxPrefs>({
+    version: 1,
+    mutedFamiliars: [],
+    sound: { mode: "default" },
+  });
   const [reminderModalOpen, setReminderModalOpen] = useState(false);
   const [reminderModalDefaults, setReminderModalDefaults] = useState<{
     title: string;
@@ -78,10 +84,64 @@ export function Workspace() {
     return () => clearInterval(t);
   }, [loadFamiliars, loadSessions]);
 
+  const refreshPrefs = useCallback(async () => {
+    try {
+      const res = await fetch("/api/inbox/prefs", { cache: "no-store" });
+      const json = await res.json();
+      if (json.ok) setInboxPrefs(json.prefs as InboxPrefs);
+    } catch {
+      /* keep defaults */
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshPrefs();
+  }, [refreshPrefs]);
+
+  // Tray menu events from Rust: bring the user into the inbox view or pop
+  // open the reminder modal. No-op outside Tauri (next dev in a browser).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    // @ts-expect-error Tauri injects this at runtime
+    if (!window.__TAURI_INTERNALS__) return;
+    let unlistenOpen: (() => void) | undefined;
+    let unlistenNew: (() => void) | undefined;
+    void (async () => {
+      try {
+        const { listen } = await import("@tauri-apps/api/event");
+        unlistenOpen = await listen("tray:open-inbox", () => setMode("inbox"));
+        unlistenNew = await listen("tray:new-reminder", () => {
+          setReminderModalDefaults({ title: "", whenText: "" });
+          setReminderModalOpen(true);
+        });
+      } catch {
+        /* harmless in browser dev */
+      }
+    })();
+    return () => {
+      unlistenOpen?.();
+      unlistenNew?.();
+    };
+  }, []);
+
+  // Keep prefs accessible to the SSE callback without re-subscribing on every
+  // mute toggle.
+  const inboxPrefsRef = useRef(inboxPrefs);
+  inboxPrefsRef.current = inboxPrefs;
+
   // Subscribe to the inbox SSE stream: drives the inbox list, toasts, and
   // macOS system notifications. EventSource auto-reconnects on its own.
   useEffect(() => {
     const es = new EventSource("/api/inbox/stream");
+    const isMuted = (item: InboxItem) =>
+      !!item.familiarId &&
+      inboxPrefsRef.current.mutedFamiliars.includes(item.familiarId);
+    const sound = () => {
+      const s = inboxPrefsRef.current.sound;
+      if (s.mode === "silent") return null;
+      if (s.mode === "named" && s.name) return s.name;
+      return undefined; // platform default
+    };
     es.onmessage = (ev) => {
       let event: unknown;
       try {
@@ -102,9 +162,9 @@ export function Workspace() {
       }
       if (e.type === "created") {
         setInboxItems((prev) => [...prev, e.item]);
-        if (e.item.status === "fired") {
+        if (e.item.status === "fired" && !isMuted(e.item)) {
           setToasts((prev) => [...prev, toastFromItem(e.item)]);
-          void nativeNotify(e.item.title, e.item.body);
+          void nativeNotify(e.item.title, e.item.body, sound());
         }
         return;
       }
@@ -122,24 +182,24 @@ export function Workspace() {
         setInboxItems((prev) => {
           const byId = new Map(e.items.map((it) => [it.id, it]));
           const merged = prev.map((it) => byId.get(it.id) ?? it);
-          // Append any siblings that recurrence created and weren't in prev.
           for (const fresh of e.items) {
             if (!prev.find((it) => it.id === fresh.id)) merged.push(fresh);
           }
           return merged;
         });
-        if (e.items.length === 1) {
-          const item = e.items[0];
+        const loud = e.items.filter((it) => !isMuted(it));
+        if (loud.length === 1) {
+          const item = loud[0];
           setToasts((prev) => [...prev, toastFromItem(item)]);
-          void nativeNotify(item.title, item.body);
-        } else if (e.items.length > 1) {
+          void nativeNotify(item.title, item.body, sound());
+        } else if (loud.length > 1) {
           const summary: Toast = {
             id: `missed-${Date.now()}`,
-            title: `${e.items.length} reminders fired`,
-            body: e.items.map((it) => it.title).join(" · "),
+            title: `${loud.length} reminders fired`,
+            body: loud.map((it) => it.title).join(" · "),
           };
           setToasts((prev) => [...prev, summary]);
-          void nativeNotify(summary.title, summary.body);
+          void nativeNotify(summary.title, summary.body, sound());
         }
       }
     };
@@ -435,6 +495,9 @@ export function Workspace() {
         onRunningChange={setDaemonRunning}
         onOpenOnboarding={openOnboarding}
         inboxItems={inboxItemsWithEphemeral}
+        inboxPrefs={inboxPrefs}
+        familiars={familiars}
+        onPrefsChanged={refreshPrefs}
         onOpenInbox={() => setMode("inbox")}
         onOpenInboxItem={(item) => {
           if (item.sessionId) {

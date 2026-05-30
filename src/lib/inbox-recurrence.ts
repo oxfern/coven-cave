@@ -45,5 +45,10 @@ export function computeNextOccurrence(
     }
     return null;
   }
+  if (rec.type === "cron") {
+    const fields = parseCron(rec.expr);
+    if (!fields) return null;
+    return nextCronFireFromLocal(fields, fromMs);
+  }
   return null;
 }

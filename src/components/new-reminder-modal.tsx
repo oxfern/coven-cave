@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { Familiar } from "@/lib/types";
-import type { Recurrence } from "@/lib/cave-inbox";
+import { computeNextOccurrence, type Recurrence } from "@/lib/cave-inbox";
 import { parseWhen, splitWhenAndText } from "@/lib/parse-when";
+import { parseCron } from "@/lib/cron";
 
 export type NewReminderDraft = {
   title: string;
@@ -19,7 +20,8 @@ type RecurPreset =
   | "every-1h"
   | "every-day"
   | "every-weekday"
-  | "every-weekend";
+  | "every-weekend"
+  | "cron";
 
 const RECUR_PRESETS: { value: RecurPreset; label: string }[] = [
   { value: "none", label: "One-shot" },
@@ -28,12 +30,18 @@ const RECUR_PRESETS: { value: RecurPreset; label: string }[] = [
   { value: "every-day", label: "Every day (same time)" },
   { value: "every-weekday", label: "Every weekday (same time)" },
   { value: "every-weekend", label: "Every weekend (same time)" },
+  { value: "cron", label: "Cron expression…" },
 ];
 
-function recurrenceFor(preset: RecurPreset, fireAt: string): Recurrence {
+function recurrenceFor(
+  preset: RecurPreset,
+  fireAt: string,
+  cronExpr: string,
+): Recurrence {
   if (preset === "none") return { type: "none" };
   if (preset === "every-30m") return { type: "interval", everyMs: 30 * 60_000 };
   if (preset === "every-1h") return { type: "interval", everyMs: 60 * 60_000 };
+  if (preset === "cron") return { type: "cron", expr: cronExpr.trim() };
   const d = new Date(fireAt);
   const hour = d.getHours();
   const minute = d.getMinutes();
@@ -76,6 +84,7 @@ export function NewReminderModal({
   const [manualFireAt, setManualFireAt] = useState<string>("");
   const [familiarId, setFamiliarId] = useState<string | null>(defaultFamiliarId);
   const [recurPreset, setRecurPreset] = useState<RecurPreset>("none");
+  const [cronExpr, setCronExpr] = useState<string>("*/15 * * * *");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -86,6 +95,7 @@ export function NewReminderModal({
     setManualFireAt("");
     setFamiliarId(defaultFamiliarId);
     setRecurPreset("none");
+    setCronExpr("*/15 * * * *");
     setError(null);
   }, [open, defaultFamiliarId, defaultWhenText, defaultTitle]);
 
@@ -121,22 +131,44 @@ export function NewReminderModal({
       const days = r.days.slice().sort().join(",");
       if (days === "1,2,3,4,5") setRecurPreset("every-weekday");
       else if (days === "0,6") setRecurPreset("every-weekend");
+    } else if (r.type === "cron") {
+      setRecurPreset("cron");
+      setCronExpr(r.expr);
     }
   }, [parsed]);
 
+  const cronFields = useMemo(() => {
+    if (recurPreset !== "cron") return null;
+    return parseCron(cronExpr);
+  }, [recurPreset, cronExpr]);
+
+  const cronNextFire = useMemo<string | null>(() => {
+    if (recurPreset !== "cron" || !cronFields) return null;
+    return computeNextOccurrence(
+      { type: "cron", expr: cronExpr.trim() },
+      Date.now(),
+    );
+  }, [recurPreset, cronFields, cronExpr]);
+
   const resolvedFireAt = useMemo<string | null>(() => {
+    // Cron drives its own fireAt directly from the expression.
+    if (recurPreset === "cron") return cronNextFire;
     if (manualFireAt) {
       const t = new Date(manualFireAt).getTime();
       return Number.isFinite(t) ? new Date(t).toISOString() : null;
     }
     if (parsed) return parsed.fireAt;
     return null;
-  }, [manualFireAt, parsed]);
+  }, [manualFireAt, parsed, recurPreset, cronNextFire]);
 
   if (!open) return null;
 
   const create = async () => {
     if (!title.trim() || !resolvedFireAt || busy) return;
+    if (recurPreset === "cron" && !cronFields) {
+      setError("cron expression is invalid");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -144,7 +176,7 @@ export function NewReminderModal({
         title: title.trim(),
         fireAt: resolvedFireAt,
         familiarId,
-        recurrence: recurrenceFor(recurPreset, resolvedFireAt),
+        recurrence: recurrenceFor(recurPreset, resolvedFireAt, cronExpr),
       });
       onClose();
     } catch (err) {
@@ -258,6 +290,34 @@ export function NewReminderModal({
             />
           </Field>
         </div>
+
+        {recurPreset === "cron" ? (
+          <Field label="Cron expression (min hour day month weekday)">
+            <input
+              value={cronExpr}
+              onChange={(e) => setCronExpr(e.target.value)}
+              placeholder="*/15 * * * *"
+              className={`w-full rounded-md border bg-zinc-900/40 px-3 py-2 font-mono text-sm text-zinc-100 outline-none placeholder:text-zinc-600 ${
+                cronExpr && !cronFields
+                  ? "border-amber-600/60"
+                  : "border-zinc-800 focus:border-purple-600"
+              }`}
+            />
+            <div className="mt-1 text-[10px] text-zinc-500">
+              {cronExpr && !cronFields
+                ? "Invalid cron expression."
+                : cronNextFire
+                ? `Next fire → ${new Date(cronNextFire).toLocaleString(undefined, {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })}`
+                : "Try “0 9 * * 1-5” for weekdays at 9am."}
+            </div>
+          </Field>
+        ) : null}
 
         {error ? (
           <div className="mb-3 rounded border border-amber-700/40 bg-amber-900/20 px-3 py-1.5 text-xs text-amber-200">

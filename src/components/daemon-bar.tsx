@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { DaemonStatus, SessionRow } from "@/lib/types";
+import type { DaemonStatus, Familiar, SessionRow } from "@/lib/types";
 import type { InboxItem } from "@/lib/cave-inbox";
+import type { InboxPrefs } from "@/lib/cave-inbox-prefs";
 import { NotificationBell } from "@/components/notification-bell";
 
 type Props = {
@@ -12,8 +13,11 @@ type Props = {
   onRunningChange?: (running: boolean) => void;
   onOpenOnboarding?: () => void;
   inboxItems?: InboxItem[];
+  inboxPrefs?: InboxPrefs;
+  familiars?: Familiar[];
   onOpenInbox?: () => void;
   onOpenInboxItem?: (item: InboxItem) => void;
+  onPrefsChanged?: () => void;
 };
 
 export function DaemonBar({
@@ -23,8 +27,11 @@ export function DaemonBar({
   onRunningChange,
   onOpenOnboarding,
   inboxItems = [],
+  inboxPrefs,
+  familiars = [],
   onOpenInbox,
   onOpenInboxItem,
+  onPrefsChanged,
 }: Props) {
   const [status, setStatus] = useState<DaemonStatus | null>(null);
   const [busy, setBusy] = useState(false);
@@ -118,11 +125,14 @@ export function DaemonBar({
           </button>
         )}
 
-        {onOpenInbox ? (
+        {onOpenInbox && inboxPrefs && onPrefsChanged ? (
           <NotificationBell
             items={inboxItems}
+            familiars={familiars}
+            prefs={inboxPrefs}
             onOpenInbox={onOpenInbox}
             onOpenItem={onOpenInboxItem}
+            onPrefsChanged={onPrefsChanged}
           />
         ) : null}
 

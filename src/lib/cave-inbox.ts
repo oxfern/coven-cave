@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { homedir } from "node:os";
+import { nextCronFireFromLocal, parseCron } from "@/lib/cron";
 
 const INBOX_PATH = path.join(homedir(), ".coven", "cave-inbox.json");
 
@@ -11,7 +12,8 @@ export type Recurrence =
   | { type: "none" }
   | { type: "interval"; everyMs: number }
   | { type: "daily"; hour: number; minute: number }
-  | { type: "weekly"; days: number[]; hour: number; minute: number };
+  | { type: "weekly"; days: number[]; hour: number; minute: number }
+  | { type: "cron"; expr: string };
 
 export type LinkRef = {
   kind: "session" | "card" | "memory" | "url";
@@ -211,6 +213,11 @@ export function computeNextOccurrence(
       d.setDate(d.getDate() + 1);
     }
     return null;
+  }
+  if (rec.type === "cron") {
+    const fields = parseCron(rec.expr);
+    if (!fields) return null;
+    return nextCronFireFromLocal(fields, fromMs);
   }
   return null;
 }

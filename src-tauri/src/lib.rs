@@ -4,7 +4,11 @@ use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
 use std::thread;
 use std::time::{Duration, Instant};
-use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
+use tauri::{
+    menu::{Menu, MenuItem, PredefinedMenuItem},
+    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    Emitter, Manager, WebviewUrl, WebviewWindowBuilder,
+};
 
 /// Surface a fatal startup error to the user via osascript (Cocoa) so they see
 /// something instead of a silent abort(). Best-effort; ignored on failure.
@@ -327,6 +331,73 @@ pub fn run() {
             {
                 fatal_exit(&format!("failed to build main window: {}", e));
             }
+
+            // Status bar tray menu — quick access to inbox + reminder creation
+            // when CovenCave is in the background. Menu actions either bring
+            // the main window forward or emit a `tray:*` event the WebView
+            // listens for.
+            let open_inbox = MenuItem::with_id(app, "open_inbox", "Open Inbox", true, None::<&str>)?;
+            let new_reminder = MenuItem::with_id(
+                app,
+                "new_reminder",
+                "New Reminder…",
+                true,
+                None::<&str>,
+            )?;
+            let show_app = MenuItem::with_id(app, "show_app", "Show CovenCave", true, None::<&str>)?;
+            let separator = PredefinedMenuItem::separator(app)?;
+            let quit = MenuItem::with_id(app, "quit", "Quit CovenCave", true, None::<&str>)?;
+            let tray_menu = Menu::with_items(
+                app,
+                &[&open_inbox, &new_reminder, &separator, &show_app, &separator, &quit],
+            )?;
+
+            let _tray = TrayIconBuilder::with_id("cave-tray")
+                .icon(app.default_window_icon().cloned().expect("default icon present"))
+                .icon_as_template(true)
+                .menu(&tray_menu)
+                .show_menu_on_left_click(false)
+                .tooltip("CovenCave")
+                .on_menu_event(|app, event| match event.id.as_ref() {
+                    "open_inbox" => {
+                        if let Some(w) = app.get_webview_window("main") {
+                            let _ = w.show();
+                            let _ = w.set_focus();
+                        }
+                        let _ = app.emit("tray:open-inbox", ());
+                    }
+                    "new_reminder" => {
+                        if let Some(w) = app.get_webview_window("main") {
+                            let _ = w.show();
+                            let _ = w.set_focus();
+                        }
+                        let _ = app.emit("tray:new-reminder", ());
+                    }
+                    "show_app" => {
+                        if let Some(w) = app.get_webview_window("main") {
+                            let _ = w.show();
+                            let _ = w.set_focus();
+                        }
+                    }
+                    "quit" => app.exit(0),
+                    _ => {}
+                })
+                .on_tray_icon_event(|tray, event| {
+                    // Left-click brings the main window forward; right-click
+                    // is reserved for the native menu.
+                    if let TrayIconEvent::Click {
+                        button: MouseButton::Left,
+                        button_state: MouseButtonState::Up,
+                        ..
+                    } = event
+                    {
+                        if let Some(w) = tray.app_handle().get_webview_window("main") {
+                            let _ = w.show();
+                            let _ = w.set_focus();
+                        }
+                    }
+                })
+                .build(app)?;
 
             Ok(())
         })
