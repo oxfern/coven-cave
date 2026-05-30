@@ -4,12 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Familiar, SessionRow } from "@/lib/types";
 import { NewCardModal, type NewCardDraft } from "@/components/new-card-modal";
 
-type CardStatus = string;
+type CardStatus = "inbox" | "running" | "review";
 type CardPriority = "low" | "medium" | "high" | "urgent";
-
-type Column = { id: string; label: string; accent?: string };
-const NEW_COLUMN_ID = "__new__";
-const DEFAULT_ACCENT = "border-zinc-700";
 
 type Card = {
   id: string;
@@ -25,6 +21,11 @@ type Card = {
   updatedAt: string;
 };
 
+const COLUMNS: { id: CardStatus; label: string; accent: string }[] = [
+  { id: "inbox", label: "Inbox", accent: "border-sky-500/40" },
+  { id: "running", label: "Running", accent: "border-emerald-500/60" },
+  { id: "review", label: "Review", accent: "border-violet-500/60" },
+];
 
 const PRIORITIES: { id: CardPriority; label: string; pill: string }[] = [
   { id: "urgent", label: "Urgent", pill: "bg-rose-600/20 text-rose-300 border-rose-600/40" },
@@ -41,7 +42,6 @@ type Props = {
 
 export function BoardView({ familiars, sessions, activeFamiliarId }: Props) {
   const [cards, setCards] = useState<Card[]>([]);
-  const [columns, setColumns] = useState<Column[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalDefaultStatus, setModalDefaultStatus] = useState<CardStatus>("inbox");
@@ -52,16 +52,14 @@ export function BoardView({ familiars, sessions, activeFamiliarId }: Props) {
 
   const load = useCallback(async () => {
     try {
-      const [cardsRes, colsRes] = await Promise.all([
-        fetch("/api/board", { cache: "no-store" }),
-        fetch("/api/board/columns", { cache: "no-store" }),
-      ]);
-      const cardsJson = await cardsRes.json();
-      const colsJson = await colsRes.json();
-      if (cardsJson.ok) setCards(cardsJson.cards ?? []);
-      if (colsJson.ok) setColumns(colsJson.columns ?? []);
-      if (!cardsJson.ok) setError(cardsJson.error ?? "load failed");
-      else setError(null);
+      const res = await fetch("/api/board", { cache: "no-store" });
+      const json = await res.json();
+      if (json.ok) {
+        setCards(json.cards ?? []);
+        setError(null);
+      } else {
+        setError(json.error ?? "load failed");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "load failed");
     }
@@ -81,13 +79,10 @@ export function BoardView({ familiars, sessions, activeFamiliarId }: Props) {
 
   const grouped = useMemo(() => {
     const m = new Map<CardStatus, Card[]>();
-    for (const col of columns) m.set(col.id, []);
-    for (const c of filtered) {
-      if (!m.has(c.status)) m.set(c.status, []);
-      m.get(c.status)?.push(c);
-    }
+    for (const col of COLUMNS) m.set(col.id, []);
+    for (const c of filtered) m.get(c.status)?.push(c);
     return m;
-  }, [filtered, columns]);
+  }, [filtered]);
 
   const togglePriority = (p: CardPriority) => {
     setPriorityFilter((prev) => {
@@ -138,52 +133,15 @@ export function BoardView({ familiars, sessions, activeFamiliarId }: Props) {
   const handleDragLeave = (status: CardStatus) => {
     if (dropTarget === status) setDropTarget(null);
   };
-  const handleDrop = async (e: React.DragEvent, status: CardStatus) => {
+  const handleDrop = (e: React.DragEvent, status: CardStatus) => {
     e.preventDefault();
     const id = e.dataTransfer.getData("text/plain") || draggingId;
     setDraggingId(null);
     setDropTarget(null);
     if (!id) return;
     const card = cards.find((c) => c.id === id);
-    if (!card) return;
-    if (status === NEW_COLUMN_ID) {
-      const label = window.prompt("Name the new column:");
-      if (!label || !label.trim()) return;
-      const res = await fetch("/api/board/columns", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ label }),
-      });
-      const json = await res.json();
-      if (!json.ok || !json.column) {
-        setError(json.error ?? "could not create column");
-        return;
-      }
-      setColumns((prev) => [...prev, json.column]);
-      void patchCard(id, { status: json.column.id });
-      return;
-    }
-    if (card.status === status) return;
+    if (!card || card.status === status) return;
     void patchCard(id, { status });
-  };
-
-  const renameColumnPrompt = async (column: Column) => {
-    const label = window.prompt("Rename column:", column.label);
-    if (!label || !label.trim() || label === column.label) return;
-    const res = await fetch(`/api/board/columns/${column.id}`, {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ label }),
-    });
-    const json = await res.json();
-    if (json.ok) await load();
-  };
-
-  const removeColumn = async (column: Column) => {
-    if (!confirm(`Delete column "${column.label}"? Cards will move to the first column.`)) return;
-    const res = await fetch(`/api/board/columns/${column.id}`, { method: "DELETE" });
-    const json = await res.json();
-    if (json.ok) await load();
   };
 
   const removeCard = async (id: string) => {
@@ -263,10 +221,9 @@ export function BoardView({ familiars, sessions, activeFamiliarId }: Props) {
 
       <div className="min-h-0 flex-1 overflow-hidden">
         <div className="flex h-full w-full gap-3 px-5 py-4">
-          {columns.map((col) => {
+          {COLUMNS.map((col) => {
             const rows = grouped.get(col.id) ?? [];
             const isDropTarget = dropTarget === col.id;
-            const accent = col.accent ?? DEFAULT_ACCENT;
             return (
               <div
                 key={col.id}
@@ -279,36 +236,25 @@ export function BoardView({ familiars, sessions, activeFamiliarId }: Props) {
                     : "border-zinc-900"
                 }`}
               >
-                <div className={`flex items-center justify-between border-b ${accent} px-3 py-2`}>
-                  <div
-                    className="group flex items-center gap-2"
-                    onDoubleClick={() => renameColumnPrompt(col)}
-                    title="Double-click to rename"
-                  >
+                <div
+                  className={`flex items-center justify-between border-b ${col.accent} px-3 py-2`}
+                >
+                  <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-zinc-100">{col.label}</span>
                     <span className="rounded-full bg-zinc-800 px-1.5 py-px text-[10px] text-zinc-400">
                       {rows.length}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => {
-                        setModalDefaultStatus(col.id);
-                        setModalOpen(true);
-                      }}
-                      title={`Add card to ${col.label}`}
-                      className="grid h-5 w-5 place-items-center rounded text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
-                    >
-                      +
-                    </button>
-                    <button
-                      onClick={() => removeColumn(col)}
-                      title="Delete column"
-                      className="grid h-5 w-5 place-items-center rounded text-zinc-600 opacity-0 transition-colors group-hover:opacity-100 hover:bg-zinc-800 hover:text-rose-300"
-                    >
-                      ×
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => {
+                      setModalDefaultStatus(col.id);
+                      setModalOpen(true);
+                    }}
+                    title={`Add card to ${col.label}`}
+                    className="grid h-5 w-5 place-items-center rounded text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+                  >
+                    +
+                  </button>
                 </div>
 
                 <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2">
@@ -327,7 +273,6 @@ export function BoardView({ familiars, sessions, activeFamiliarId }: Props) {
                     <CardItem
                       key={card.id}
                       card={card}
-                      columns={columns}
                       familiars={familiars}
                       sessions={sessions}
                       isDragging={draggingId === card.id}
@@ -341,25 +286,6 @@ export function BoardView({ familiars, sessions, activeFamiliarId }: Props) {
               </div>
             );
           })}
-
-          {/* "+ New column" drop zone */}
-          <NewColumnZone
-            isDropTarget={dropTarget === NEW_COLUMN_ID}
-            onDragOver={(e) => handleDragOver(e, NEW_COLUMN_ID)}
-            onDragLeave={() => handleDragLeave(NEW_COLUMN_ID)}
-            onDrop={(e) => handleDrop(e, NEW_COLUMN_ID)}
-            onClick={async () => {
-              const label = window.prompt("Name the new column:");
-              if (!label || !label.trim()) return;
-              const res = await fetch("/api/board/columns", {
-                method: "POST",
-                headers: { "content-type": "application/json" },
-                body: JSON.stringify({ label }),
-              });
-              const json = await res.json();
-              if (json.ok) await load();
-            }}
-          />
         </div>
       </div>
 
@@ -368,7 +294,6 @@ export function BoardView({ familiars, sessions, activeFamiliarId }: Props) {
         onClose={() => setModalOpen(false)}
         familiars={familiars}
         sessions={sessions}
-        columns={columns}
         defaultStatus={modalDefaultStatus}
         defaultFamiliarId={activeFamiliarId}
         onCreate={create}
@@ -377,45 +302,8 @@ export function BoardView({ familiars, sessions, activeFamiliarId }: Props) {
   );
 }
 
-function NewColumnZone({
-  isDropTarget,
-  onDragOver,
-  onDragLeave,
-  onDrop,
-  onClick,
-}: {
-  isDropTarget: boolean;
-  onDragOver: (e: React.DragEvent) => void;
-  onDragLeave: () => void;
-  onDrop: (e: React.DragEvent) => void;
-  onClick: () => void;
-}) {
-  return (
-    <div
-      onDragOver={onDragOver}
-      onDragLeave={onDragLeave}
-      onDrop={onDrop}
-      onClick={onClick}
-      role="button"
-      tabIndex={0}
-      title="Drop a card here, or click to create an empty column"
-      className={`flex h-full w-[160px] shrink-0 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed transition-colors ${
-        isDropTarget
-          ? "border-violet-500/80 bg-violet-500/10 text-violet-100"
-          : "border-zinc-800 text-zinc-600 hover:border-zinc-700 hover:text-zinc-400"
-      }`}
-    >
-      <span className="text-2xl">+</span>
-      <span className="mt-1 text-[11px] uppercase tracking-widest">
-        {isDropTarget ? "Drop to add column" : "New column"}
-      </span>
-    </div>
-  );
-}
-
 function CardItem({
   card,
-  columns,
   familiars,
   sessions,
   isDragging,
@@ -425,7 +313,6 @@ function CardItem({
   onDelete,
 }: {
   card: Card;
-  columns: Column[];
   familiars: Familiar[];
   sessions: SessionRow[];
   isDragging?: boolean;
@@ -499,7 +386,7 @@ function CardItem({
                 onChange={(e) => onPatch({ status: e.target.value as CardStatus })}
                 className="w-full rounded border border-zinc-800 bg-zinc-900 px-1.5 py-0.5 text-[11px] text-zinc-200"
               >
-                {columns.map((c) => (
+                {COLUMNS.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.label}
                   </option>

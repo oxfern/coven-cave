@@ -4,11 +4,11 @@ import { useEffect, useState } from "react";
 import type { Familiar, SessionRow } from "@/lib/types";
 
 const TEMPLATES = ["Bugfix", "Docs", "Release", "PR review", "Plugin"];
+const STATUSES: CardStatus[] = ["inbox", "running", "review"];
 const PRIORITIES: CardPriority[] = ["urgent", "high", "medium", "low"];
 
-type CardStatus = string;
+type CardStatus = "inbox" | "running" | "review";
 type CardPriority = "low" | "medium" | "high" | "urgent";
-type Column = { id: string; label: string };
 
 export type NewCardDraft = {
   title: string;
@@ -26,7 +26,6 @@ type Props = {
   onClose: () => void;
   familiars: Familiar[];
   sessions: SessionRow[];
-  columns: Column[];
   defaultStatus?: CardStatus;
   defaultFamiliarId?: string | null;
   onCreate: (draft: NewCardDraft) => Promise<void> | void;
@@ -37,15 +36,13 @@ export function NewCardModal({
   onClose,
   familiars,
   sessions,
-  columns,
-  defaultStatus,
+  defaultStatus = "inbox",
   defaultFamiliarId = null,
   onCreate,
 }: Props) {
-  const fallbackStatus = defaultStatus ?? columns[0]?.id ?? "inbox";
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
-  const [status, setStatus] = useState<CardStatus>(fallbackStatus);
+  const [status, setStatus] = useState<CardStatus>(defaultStatus);
   const [priority, setPriority] = useState<CardPriority>("medium");
   const [familiarId, setFamiliarId] = useState<string | null>(defaultFamiliarId);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -58,14 +55,14 @@ export function NewCardModal({
     if (!open) return;
     setTitle("");
     setNotes("");
-    setStatus(fallbackStatus);
+    setStatus(defaultStatus);
     setPriority("medium");
     setFamiliarId(defaultFamiliarId);
     setSessionId(null);
     setLabels("");
     setTemplate(null);
     setError(null);
-  }, [open, fallbackStatus, defaultFamiliarId]);
+  }, [open, defaultStatus, defaultFamiliarId]);
 
   useEffect(() => {
     if (!open) return;
@@ -176,18 +173,15 @@ export function NewCardModal({
           <Field label="Status">
             <Select
               value={status}
-              onChange={(v) => setStatus(v)}
-              options={columns.map((c) => ({ value: c.id, label: c.label }))}
+              onChange={(v) => setStatus(v as CardStatus)}
+              options={STATUSES.map((s) => ({ value: s, label: cap(s) }))}
             />
           </Field>
           <Field label="Priority">
             <Select
               value={priority}
               onChange={(v) => setPriority(v as CardPriority)}
-              options={PRIORITIES.map((p) => ({
-                value: p,
-                label: p.charAt(0).toUpperCase() + p.slice(1),
-              }))}
+              options={PRIORITIES.map((p) => ({ value: p, label: cap(p) }))}
             />
           </Field>
 
@@ -295,3 +289,6 @@ function Select({
   );
 }
 
+function cap(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}

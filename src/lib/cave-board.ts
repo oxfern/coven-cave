@@ -4,8 +4,7 @@ import { homedir } from "node:os";
 
 const BOARD_PATH = path.join(homedir(), ".coven", "cave-board.json");
 
-/** Column ids are arbitrary strings now — users can add their own. */
-export type CardStatus = string;
+export type CardStatus = "inbox" | "running" | "review";
 export type CardPriority = "low" | "medium" | "high" | "urgent";
 
 export type Card = {
@@ -22,27 +21,15 @@ export type Card = {
   updatedAt: string;
 };
 
-export type Column = {
-  id: string;
-  label: string;
-  accent?: string;
-};
-
-const DEFAULT_COLUMNS: Column[] = [
-  { id: "inbox", label: "Inbox", accent: "border-sky-500/40" },
-  { id: "running", label: "Running", accent: "border-emerald-500/60" },
-  { id: "review", label: "Review", accent: "border-violet-500/60" },
-];
-
+export const STATUSES: CardStatus[] = ["inbox", "running", "review"];
 export const PRIORITIES: CardPriority[] = ["urgent", "high", "medium", "low"];
 
 type BoardFile = {
   version: number;
-  columns: Column[];
   cards: Card[];
 };
 
-const EMPTY: BoardFile = { version: 2, columns: DEFAULT_COLUMNS, cards: [] };
+const EMPTY: BoardFile = { version: 1, cards: [] };
 
 async function ensureDir() {
   await mkdir(path.dirname(BOARD_PATH), { recursive: true });
@@ -53,11 +40,7 @@ export async function loadBoard(): Promise<BoardFile> {
     const raw = await readFile(BOARD_PATH, "utf8");
     const parsed = JSON.parse(raw) as Partial<BoardFile>;
     return {
-      version: parsed.version ?? 2,
-      columns:
-        Array.isArray(parsed.columns) && parsed.columns.length > 0
-          ? parsed.columns
-          : DEFAULT_COLUMNS,
+      version: parsed.version ?? 1,
       cards: Array.isArray(parsed.cards) ? parsed.cards : [],
     };
   } catch {
@@ -81,14 +64,6 @@ export type NewCardInput = {
   template?: string | null;
 };
 
-function slug(input: string): string {
-  return input
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 40);
-}
-
 export async function createCard(input: NewCardInput): Promise<Card> {
   const board = await loadBoard();
   const now = new Date().toISOString();
@@ -96,7 +71,7 @@ export async function createCard(input: NewCardInput): Promise<Card> {
     id: crypto.randomUUID(),
     title: input.title.trim(),
     notes: (input.notes ?? "").trim(),
-    status: input.status ?? board.columns[0]?.id ?? "inbox",
+    status: input.status ?? "inbox",
     priority: input.priority ?? "medium",
     familiarId: input.familiarId ?? null,
     sessionId: input.sessionId ?? null,
@@ -142,41 +117,4 @@ export async function deleteCard(id: string): Promise<boolean> {
   return true;
 }
 
-export async function addColumn(label: string): Promise<Column> {
-  const board = await loadBoard();
-  const baseId = slug(label) || `col-${board.columns.length + 1}`;
-  let id = baseId;
-  let i = 2;
-  while (board.columns.some((c) => c.id === id)) {
-    id = `${baseId}-${i++}`;
-  }
-  const column: Column = { id, label: label.trim() };
-  board.columns.push(column);
-  await saveBoard(board);
-  return column;
-}
-
-export async function deleteColumn(id: string): Promise<boolean> {
-  const board = await loadBoard();
-  const before = board.columns.length;
-  board.columns = board.columns.filter((c) => c.id !== id);
-  if (board.columns.length === before) return false;
-  // Move cards out of the deleted column into the first remaining one
-  const fallback = board.columns[0]?.id ?? "inbox";
-  for (const card of board.cards) {
-    if (card.status === id) card.status = fallback;
-  }
-  await saveBoard(board);
-  return true;
-}
-
-export async function renameColumn(id: string, label: string): Promise<Column | null> {
-  const board = await loadBoard();
-  const col = board.columns.find((c) => c.id === id);
-  if (!col) return null;
-  col.label = label.trim();
-  await saveBoard(board);
-  return col;
-}
-
-export { BOARD_PATH, DEFAULT_COLUMNS };
+export { BOARD_PATH };
