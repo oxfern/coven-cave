@@ -1,11 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import type { DaemonStatus } from "@/lib/types";
+import { useEffect, useMemo, useState } from "react";
+import type { DaemonStatus, SessionRow } from "@/lib/types";
 
-type Props = { onDaemonStarted?: () => void };
+type Props = {
+  onDaemonStarted?: () => void;
+  sessions?: SessionRow[];
+  responseNeededCount?: number;
+};
 
-export function DaemonBar({ onDaemonStarted }: Props) {
+export function DaemonBar({ onDaemonStarted, sessions = [], responseNeededCount = 0 }: Props) {
   const [status, setStatus] = useState<DaemonStatus | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -24,6 +28,11 @@ export function DaemonBar({ onDaemonStarted }: Props) {
     const t = setInterval(refresh, 5000);
     return () => clearInterval(t);
   }, []);
+
+  const stats = useMemo(() => {
+    const running = sessions.filter((s) => s.status === "running").length;
+    return { total: sessions.length, running };
+  }, [sessions]);
 
   const start = async () => {
     setBusy(true);
@@ -58,6 +67,22 @@ export function DaemonBar({ onDaemonStarted }: Props) {
             <span className="text-zinc-500">· {status.reason}</span>
           ) : null}
         </div>
+
+        {running ? (
+          <div className="flex items-center gap-3 text-zinc-400">
+            <span className="flex items-center gap-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="font-mono">{stats.running}</span>
+              <span className="text-zinc-500">live</span>
+            </span>
+            <span className="font-mono text-zinc-500">{stats.total} total</span>
+            {responseNeededCount > 0 ? (
+              <span className="flex items-center gap-1 rounded bg-amber-500/80 px-1.5 py-[1px] font-bold uppercase tracking-widest text-zinc-900">
+                {responseNeededCount} reply
+              </span>
+            ) : null}
+          </div>
+        ) : null}
 
         {!running ? (
           <button

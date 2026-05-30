@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { callDaemon } from "@/lib/coven-daemon";
+import { loadState } from "@/lib/cave-config";
 
 export const dynamic = "force-dynamic";
 
-type SessionRow = {
+type DaemonSession = {
   id: string;
   project_root: string;
   harness: string;
@@ -16,12 +17,19 @@ type SessionRow = {
 };
 
 export async function GET() {
-  const res = await callDaemon<SessionRow[]>({ path: "/api/v1/sessions" });
+  const [res, state] = await Promise.all([
+    callDaemon<DaemonSession[]>({ path: "/api/v1/sessions" }),
+    loadState(),
+  ]);
   if (!res.ok || !res.data) {
     return NextResponse.json(
       { ok: false, error: res.error ?? `daemon http ${res.status}`, sessions: [] },
       { status: 503 },
     );
   }
-  return NextResponse.json({ ok: true, sessions: res.data });
+  const sessions = res.data.map((s) => ({
+    ...s,
+    familiarId: state.sessionFamiliar[s.id] ?? null,
+  }));
+  return NextResponse.json({ ok: true, sessions });
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { Familiar } from "@/lib/types";
+import type { Familiar, SessionRow } from "@/lib/types";
 
 type Tab = "memory" | "sessions" | "tools";
 
@@ -24,16 +24,6 @@ type MemoryFile = {
   error?: string;
 };
 
-type SessionRow = {
-  id: string;
-  project_root: string;
-  harness: string;
-  title: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
-};
-
 type Skill = {
   id: string;
   name: string;
@@ -44,7 +34,7 @@ type Skill = {
   description?: string;
 };
 
-type Props = { familiar: Familiar | null };
+type Props = { familiar: Familiar | null; sessions: SessionRow[] };
 
 const TAB_LABEL: Record<Tab, string> = {
   memory: "Memory",
@@ -63,7 +53,7 @@ function age(iso: string): string {
   return `${Math.floor(h / 24)}d`;
 }
 
-export function InspectorPane({ familiar }: Props) {
+export function InspectorPane({ familiar, sessions }: Props) {
   const [tab, setTab] = useState<Tab>("memory");
 
   return (
@@ -86,7 +76,7 @@ export function InspectorPane({ familiar }: Props) {
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         {tab === "memory" ? <MemoryTab /> : null}
-        {tab === "sessions" ? <SessionsTab familiar={familiar} /> : null}
+        {tab === "sessions" ? <SessionsTab familiar={familiar} sessions={sessions} /> : null}
         {tab === "tools" ? <ToolsTab /> : null}
       </div>
     </aside>
@@ -245,91 +235,109 @@ function MemoryTab() {
 
 /* ---------- Sessions tab ---------- */
 
-function SessionsTab({ familiar }: { familiar: Familiar | null }) {
-  void familiar; // reserved for batch 2: filter by familiar's harness
-  const [sessions, setSessions] = useState<SessionRow[]>([]);
-  const [error, setError] = useState<string | null>(null);
+function SessionsTab({
+  familiar,
+  sessions,
+}: {
+  familiar: Familiar | null;
+  sessions: SessionRow[];
+}) {
+  const [scope, setScope] = useState<"familiar" | "all">("familiar");
 
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const res = await fetch("/api/sessions/list", { cache: "no-store" });
-        const json = await res.json();
-        if (cancelled) return;
-        if (!json.ok) {
-          setError(json.error ?? "sessions load failed");
-          return;
-        }
-        setError(null);
-        setSessions(json.sessions ?? []);
-      } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : "fetch failed");
-      }
-    };
-    load();
-    const t = setInterval(load, 5000);
-    return () => {
-      cancelled = true;
-      clearInterval(t);
-    };
-  }, []);
+  const filtered = useMemo(() => {
+    if (scope === "all" || !familiar) return sessions;
+    return sessions.filter((s) => s.familiarId === familiar.id);
+  }, [sessions, scope, familiar]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, SessionRow[]>();
-    for (const s of sessions) {
+    for (const s of filtered) {
       const k = s.harness || "unknown";
       const list = map.get(k) ?? [];
       list.push(s);
       map.set(k, list);
     }
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-  }, [sessions]);
-
-  if (error) {
-    return <p className="p-4 text-xs text-amber-300">Sessions unavailable: {error}</p>;
-  }
-
-  if (sessions.length === 0) {
-    return <p className="p-4 text-xs text-zinc-500">No sessions yet.</p>;
-  }
+  }, [filtered]);
 
   return (
-    <div className="space-y-4 p-2 text-xs">
-      {grouped.map(([harness, rows]) => (
-        <section key={harness}>
-          <header className="mb-1 flex items-center gap-2 px-1">
-            <span className="text-[10px] uppercase tracking-widest text-zinc-500">{harness}</span>
-            <span className="text-[10px] text-zinc-600">{rows.length}</span>
-          </header>
-          <ul className="space-y-1">
-            {rows.slice(0, 50).map((s) => {
-              const isRunning = s.status === "running";
-              return (
-                <li
-                  key={s.id}
-                  className="rounded-md border border-zinc-800 bg-zinc-900/40 px-2 py-1.5"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="flex items-center gap-1.5 min-w-0">
-                      <span
-                        className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-                          isRunning ? "bg-emerald-400 animate-pulse" : "bg-zinc-600"
-                        }`}
-                      />
-                      <span className="truncate text-zinc-200">{s.title || "(untitled)"}</span>
-                    </span>
-                    <span className="shrink-0 font-mono text-[10px] text-zinc-500">
-                      {age(s.updated_at)}
-                    </span>
-                  </div>
-                  <div className="mt-0.5 truncate text-[10px] text-zinc-500">{s.project_root}</div>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      ))}
+    <div className="flex h-full flex-col text-xs">
+      <div className="flex items-center gap-1 border-b border-zinc-800 p-2">
+        {(["familiar", "all"] as const).map((s) => (
+          <button
+            key={s}
+            onClick={() => setScope(s)}
+            className={`rounded px-2 py-0.5 text-[10px] uppercase tracking-widest transition-colors ${
+              scope === s
+                ? "bg-violet-600/80 text-white"
+                : "border border-zinc-700 text-zinc-400 hover:bg-zinc-800"
+            }`}
+          >
+            {s === "familiar"
+              ? familiar
+                ? familiar.display_name.toLowerCase()
+                : "familiar"
+              : "all"}
+          </button>
+        ))}
+        <span className="ml-auto text-[10px] text-zinc-500">
+          {filtered.length} session{filtered.length === 1 ? "" : "s"}
+        </span>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {filtered.length === 0 ? (
+          <p className="p-4 text-zinc-500">
+            {scope === "familiar" && familiar
+              ? `No sessions tied to ${familiar.display_name} yet — start one from the terminal.`
+              : "No sessions yet."}
+          </p>
+        ) : (
+          <div className="space-y-4 p-2">
+            {grouped.map(([harness, rows]) => (
+              <section key={harness}>
+                <header className="mb-1 flex items-center gap-2 px-1">
+                  <span className="text-[10px] uppercase tracking-widest text-zinc-500">{harness}</span>
+                  <span className="text-[10px] text-zinc-600">{rows.length}</span>
+                </header>
+                <ul className="space-y-1">
+                  {rows.slice(0, 80).map((s) => {
+                    const isRunning = s.status === "running";
+                    return (
+                      <li
+                        key={s.id}
+                        className="rounded-md border border-zinc-800 bg-zinc-900/40 px-2 py-1.5"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="flex items-center gap-1.5 min-w-0">
+                            <span
+                              className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                                isRunning ? "bg-emerald-400 animate-pulse" : "bg-zinc-600"
+                              }`}
+                            />
+                            <span className="truncate text-zinc-200">{s.title || "(untitled)"}</span>
+                          </span>
+                          <span className="shrink-0 font-mono text-[10px] text-zinc-500">
+                            {age(s.updated_at)}
+                          </span>
+                        </div>
+                        <div className="mt-0.5 flex items-center justify-between gap-2 text-[10px] text-zinc-500">
+                          <span className="truncate">{s.project_root}</span>
+                          {s.familiarId ? (
+                            <span className="shrink-0 rounded bg-zinc-800 px-1 py-px text-zinc-400">
+                              {s.familiarId}
+                            </span>
+                          ) : null}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

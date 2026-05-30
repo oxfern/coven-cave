@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Familiar } from "@/lib/types";
+import { needsResponse, stripAnsi } from "@/lib/ansi";
 
 const POLL_MS = 250;
 const PROJECT_ROOT =
@@ -14,18 +15,24 @@ type CovenEvent = {
   payload_json: string;
 };
 
-type Props = { familiar: Familiar | null };
+type Props = {
+  familiar: Familiar | null;
+  onResponseNeededChange?: (familiarId: string, needed: boolean) => void;
+};
 
-export function TerminalPane({ familiar }: Props) {
+export function TerminalPane({ familiar, onResponseNeededChange }: Props) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const termRef = useRef<import("@xterm/xterm").Terminal | null>(null);
   const fitRef = useRef<import("@xterm/addon-fit").FitAddon | null>(null);
   const lastSeqRef = useRef<number>(0);
   const sessionRef = useRef<string | null>(null);
+  const strippedTailRef = useRef<string>("");
+  const familiarIdRef = useRef<string | null>(null);
 
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [needsReply, setNeedsReply] = useState<boolean>(false);
 
   // Mount the terminal once
   useEffect(() => {
@@ -86,11 +93,15 @@ export function TerminalPane({ familiar }: Props) {
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ text: data }),
         });
+        // user replied — clear the "needs reply" flag optimistically
+        if (familiarIdRef.current) {
+          setNeedsReply(false);
+          onResponseNeededChange?.(familiarIdRef.current, false);
+        }
       });
 
       termRef.current = term;
       fitRef.current = fit;
-
       term.writeln(
         "\x1b[38;5;141m✨ CovenCave terminal\x1b[0m — pick a familiar from the rail to start a coven session.",
       );
@@ -112,42 +123,49 @@ export function TerminalPane({ familiar }: Props) {
       termRef.current = null;
       fitRef.current = null;
     };
-  }, []);
+  }, [onResponseNeededChange]);
 
   // Reset session whenever the active familiar changes
   useEffect(() => {
     sessionRef.current = null;
+    familiarIdRef.current = familiar?.id ?? null;
     setSessionId(null);
     setError(null);
+    setNeedsReply(false);
     lastSeqRef.current = 0;
+    strippedTailRef.current = "";
     const term = termRef.current;
     if (term) {
       term.clear();
       term.reset();
-      term.writeln(
-        familiar
-          ? `\x1b[38;5;141m✨\x1b[0m Ready to summon \x1b[1m${familiar.display_name}\x1b[0m — press Enter or start typing to begin.`
-          : "\x1b[38;5;141m✨\x1b[0m Pick a familiar from the rail to start a coven session.",
-      );
+      if (familiar) {
+        term.writeln(
+          `\x1b[38;5;141m✨\x1b[0m Ready to summon \x1b[1m${familiar.display_name}\x1b[0m (\x1b[2m${familiar.harness ?? "codex"} · ${familiar.model ?? "?"}\x1b[0m) — press Enter or start typing to begin.`,
+        );
+      } else {
+        term.writeln(
+          "\x1b[38;5;141m✨\x1b[0m Pick a familiar from the rail to start a coven session.",
+        );
+      }
     }
   }, [familiar?.id, familiar]);
 
-  // Start a session on first keystroke / first Enter when none exists
+  // Start a session on first keystroke when none exists
   useEffect(() => {
     const term = termRef.current;
     if (!term || !familiar) return;
 
     const disp = term.onData(async (data) => {
       if (sessionRef.current || busy) return;
-      // Bootstrap session with the first input character(s) as the prompt
       const prompt = data === "\r" || data === "\n" ? `hi ${familiar.display_name}` : data;
       await startSession(prompt);
     });
     return () => disp.dispose();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [familiar, busy]);
 
   const startSession = async (prompt: string) => {
-    if (sessionRef.current || busy) return;
+    if (sessionRef.current || busy || !familiar) return;
     setBusy(true);
     setError(null);
     try {
@@ -159,7 +177,8 @@ export function TerminalPane({ familiar }: Props) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           projectRoot: PROJECT_ROOT,
-          harness: "codex",
+          harness: familiar.harness ?? "codex",
+          familiarId: familiar.id,
           prompt,
           cols,
           rows,
@@ -206,6 +225,14 @@ export function TerminalPane({ familiar }: Props) {
           }
         }
         if (chunk && term) term.write(chunk);
+        if (chunk) {
+          const tail = (strippedTailRef.current + stripAnsi(chunk)).slice(-1000);
+          strippedTailRef.current = tail;
+          const fid = familiarIdRef.current;
+          const next = needsResponse(tail);
+          setNeedsReply(next);
+          if (fid) onResponseNeededChange?.(fid, next);
+        }
       } catch {
         /* transient */
       }
@@ -217,7 +244,7 @@ export function TerminalPane({ familiar }: Props) {
       cancelled = true;
       clearInterval(t);
     };
-  }, [sessionId]);
+  }, [sessionId, onResponseNeededChange]);
 
   return (
     <section className="flex h-full flex-col bg-zinc-950">
@@ -227,21 +254,26 @@ export function TerminalPane({ familiar }: Props) {
             <span className="shrink-0 text-lg">{familiar.emoji}</span>
             <div className="min-w-0">
               <div className="truncate text-sm font-semibold">{familiar.display_name}</div>
-              <div className="truncate text-xs text-zinc-500">{familiar.role}</div>
+              <div className="truncate text-[11px] text-zinc-500">
+                {familiar.harness ?? "?"} · <span className="font-mono">{familiar.model ?? "?"}</span>
+              </div>
             </div>
           </div>
         ) : (
           <div className="text-sm text-zinc-500">No familiar selected</div>
         )}
         <div className="flex items-center gap-3 text-xs text-zinc-500">
-          {sessionId ? (
+          {needsReply ? (
+            <span className="font-mono text-amber-400" title="Waiting for your response">
+              ● needs reply
+            </span>
+          ) : sessionId ? (
             <span className="font-mono text-emerald-400/80">● live</span>
           ) : busy ? (
             <span className="font-mono text-amber-400/80">starting…</span>
           ) : (
             <span className="font-mono">idle</span>
           )}
-          <span>codex</span>
         </div>
       </header>
 
