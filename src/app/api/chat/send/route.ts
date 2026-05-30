@@ -142,9 +142,13 @@ export async function POST(req: Request) {
     );
   }
 
-  // Build coven run argv
-  const args = ["run", binding.harness, body.prompt, "--stream-json"];
+  // Build coven run argv.
+  // Important: pass every flag BEFORE the prompt and add a `--` separator,
+  // because `<PROMPT>...` is a variadic positional in coven's clap definition
+  // and otherwise swallows trailing flags like `--stream-json` as raw text.
+  const args = ["run", binding.harness, "--stream-json"];
   if (body.sessionId) args.push("--continue", body.sessionId);
+  args.push("--", body.prompt);
 
   const stream = new ReadableStream<Uint8Array>({
     start: async (controller) => {
