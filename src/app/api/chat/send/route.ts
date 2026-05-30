@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
+import { stat } from "node:fs/promises";
 import { homedir } from "node:os";
-import path from "node:path";
 import { stripAnsi } from "@/lib/ansi";
 import { bindingFor, loadConfig, recordSessionFamiliar } from "@/lib/cave-config";
 import {
@@ -24,7 +24,7 @@ type StreamEvent =
   | { kind: "user"; text: string }
   | { kind: "assistant_chunk"; text: string }
   | { kind: "done"; durationMs?: number; isError?: boolean; sessionId?: string }
-  | { kind: "error"; message: string };
+  | { kind: "error"; message: string; code?: string };
 
 const HOOK_LINE_RE = /^hook:\s+/;
 const BANNER_LINE_RE = /^(?:--------|workdir:|model:|provider:|approval:|sandbox:|reasoning|session id:|tokens used|\d[\d,]*\s*$)/;
@@ -90,6 +90,18 @@ async function sleep(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
 }
 
+async function resolveCwd(requested?: string): Promise<string> {
+  if (requested) {
+    try {
+      const s = await stat(requested);
+      if (s.isDirectory()) return requested;
+    } catch {
+      /* fall through to homedir */
+    }
+  }
+  return homedir();
+}
+
 function sse(event: StreamEvent): Uint8Array {
   return new TextEncoder().encode(`data: ${JSON.stringify(event)}\n\n`);
 }
@@ -113,7 +125,7 @@ export async function POST(req: Request) {
 
   const config = await loadConfig();
   const binding = bindingFor(config, body.familiarId);
-  const cwd = body.projectRoot ?? path.join(homedir(), "Documents", "GitHub", "OpenCoven", "coven-cave");
+  const cwd = await resolveCwd(body.projectRoot);
 
   // coven run only knows codex|claude today. Other harnesses (openclaw,
   // copilot, opencode, gemini, hermes, …) are surfaced in /api/harnesses
@@ -161,6 +173,16 @@ export async function POST(req: Request) {
         stdio: ["ignore", "pipe", "pipe"],
       });
 
+      // Client-side abort (cancel button) → kill the subprocess.
+      const onAbort = () => {
+        try {
+          child.kill("SIGTERM");
+        } catch {
+          /* ignore */
+        }
+      };
+      req.signal.addEventListener("abort", onAbort, { once: true });
+
       const handleLine = (line: string) => {
         if (!line) return;
         const isJson = line.startsWith("{") && line.endsWith("}");
@@ -207,8 +229,17 @@ export async function POST(req: Request) {
         push({ kind: "assistant_chunk", text: stripAnsi(data.toString("utf8")) });
       });
 
-      child.on("error", (err) => {
-        push({ kind: "error", message: err.message });
+      child.on("error", (err: NodeJS.ErrnoException) => {
+        if (err.code === "ENOENT") {
+          push({
+            kind: "error",
+            code: "ENOENT",
+            message:
+              "coven CLI not found on PATH. Open Setup to install it, then try again.",
+          });
+        } else {
+          push({ kind: "error", message: err.message });
+        }
         close();
       });
 
@@ -262,6 +293,7 @@ export async function POST(req: Request) {
         });
         // Tiny grace period so the last frame is flushed
         await sleep(20);
+        req.signal.removeEventListener("abort", onAbort);
         close();
       });
     },

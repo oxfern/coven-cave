@@ -179,7 +179,7 @@ export function BoardView({ familiars, sessions, activeFamiliarId, onJumpToSessi
         <div>
           <h1 className="text-base font-semibold text-zinc-100">Coven Board</h1>
           <p className="text-[11px] text-zinc-500">
-            Queue work for agents. {filtered.length} of {cards.length} card
+            Queue work for familiars. {filtered.length} of {cards.length} card
             {cards.length === 1 ? "" : "s"} shown.
           </p>
         </div>
@@ -460,13 +460,13 @@ function CardItem({
                 ))}
               </select>
             </Mini>
-            <Mini label="Agent">
+            <Mini label="Familiar">
               <select
                 value={card.familiarId ?? ""}
                 onChange={(e) => onPatch({ familiarId: e.target.value || null })}
                 className="w-full rounded border border-zinc-800 bg-zinc-900 px-1.5 py-0.5 text-[11px] text-zinc-200"
               >
-                <option value="">Default agent</option>
+                <option value="">Default familiar</option>
                 {familiars.map((f) => (
                   <option key={f.id} value={f.id}>
                     {f.display_name}

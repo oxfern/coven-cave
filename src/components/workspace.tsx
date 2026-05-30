@@ -8,9 +8,11 @@ import { InspectorPane } from "@/components/inspector-pane";
 import { DaemonBar } from "@/components/daemon-bar";
 import { CommandPalette, type PaletteIntent } from "@/components/command-palette";
 import { BoardView } from "@/components/board-view";
+import { PluginsView } from "@/components/plugins-view";
+import { OnboardingOverlay } from "@/components/onboarding-overlay";
 import type { Familiar, SessionRow } from "@/lib/types";
 
-type Mode = "chats" | "board";
+type Mode = "chats" | "board" | "plugins";
 
 export function Workspace() {
   const leftRef = usePanelRef();
@@ -24,6 +26,7 @@ export function Workspace() {
   const [responseNeeded, setResponseNeeded] = useState<Set<string>>(new Set());
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [mode, setMode] = useState<Mode>("chats");
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
   const responseNeededRef = useRef(responseNeeded);
   responseNeededRef.current = responseNeeded;
 
@@ -62,6 +65,34 @@ export function Workspace() {
     const t = setInterval(loadSessions, 4000);
     return () => clearInterval(t);
   }, [loadFamiliars, loadSessions]);
+
+  const openOnboarding = useCallback(() => setOnboardingOpen(true), []);
+  const closeOnboarding = useCallback(() => {
+    setOnboardingOpen(false);
+    void loadFamiliars();
+  }, [loadFamiliars]);
+
+  // First-run: auto-open onboarding if anything is missing and the user
+  // hasn't explicitly skipped it.
+  useEffect(() => {
+    let cancelled = false;
+    const skipped =
+      typeof window !== "undefined" && window.localStorage.getItem("cave:onboarding:dismissed") === "1";
+    if (skipped) return;
+    void (async () => {
+      try {
+        const res = await fetch("/api/onboarding/status", { cache: "no-store" });
+        if (!res.ok || cancelled) return;
+        const json = (await res.json()) as { complete?: boolean };
+        if (!json.complete) setOnboardingOpen(true);
+      } catch {
+        /* ignore — DaemonBar surfaces transport issues */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -164,7 +195,7 @@ export function Workspace() {
           setMode("chats");
           routerRef.current?.goToList();
           return;
-        case "/agent": {
+        case "/familiar": {
           const name = (intent.args ?? "").trim().toLowerCase();
           if (name) {
             const match = familiars.find(
@@ -230,10 +261,11 @@ export function Workspace() {
         sessions={sessions}
         responseNeededCount={responseNeeded.size}
         onRunningChange={setDaemonRunning}
+        onOpenOnboarding={openOnboarding}
       />
 
       <nav className="flex items-center gap-1 border-b border-zinc-900 bg-zinc-950 px-3 py-1.5 text-[11px]">
-        {(["chats", "board"] as const).map((m) => (
+        {(["chats", "board", "plugins"] as const).map((m) => (
           <button
             key={m}
             onClick={() => setMode(m)}
@@ -243,7 +275,7 @@ export function Workspace() {
                 : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
             }`}
           >
-            {m === "chats" ? "Chats" : "Coven Board"}
+            {m === "chats" ? "Chats" : m === "board" ? "Coven Board" : "Plugins"}
           </button>
         ))}
         <span className="ml-auto text-[10px] text-zinc-600">⌘K palette · ⌘B rail · ⇧⌘B inspector</span>
@@ -266,6 +298,7 @@ export function Workspace() {
             error={familiarsError}
             sessions={sessions}
             responseNeeded={responseNeeded}
+            onOpenOnboarding={openOnboarding}
           />
         </Panel>
 
@@ -283,8 +316,9 @@ export function Workspace() {
                 onPaletteIntent({ kind: "slash", command, args });
                 return true;
               }}
+              onOpenOnboarding={openOnboarding}
             />
-          ) : (
+          ) : mode === "board" ? (
             <BoardView
               familiars={familiars}
               sessions={sessions}
@@ -293,6 +327,13 @@ export function Workspace() {
                 if (familiarId) setActiveId(familiarId);
                 setMode("chats");
                 setTimeout(() => routerRef.current?.openSession(sessionId), 0);
+              }}
+            />
+          ) : (
+            <PluginsView
+              onOpenChat={() => {
+                setMode("chats");
+                setTimeout(() => routerRef.current?.newChat(), 0);
               }}
             />
           )}
@@ -315,7 +356,7 @@ export function Workspace() {
 
       <footer className="flex items-center justify-between border-t border-zinc-800 px-3 py-1 text-[10px] text-zinc-500">
         <span>CovenCave · v0</span>
-        <span>mode · {mode === "chats" ? "Chats" : "Coven Board"}</span>
+        <span>mode · {mode === "chats" ? "Chats" : mode === "board" ? "Coven Board" : "Plugins"}</span>
       </footer>
 
       <CommandPalette
@@ -326,6 +367,8 @@ export function Workspace() {
         activeFamiliarId={activeId}
         onIntent={onPaletteIntent}
       />
+
+      <OnboardingOverlay open={onboardingOpen} onDismiss={closeOnboarding} />
     </div>
   );
 }

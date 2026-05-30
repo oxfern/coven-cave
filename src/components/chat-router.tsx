@@ -15,6 +15,7 @@ type Props = {
   daemonRunning?: boolean;
   onSessionStarted?: () => void;
   onSlashFromChat?: (command: string, args: string) => boolean;
+  onOpenOnboarding?: () => void;
 };
 
 export type ChatRouterHandle = {
@@ -33,7 +34,7 @@ type ChatViewHandle = {
 };
 
 export const ChatRouter = forwardRef<ChatRouterHandle, Props>(function ChatRouter(
-  { familiar, sessions, daemonRunning, onSessionStarted, onSlashFromChat },
+  { familiar, sessions, daemonRunning, onSessionStarted, onSlashFromChat, onOpenOnboarding },
   ref,
 ) {
   const [view, setView] = useState<View>({ kind: "list" });
@@ -58,8 +59,16 @@ export const ChatRouter = forwardRef<ChatRouterHandle, Props>(function ChatRoute
 
   if (!familiar) {
     return (
-      <section className="flex h-full items-center justify-center bg-zinc-950 text-sm text-zinc-500">
-        Pick a familiar from the rail to start chatting.
+      <section className="flex h-full flex-col items-center justify-center gap-3 bg-zinc-950 text-sm text-zinc-500">
+        <p>Pick a familiar from the rail to start chatting.</p>
+        {onOpenOnboarding ? (
+          <button
+            onClick={onOpenOnboarding}
+            className="rounded-md border border-zinc-800 bg-zinc-900 px-3 py-1 text-[12px] text-zinc-200 hover:bg-zinc-800"
+          >
+            Open setup
+          </button>
+        ) : null}
       </section>
     );
   }
@@ -88,6 +97,7 @@ export const ChatRouter = forwardRef<ChatRouterHandle, Props>(function ChatRoute
         onSessionStarted?.();
       }}
       onSlashCommand={onSlashFromChat}
+      onOpenOnboarding={onOpenOnboarding}
     />
   );
 });

@@ -8,6 +8,7 @@ type Props = {
   sessions?: SessionRow[];
   responseNeededCount?: number;
   onRunningChange?: (running: boolean) => void;
+  onOpenOnboarding?: () => void;
 };
 
 export function DaemonBar({
@@ -15,6 +16,7 @@ export function DaemonBar({
   sessions = [],
   responseNeededCount = 0,
   onRunningChange,
+  onOpenOnboarding,
 }: Props) {
   const [status, setStatus] = useState<DaemonStatus | null>(null);
   const [busy, setBusy] = useState(false);
@@ -107,6 +109,16 @@ export function DaemonBar({
             refresh
           </button>
         )}
+
+        {onOpenOnboarding ? (
+          <button
+            onClick={onOpenOnboarding}
+            className="rounded-md border border-zinc-800 px-2 py-1 text-[11px] text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+            title="Open setup"
+          >
+            setup
+          </button>
+        ) : null}
       </div>
     </header>
   );

@@ -117,7 +117,7 @@ export function NewCardModal({
         <div className="mb-5 flex items-start justify-between">
           <div>
             <h2 className="text-lg font-semibold text-zinc-100">New card</h2>
-            <p className="text-[12px] text-zinc-500">Queue work for an agent session.</p>
+            <p className="text-[12px] text-zinc-500">Queue work for a familiar session.</p>
           </div>
           <button
             onClick={onClose}
@@ -185,7 +185,7 @@ export function NewCardModal({
             />
           </Field>
 
-          <Field label="Agent">
+          <Field label="Familiar">
             <Select
               value={familiarId ?? ""}
               onChange={(v) => {
@@ -193,7 +193,7 @@ export function NewCardModal({
                 setSessionId(null);
               }}
               options={[
-                { value: "", label: "Default agent" },
+                { value: "", label: "Default familiar" },
                 ...familiars.map((f) => ({
                   value: f.id,
                   label: `${f.display_name} · ${f.harness ?? "?"}`,

@@ -5,10 +5,6 @@ import type { Familiar } from "@/lib/types";
 import { RichText } from "@/components/rich-text";
 import { canonicalize, formatHelp, matchSlash, type SlashCommand } from "@/lib/slash-commands";
 
-const PROJECT_ROOT =
-  process.env.NEXT_PUBLIC_COVEN_PROJECT_ROOT ??
-  "/Users/buns/Documents/GitHub/OpenCoven/coven-cave";
-
 type Turn = {
   id: string;
   role: "user" | "assistant" | "system";
@@ -25,6 +21,7 @@ type Props = {
   onSessionStarted?: (sessionId: string) => void;
   onBack?: () => void;
   onSlashCommand?: (command: string, args: string) => boolean;
+  onOpenOnboarding?: () => void;
 };
 
 export type ChatViewHandle = {
@@ -37,7 +34,7 @@ type StreamEvent =
   | { kind: "user"; text: string }
   | { kind: "assistant_chunk"; text: string }
   | { kind: "done"; durationMs?: number; isError?: boolean; sessionId?: string }
-  | { kind: "error"; message: string };
+  | { kind: "error"; message: string; code?: string };
 
 function fmtDuration(ms?: number): string | null {
   if (!ms || ms < 0) return null;
@@ -49,7 +46,7 @@ function fmtDuration(ms?: number): string | null {
 }
 
 export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
-  { familiar, sessionId, daemonRunning, onSessionStarted, onBack, onSlashCommand },
+  { familiar, sessionId, daemonRunning, onSessionStarted, onBack, onSlashCommand, onOpenOnboarding },
   ref,
 ) {
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -59,6 +56,7 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
   const currentSessionRef = useRef<string | null>(sessionId);
   const tailRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   // Slash suggestions
   const slashSuggestions: SlashCommand[] = useMemo(() => {
@@ -201,6 +199,8 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
     const assistantTurn: Turn = { id: assistantId, role: "assistant", text: "", pending: true };
     setTurns((prev) => [...prev, userTurn, assistantTurn]);
 
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
       const res = await fetch("/api/chat/send", {
         method: "POST",
@@ -209,8 +209,8 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
           familiarId: familiar.id,
           prompt: text,
           sessionId: currentSessionRef.current,
-          projectRoot: PROJECT_ROOT,
         }),
+        signal: controller.signal,
       });
       if (!res.ok || !res.body) {
         setError(`request failed (${res.status})`);
@@ -241,11 +241,26 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "send failed");
-      markAssistantError(assistantId);
+      if ((err as Error)?.name === "AbortError") {
+        setTurns((prev) =>
+          prev.map((t) =>
+            t.id === assistantId
+              ? { ...t, pending: false, text: t.text || "(cancelled)" }
+              : t,
+          ),
+        );
+      } else {
+        setError(err instanceof Error ? err.message : "send failed");
+        markAssistantError(assistantId);
+      }
     } finally {
+      abortRef.current = null;
       setBusy(false);
     }
+  };
+
+  const cancelSend = () => {
+    abortRef.current?.abort();
   };
 
   const send = async () => {
@@ -292,6 +307,7 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
       case "error": {
         setError(ev.message);
         markAssistantError(assistantId);
+        if (ev.code === "ENOENT") onOpenOnboarding?.();
         return;
       }
     }
@@ -325,10 +341,15 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       void send();
+      return;
+    }
+    if (e.key === "Escape" && busy) {
+      e.preventDefault();
+      cancelSend();
     }
   };
 
-  const projectName = PROJECT_ROOT.split("/").slice(-2).join("/");
+  const projectName = "home";
 
   useImperativeHandle(
     ref,
@@ -468,10 +489,9 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={onComposerKey}
-              placeholder="Ask for follow-up changes"
+              placeholder={busy ? "Streaming… (esc to cancel)" : "Ask for follow-up changes"}
               rows={1}
-              disabled={busy}
-              className="w-full resize-none bg-transparent px-4 pt-4 pb-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-500 disabled:opacity-50"
+              className="w-full resize-none bg-transparent px-4 pt-4 pb-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-500"
             />
             <div className="flex items-center justify-between px-3 pb-2.5">
               <div className="flex items-center gap-1 text-zinc-500">
@@ -488,14 +508,24 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
                   <span className="text-purple-300">◆</span>
                   <span className="font-mono text-zinc-300">{familiar.model ?? "—"}</span>
                 </span>
-                <button
-                  onClick={() => void send()}
-                  disabled={busy || !input.trim()}
-                  className="grid h-7 w-7 place-items-center rounded-full bg-zinc-100 text-zinc-900 transition-colors hover:bg-white disabled:opacity-40"
-                  title="Send (↵)"
-                >
-                  ↑
-                </button>
+                {busy ? (
+                  <button
+                    onClick={cancelSend}
+                    className="grid h-7 w-7 place-items-center rounded-full bg-rose-500/90 text-white transition-colors hover:bg-rose-500"
+                    title="Cancel (esc)"
+                  >
+                    ■
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => void send()}
+                    disabled={!input.trim()}
+                    className="grid h-7 w-7 place-items-center rounded-full bg-zinc-100 text-zinc-900 transition-colors hover:bg-white disabled:opacity-40"
+                    title="Send (↵)"
+                  >
+                    ↑
+                  </button>
+                )}
               </div>
             </div>
           </div>

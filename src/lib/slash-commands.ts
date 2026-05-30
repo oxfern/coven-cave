@@ -12,7 +12,7 @@ export type SlashCommand = {
   description: string;
   argPlaceholder?: string;
   /** Section in the /help output. */
-  section?: "chat" | "agent" | "daemon" | "view" | "launch";
+  section?: "chat" | "familiar" | "daemon" | "view" | "launch";
 };
 
 export const SLASH_COMMANDS: SlashCommand[] = [
@@ -23,8 +23,8 @@ export const SLASH_COMMANDS: SlashCommand[] = [
   { name: "/palette", hint: "open ⌘K", description: "Open the command palette.", section: "chat" },
   { name: "/new", hint: "new chat", description: "Start a fresh chat with the active familiar.", section: "chat" },
 
-  // Agent / familiar
-  { name: "/agent", aliases: ["/familiar"], hint: "switch", description: "Open the familiar picker. Pass a name to switch directly.", argPlaceholder: "name", section: "agent" },
+  // Familiar
+  { name: "/familiar", aliases: ["/agent"], hint: "switch", description: "Open the familiar picker. Pass a name to switch directly.", argPlaceholder: "name", section: "familiar" },
 
   // Daemon / health
   { name: "/doctor", hint: "setup checks", description: "Run `coven doctor` and print the result inline.", section: "daemon" },
@@ -77,7 +77,7 @@ export function matchSlash(prefix: string): SlashCommand[] {
 export function formatHelp(): string {
   const sections: Record<string, string> = {
     chat: "Chat",
-    agent: "Familiar",
+    familiar: "Familiars",
     daemon: "Daemon",
     view: "View / Sessions",
     launch: "Launch",

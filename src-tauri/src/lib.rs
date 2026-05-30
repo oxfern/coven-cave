@@ -108,6 +108,38 @@ fn find_node() -> Option<PathBuf> {
     None
 }
 
+/// Find the `coven` CLI on disk so API routes spawned from the sidecar can
+/// reach it. Same GUI-launch PATH problem as `find_node`. Returns the directory
+/// containing the binary so callers can prepend it to PATH.
+fn find_coven() -> Option<PathBuf> {
+    let home = std::env::var("HOME").ok()?;
+    let candidates = [
+        PathBuf::from(format!("{}/.cargo/bin/coven", home)),
+        PathBuf::from(format!("{}/.local/bin/coven", home)),
+        PathBuf::from(format!("{}/.bun/bin/coven", home)),
+        PathBuf::from("/opt/homebrew/bin/coven"),
+        PathBuf::from("/usr/local/bin/coven"),
+    ];
+    for c in candidates.iter() {
+        if c.exists() {
+            return Some(c.clone());
+        }
+    }
+    if let Ok(out) = Command::new("/bin/zsh")
+        .args(["-lic", "command -v coven"])
+        .output()
+    {
+        let path = String::from_utf8_lossy(&out.stdout).trim().to_string();
+        if !path.is_empty() {
+            let pb = PathBuf::from(path);
+            if pb.exists() {
+                return Some(pb);
+            }
+        }
+    }
+    None
+}
+
 struct SidecarState(Mutex<Option<Child>>);
 
 fn find_free_port() -> Option<u16> {
@@ -198,9 +230,31 @@ pub fn run() {
                 .parent()
                 .ok_or("server_js has no parent dir")?;
 
+            // macOS GUI launches inherit a stripped PATH. Prepend the
+            // directories holding `node` and `coven` so the sidecar's API
+            // routes can spawn them by name. Missing `coven` is non-fatal —
+            // onboarding surfaces it.
+            let mut augmented_path =
+                std::env::var("PATH").unwrap_or_else(|_| "/usr/bin:/bin:/usr/sbin:/sbin".into());
+            if let Some(dir) = node.parent() {
+                augmented_path = format!("{}:{}", dir.display(), augmented_path);
+            }
+            match find_coven() {
+                Some(coven) => {
+                    log::info!("[cave] using coven at {}", coven.display());
+                    if let Some(dir) = coven.parent() {
+                        augmented_path = format!("{}:{}", dir.display(), augmented_path);
+                    }
+                }
+                None => log::warn!(
+                    "[cave] `coven` CLI not found on disk — onboarding will prompt install"
+                ),
+            }
+
             let mut cmd = Command::new(&node);
             cmd.arg(&server_js)
                 .current_dir(server_dir)
+                .env("PATH", &augmented_path)
                 .env("PORT", port.to_string())
                 .env("HOSTNAME", "127.0.0.1")
                 .env("NODE_ENV", "production")

@@ -19,6 +19,7 @@ type Props = {
   error?: string | null;
   sessions: SessionRow[];
   responseNeeded: Set<string>;
+  onOpenOnboarding?: () => void;
 };
 
 export function FamiliarRail({
@@ -28,6 +29,7 @@ export function FamiliarRail({
   error,
   sessions,
   responseNeeded,
+  onOpenOnboarding,
 }: Props) {
   const current = familiars.find((f) => f.id === activeId) ?? null;
   const [harnesses, setHarnesses] = useState<HarnessReport[]>([]);
@@ -70,12 +72,33 @@ export function FamiliarRail({
 
       <ul className="flex-1 overflow-y-auto py-2">
         {familiars.length === 0 && !error ? (
-          <li className="px-4 py-3 text-xs text-zinc-500">No familiars loaded yet…</li>
+          <li className="mx-3 my-2 rounded-md border border-zinc-800 bg-zinc-900/50 px-3 py-2.5 text-xs text-zinc-300">
+            <div className="font-medium text-zinc-200">No familiars yet</div>
+            <div className="mt-0.5 text-[11px] text-zinc-500">
+              Run setup to scaffold the canonical roster.
+            </div>
+            {onOpenOnboarding ? (
+              <button
+                onClick={onOpenOnboarding}
+                className="mt-2 w-full rounded border border-zinc-700 bg-zinc-800 px-2 py-1 text-[11px] text-zinc-100 hover:bg-zinc-700"
+              >
+                Open setup →
+              </button>
+            ) : null}
+          </li>
         ) : null}
 
         {error ? (
           <li className="mx-3 my-2 rounded-md border border-amber-700/40 bg-amber-900/20 px-3 py-2 text-xs text-amber-200">
-            Familiars unavailable: {error}
+            <div>Familiars unavailable: {error}</div>
+            {onOpenOnboarding ? (
+              <button
+                onClick={onOpenOnboarding}
+                className="mt-2 w-full rounded border border-amber-700/60 bg-amber-900/40 px-2 py-1 text-[11px] text-amber-100 hover:bg-amber-900/60"
+              >
+                Open setup →
+              </button>
+            ) : null}
           </li>
         ) : null}
 
