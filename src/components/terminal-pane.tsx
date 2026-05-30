@@ -1,0 +1,257 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import type { Familiar } from "@/lib/types";
+
+const POLL_MS = 250;
+const PROJECT_ROOT =
+  process.env.NEXT_PUBLIC_COVEN_PROJECT_ROOT ??
+  "/Users/buns/Documents/GitHub/OpenCoven/coven-cave";
+
+type CovenEvent = {
+  seq: number;
+  kind: string;
+  payload_json: string;
+};
+
+type Props = { familiar: Familiar | null };
+
+export function TerminalPane({ familiar }: Props) {
+  const hostRef = useRef<HTMLDivElement | null>(null);
+  const termRef = useRef<import("@xterm/xterm").Terminal | null>(null);
+  const fitRef = useRef<import("@xterm/addon-fit").FitAddon | null>(null);
+  const lastSeqRef = useRef<number>(0);
+  const sessionRef = useRef<string | null>(null);
+
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Mount the terminal once
+  useEffect(() => {
+    let disposed = false;
+    let resizeObs: ResizeObserver | null = null;
+
+    (async () => {
+      const [{ Terminal }, { FitAddon }, { WebLinksAddon }] = await Promise.all([
+        import("@xterm/xterm"),
+        import("@xterm/addon-fit"),
+        import("@xterm/addon-web-links"),
+      ]);
+      if (disposed || !hostRef.current) return;
+
+      const term = new Terminal({
+        cursorBlink: true,
+        fontFamily:
+          'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
+        fontSize: 13,
+        lineHeight: 1.25,
+        convertEol: true,
+        allowProposedApi: true,
+        theme: {
+          background: "#09090b",
+          foreground: "#e4e4e7",
+          cursor: "#a78bfa",
+          selectionBackground: "#3f3f46",
+          black: "#18181b",
+          brightBlack: "#52525b",
+          red: "#f87171",
+          brightRed: "#fca5a5",
+          green: "#34d399",
+          brightGreen: "#6ee7b7",
+          yellow: "#fbbf24",
+          brightYellow: "#fcd34d",
+          blue: "#60a5fa",
+          brightBlue: "#93c5fd",
+          magenta: "#c084fc",
+          brightMagenta: "#d8b4fe",
+          cyan: "#22d3ee",
+          brightCyan: "#67e8f9",
+          white: "#d4d4d8",
+          brightWhite: "#fafafa",
+        },
+      });
+
+      const fit = new FitAddon();
+      term.loadAddon(fit);
+      term.loadAddon(new WebLinksAddon());
+      term.open(hostRef.current);
+      fit.fit();
+
+      term.onData((data) => {
+        const sid = sessionRef.current;
+        if (!sid) return;
+        void fetch(`/api/sessions/${sid}/input`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ text: data }),
+        });
+      });
+
+      termRef.current = term;
+      fitRef.current = fit;
+
+      term.writeln(
+        "\x1b[38;5;141m✨ CovenCave terminal\x1b[0m — pick a familiar from the rail to start a coven session.",
+      );
+
+      resizeObs = new ResizeObserver(() => {
+        try {
+          fit.fit();
+        } catch {
+          /* element not visible yet */
+        }
+      });
+      resizeObs.observe(hostRef.current);
+    })();
+
+    return () => {
+      disposed = true;
+      resizeObs?.disconnect();
+      termRef.current?.dispose();
+      termRef.current = null;
+      fitRef.current = null;
+    };
+  }, []);
+
+  // Reset session whenever the active familiar changes
+  useEffect(() => {
+    sessionRef.current = null;
+    setSessionId(null);
+    setError(null);
+    lastSeqRef.current = 0;
+    const term = termRef.current;
+    if (term) {
+      term.clear();
+      term.reset();
+      term.writeln(
+        familiar
+          ? `\x1b[38;5;141m✨\x1b[0m Ready to summon \x1b[1m${familiar.display_name}\x1b[0m — press Enter or start typing to begin.`
+          : "\x1b[38;5;141m✨\x1b[0m Pick a familiar from the rail to start a coven session.",
+      );
+    }
+  }, [familiar?.id, familiar]);
+
+  // Start a session on first keystroke / first Enter when none exists
+  useEffect(() => {
+    const term = termRef.current;
+    if (!term || !familiar) return;
+
+    const disp = term.onData(async (data) => {
+      if (sessionRef.current || busy) return;
+      // Bootstrap session with the first input character(s) as the prompt
+      const prompt = data === "\r" || data === "\n" ? `hi ${familiar.display_name}` : data;
+      await startSession(prompt);
+    });
+    return () => disp.dispose();
+  }, [familiar, busy]);
+
+  const startSession = async (prompt: string) => {
+    if (sessionRef.current || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const term = termRef.current;
+      const cols = term?.cols ?? 120;
+      const rows = term?.rows ?? 32;
+      const res = await fetch("/api/sessions", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          projectRoot: PROJECT_ROOT,
+          harness: "codex",
+          prompt,
+          cols,
+          rows,
+        }),
+      });
+      const json = (await res.json()) as { ok: boolean; session?: { id: string }; error?: string };
+      if (!json.ok || !json.session) {
+        setError(json.error ?? "session create failed");
+        return;
+      }
+      sessionRef.current = json.session.id;
+      setSessionId(json.session.id);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Poll events for the live session and write raw PTY bytes to xterm
+  useEffect(() => {
+    if (!sessionId) return;
+    let cancelled = false;
+
+    const tick = async () => {
+      try {
+        const res = await fetch(
+          `/api/sessions/${sessionId}/events?afterSeq=${lastSeqRef.current}&limit=500`,
+          { cache: "no-store" },
+        );
+        const json = (await res.json()) as { ok: boolean; events?: CovenEvent[] };
+        if (!json.ok || cancelled) return;
+        const events = json.events ?? [];
+        if (!events.length) return;
+
+        const term = termRef.current;
+        let chunk = "";
+        for (const ev of events) {
+          if (ev.seq > lastSeqRef.current) lastSeqRef.current = ev.seq;
+          if (ev.kind !== "output") continue;
+          try {
+            const payload = JSON.parse(ev.payload_json) as { data?: string };
+            if (payload.data) chunk += payload.data;
+          } catch {
+            /* skip */
+          }
+        }
+        if (chunk && term) term.write(chunk);
+      } catch {
+        /* transient */
+      }
+    };
+
+    tick();
+    const t = setInterval(tick, POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(t);
+    };
+  }, [sessionId]);
+
+  return (
+    <section className="flex h-full flex-col bg-zinc-950">
+      <header className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
+        {familiar ? (
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="shrink-0 text-lg">{familiar.emoji}</span>
+            <div className="min-w-0">
+              <div className="truncate text-sm font-semibold">{familiar.display_name}</div>
+              <div className="truncate text-xs text-zinc-500">{familiar.role}</div>
+            </div>
+          </div>
+        ) : (
+          <div className="text-sm text-zinc-500">No familiar selected</div>
+        )}
+        <div className="flex items-center gap-3 text-xs text-zinc-500">
+          {sessionId ? (
+            <span className="font-mono text-emerald-400/80">● live</span>
+          ) : busy ? (
+            <span className="font-mono text-amber-400/80">starting…</span>
+          ) : (
+            <span className="font-mono">idle</span>
+          )}
+          <span>codex</span>
+        </div>
+      </header>
+
+      <div ref={hostRef} className="flex-1 min-h-0 overflow-hidden bg-zinc-950 p-2" />
+
+      {error ? (
+        <div className="border-t border-amber-700/40 bg-amber-900/20 px-4 py-1.5 text-xs text-amber-200">
+          {error}
+        </div>
+      ) : null}
+    </section>
+  );
+}

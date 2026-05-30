@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Group, Panel, Separator, usePanelRef } from "react-resizable-panels";
 import { FamiliarRail } from "@/components/familiar-rail";
-import { ChatPane } from "@/components/chat-pane";
+import { TerminalPane } from "@/components/terminal-pane";
 import { InspectorPane } from "@/components/inspector-pane";
 import { DaemonBar } from "@/components/daemon-bar";
 import type { Familiar } from "@/lib/types";
@@ -82,7 +82,7 @@ export function Workspace() {
         <Separator className={handleClass} />
 
         <Panel id="chat" defaultSize="50%" minSize="28%">
-          <ChatPane familiar={active} />
+          <TerminalPane familiar={active} />
         </Panel>
 
         <Separator className={handleClass} />
