@@ -176,6 +176,8 @@ pub fn run() {
                 )?;
             }
 
+            app.handle().plugin(tauri_plugin_notification::init())?;
+
             check_app_translocation();
 
             let resource_dir = match app.path().resource_dir() {
@@ -317,6 +319,10 @@ pub fn run() {
             .inner_size(1320.0, 820.0)
             .min_inner_size(960.0, 600.0)
             .resizable(true)
+            // Required for HTML5 drag-and-drop (Coven Board card moves) to work
+            // in the webview — otherwise Tauri's OS-level file-drop handler
+            // intercepts dragenter/dragover/drop before the DOM sees them.
+            .disable_drag_drop_handler()
             .build()
             {
                 fatal_exit(&format!("failed to build main window: {}", e));

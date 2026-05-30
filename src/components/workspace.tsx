@@ -275,7 +275,7 @@ export function Workspace() {
                 : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
             }`}
           >
-            {m === "chats" ? "Chats" : m === "board" ? "Coven Board" : "Plugins"}
+            {m === "chats" ? "Chats" : m === "board" ? "Board" : "Plugins"}
           </button>
         ))}
         <span className="ml-auto text-[10px] text-zinc-600">⌘K palette · ⌘B rail · ⇧⌘B inspector</span>
