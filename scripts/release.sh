@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+VERSION="${1:-0.0.1}"
+APP_NAME="CovenCave"
+BUILD_DIR="src-tauri/target/release/bundle"
+DMG_DIR="release"
+DMG_PATH="$DMG_DIR/${APP_NAME}-v${VERSION}.dmg"
+SIGNING_IDENTITY="Developer ID Application: Soul Protocol LLC (9LR8Z8UQ9X)"
+NOTARY_KEY_FILE="${NOTARY_KEY_FILE:-$HOME/.appstoreconnect/private_keys/AuthKey_3822D8Z5XFI0.p8}"
+NOTARY_KEY_ID="${NOTARY_KEY_ID:-3822D8Z5XFI0}"
+
+require_tool() {
+  command -v "$1" >/dev/null 2>&1 || { echo "Missing required tool: $1" >&2; exit 1; }
+}
+require_file() {
+  [ -f "$1" ] || { echo "Missing required file: $1" >&2; exit 1; }
+}
+
+require_tool pnpm
+require_tool codesign
+require_tool xcrun
+require_tool hdiutil
+require_tool spctl
+require_tool shasum
+require_file "$NOTARY_KEY_FILE"
+
+echo "==> Building CovenCave v${VERSION}"
+rm -rf "$DMG_DIR"
+mkdir -p "$DMG_DIR"
+
+echo "==> Running pnpm tauri build"
+APPLE_SIGNING_IDENTITY="$SIGNING_IDENTITY" pnpm tauri build
+
+APP_PATH=$(find "$BUILD_DIR/macos" -name "${APP_NAME}.app" -type d -maxdepth 2 | head -n1)
+if [ -z "$APP_PATH" ] || [ ! -d "$APP_PATH" ]; then
+  echo "App bundle not found under $BUILD_DIR/macos" >&2
+  exit 1
+fi
+echo "    found: $APP_PATH"
+
+echo "==> Re-signing with hardened runtime + secure timestamp"
+codesign --force --deep --options runtime --timestamp \
+  --sign "$SIGNING_IDENTITY" "$APP_PATH"
+
+echo "==> Verifying signature"
+codesign -vvv --deep "$APP_PATH" 2>&1 | tail -n 5
+
+echo "==> Packaging DMG"
+hdiutil create -volname "${APP_NAME}" -srcfolder "$APP_PATH" -ov -format UDZO "$DMG_PATH" >/dev/null
+
+echo "==> Submitting DMG for notarization"
+xcrun notarytool submit "$DMG_PATH" \
+  --key "$NOTARY_KEY_FILE" \
+  --key-id "$NOTARY_KEY_ID" \
+  --wait
+
+echo "==> Stapling notarization ticket"
+xcrun stapler staple "$DMG_PATH"
+xcrun stapler staple "$APP_PATH"
+
+echo "==> Verifying Gatekeeper acceptance"
+spctl -a -vvv "$APP_PATH"
+
+if ! spctl -a -vvv "$APP_PATH" 2>&1 | grep -q "Notarized Developer ID"; then
+  echo "Gatekeeper verification failed: app is not accepted as a notarized Developer ID app" >&2
+  exit 1
+fi
+
+echo ""
+echo "Release built: $DMG_PATH"
+SHA=$(shasum -a 256 "$DMG_PATH" | cut -d ' ' -f1)
+echo "SHA256: $SHA"
+echo ""
+echo "Signature:"
+codesign -d --verbose=2 "$APP_PATH" 2>&1 | grep -E "Authority|TeamIdentifier|Identifier|Timestamp"
