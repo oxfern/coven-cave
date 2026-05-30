@@ -115,6 +115,21 @@ export async function POST(req: Request) {
   const binding = bindingFor(config, body.familiarId);
   const cwd = body.projectRoot ?? path.join(homedir(), "Documents", "GitHub", "OpenCoven", "coven-cave");
 
+  // coven run only knows codex|claude today. Other harnesses (openclaw,
+  // copilot, opencode, gemini, hermes, …) are surfaced in /api/harnesses
+  // and the rail configurator but can't be driven from native chat yet —
+  // open them via Coven Code TUI through /api/launch.
+  const COVEN_RUN_HARNESSES = new Set(["codex", "claude"]);
+  if (!COVEN_RUN_HARNESSES.has(binding.harness)) {
+    return new Response(
+      JSON.stringify({
+        ok: false,
+        error: `Native chat isn't wired for the "${binding.harness}" harness yet — open this familiar in the Coven Code TUI instead.`,
+      }),
+      { status: 501, headers: { "content-type": "application/json" } },
+    );
+  }
+
   // Build coven run argv
   const args = ["run", binding.harness, body.prompt, "--stream-json"];
   if (body.sessionId) args.push("--continue", body.sessionId);

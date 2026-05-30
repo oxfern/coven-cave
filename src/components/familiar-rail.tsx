@@ -1,7 +1,15 @@
 "use client";
 
 import type { Familiar, SessionRow } from "@/lib/types";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+type HarnessReport = {
+  id: string;
+  label: string;
+  installed: boolean;
+  chatSupported: boolean;
+  version: string | null;
+};
 
 type Props = {
   familiars: Familiar[];
@@ -21,6 +29,27 @@ export function FamiliarRail({
   responseNeeded,
 }: Props) {
   const current = familiars.find((f) => f.id === activeId) ?? null;
+  const [harnesses, setHarnesses] = useState<HarnessReport[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/harnesses", { cache: "no-store" });
+        const json = await res.json();
+        if (!cancelled && json.ok) setHarnesses(json.harnesses ?? []);
+      } catch {
+        /* keep empty — UI just won't show availability */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const harnessReport = current
+    ? harnesses.find((h) => h.id === current.harness) ?? null
+    : null;
 
   const liveCounts = useMemo(() => {
     const map = new Map<string, number>();
@@ -101,10 +130,43 @@ export function FamiliarRail({
 
       {current ? (
         <section className="border-t border-zinc-800 px-4 py-3 text-xs">
-          <div className="mb-2 text-zinc-500">Configurator</div>
+          <div className="mb-2 flex items-center justify-between text-zinc-500">
+            <span>Configurator</span>
+            {harnessReport ? (
+              <span
+                title={
+                  !harnessReport.installed
+                    ? `${harnessReport.label} not installed on this machine`
+                    : harnessReport.chatSupported
+                      ? "Native chat is wired for this harness"
+                      : `${harnessReport.label} is installed but chat isn't wired yet — open in TUI`
+                }
+                className={`rounded px-1.5 py-px text-[9px] uppercase tracking-widest ${
+                  !harnessReport.installed
+                    ? "bg-rose-600/20 text-rose-300"
+                    : harnessReport.chatSupported
+                      ? "bg-emerald-600/20 text-emerald-300"
+                      : "bg-amber-600/20 text-amber-200"
+                }`}
+              >
+                {!harnessReport.installed
+                  ? "missing"
+                  : harnessReport.chatSupported
+                    ? "chat ready"
+                    : "tui only"}
+              </span>
+            ) : null}
+          </div>
           <dl className="grid grid-cols-[72px_1fr] gap-y-1 text-zinc-300">
             <dt className="text-zinc-500">Harness</dt>
-            <dd className="font-mono truncate">{current.harness ?? "—"}</dd>
+            <dd className="font-mono truncate" title={harnessReport?.version ?? undefined}>
+              {current.harness ?? "—"}
+              {harnessReport?.version ? (
+                <span className="ml-1 text-[10px] text-zinc-500">
+                  {harnessReport.version.split(/\s/).pop()}
+                </span>
+              ) : null}
+            </dd>
             <dt className="text-zinc-500">Model</dt>
             <dd className="font-mono truncate" title={current.model}>
               {current.model ?? "—"}
