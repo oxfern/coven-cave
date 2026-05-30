@@ -44,7 +44,7 @@ export function DaemonBar({ onDaemonStarted }: Props) {
     <header className="flex items-center justify-between border-b border-zinc-800 bg-zinc-900/60 px-3 py-1.5 text-xs">
       <div className="flex items-center gap-2">
         <span className="text-sm">🪄</span>
-        <span className="font-semibold tracking-tight">CovenBoard</span>
+        <span className="font-semibold tracking-tight">CovenCave</span>
       </div>
 
       <div className="flex items-center gap-3">

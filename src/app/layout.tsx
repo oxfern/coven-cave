@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CovenBoard",
-  description: "Coven desktop harness for familiars, memory, and tools.",
+  title: "CovenCave",
+  description: "Coven desktop cave for familiars, memory, and tools.",
 };
 
 export default function RootLayout({

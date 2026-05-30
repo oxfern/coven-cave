@@ -65,9 +65,9 @@ export function Workspace() {
         <Panel
           panelRef={leftRef}
           id="rail"
-          defaultSize={18}
-          minSize={12}
-          maxSize={32}
+          defaultSize={22}
+          minSize={18}
+          maxSize={34}
           collapsible
           collapsedSize={0}
         >
@@ -81,7 +81,7 @@ export function Workspace() {
 
         <Separator className={handleClass} />
 
-        <Panel id="chat" defaultSize={56} minSize={30}>
+        <Panel id="chat" defaultSize={50} minSize={28}>
           <ChatPane familiar={active} />
         </Panel>
 
@@ -90,8 +90,8 @@ export function Workspace() {
         <Panel
           panelRef={rightRef}
           id="inspector"
-          defaultSize={26}
-          minSize={16}
+          defaultSize={28}
+          minSize={22}
           maxSize={42}
           collapsible
           collapsedSize={0}
@@ -101,7 +101,7 @@ export function Workspace() {
       </Group>
 
       <footer className="flex items-center justify-between border-t border-zinc-800 px-3 py-1 text-[10px] text-zinc-500">
-        <span>CovenBoard · v0</span>
+        <span>CovenCave · v0</span>
         <span>⌘B rail · ⇧⌘B inspector · drag edges to resize</span>
       </footer>
     </div>
