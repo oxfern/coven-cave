@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Familiar, SessionRow } from "@/lib/types";
 import { NewCardModal, type NewCardDraft } from "@/components/new-card-modal";
 
@@ -49,6 +49,7 @@ export function BoardView({ familiars, sessions, activeFamiliarId }: Props) {
   const [scopeToFamiliar, setScopeToFamiliar] = useState<boolean>(false);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<CardStatus | null>(null);
+  const draggingIdRef = useRef<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -117,25 +118,46 @@ export function BoardView({ familiars, sessions, activeFamiliarId }: Props) {
   };
 
   const handleDragStart = (e: React.DragEvent, id: string) => {
+    draggingIdRef.current = id;
     setDraggingId(id);
-    e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/plain", id);
+    try {
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", id);
+      e.dataTransfer.setData("application/x-cave-card", id);
+    } catch {
+      /* some WebKit builds restrict setData on certain types — ref still works */
+    }
   };
   const handleDragEnd = () => {
+    draggingIdRef.current = null;
     setDraggingId(null);
     setDropTarget(null);
+  };
+  // dragenter/dragover both preventDefault — WebKit needs the former too on some elements
+  const handleDragEnter = (e: React.DragEvent, status: CardStatus) => {
+    e.preventDefault();
+    if (dropTarget !== status) setDropTarget(status);
   };
   const handleDragOver = (e: React.DragEvent, status: CardStatus) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
     if (dropTarget !== status) setDropTarget(status);
   };
-  const handleDragLeave = (status: CardStatus) => {
+  const handleDragLeave = (e: React.DragEvent, status: CardStatus) => {
+    // Only clear when leaving the column entirely (not when moving onto a child)
+    const related = e.relatedTarget as Node | null;
+    if (related && (e.currentTarget as Node).contains(related)) return;
     if (dropTarget === status) setDropTarget(null);
   };
   const handleDrop = (e: React.DragEvent, status: CardStatus) => {
     e.preventDefault();
-    const id = e.dataTransfer.getData("text/plain") || draggingId;
+    e.stopPropagation();
+    const id =
+      e.dataTransfer.getData("application/x-cave-card") ||
+      e.dataTransfer.getData("text/plain") ||
+      draggingIdRef.current ||
+      draggingId;
+    draggingIdRef.current = null;
     setDraggingId(null);
     setDropTarget(null);
     if (!id) return;
@@ -227,8 +249,9 @@ export function BoardView({ familiars, sessions, activeFamiliarId }: Props) {
             return (
               <div
                 key={col.id}
+                onDragEnter={(e) => handleDragEnter(e, col.id)}
                 onDragOver={(e) => handleDragOver(e, col.id)}
-                onDragLeave={() => handleDragLeave(col.id)}
+                onDragLeave={(e) => handleDragLeave(e, col.id)}
                 onDrop={(e) => handleDrop(e, col.id)}
                 className={`flex h-full min-w-0 flex-1 basis-0 flex-col rounded-xl border bg-zinc-900/30 transition-colors ${
                   isDropTarget
@@ -322,6 +345,7 @@ function CardItem({
   onDelete: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const draggedRef = useRef(false);
   const familiar = familiars.find((f) => f.id === card.familiarId) ?? null;
   const session = sessions.find((s) => s.id === card.sessionId) ?? null;
   const pri = PRIORITIES.find((p) => p.id === card.priority)!;
@@ -329,9 +353,22 @@ function CardItem({
   return (
     <li
       draggable
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
-      onClick={() => setExpanded((v) => !v)}
+      onDragStart={(e) => {
+        draggedRef.current = true;
+        onDragStart?.(e);
+      }}
+      onDragEnd={() => {
+        // Reset the "did-drag" flag on the next tick so a click that comes
+        // right after a drop is suppressed, but later clicks expand.
+        setTimeout(() => {
+          draggedRef.current = false;
+        }, 0);
+        onDragEnd?.();
+      }}
+      onClick={() => {
+        if (draggedRef.current) return;
+        setExpanded((v) => !v);
+      }}
       className={`cursor-grab rounded-lg border border-zinc-800 bg-zinc-950/60 p-3 transition-all active:cursor-grabbing hover:border-zinc-700 ${
         isDragging ? "opacity-40" : ""
       }`}
