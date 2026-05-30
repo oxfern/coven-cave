@@ -12,10 +12,11 @@ type View =
 type Props = {
   familiar: Familiar | null;
   sessions: SessionRow[];
+  daemonRunning?: boolean;
   onSessionStarted?: () => void;
 };
 
-export function ChatRouter({ familiar, sessions, onSessionStarted }: Props) {
+export function ChatRouter({ familiar, sessions, daemonRunning, onSessionStarted }: Props) {
   const [view, setView] = useState<View>({ kind: "list" });
 
   useEffect(() => {
@@ -35,6 +36,7 @@ export function ChatRouter({ familiar, sessions, onSessionStarted }: Props) {
       <ChatList
         familiar={familiar}
         sessions={sessions}
+        daemonRunning={daemonRunning}
         onOpen={(sessionId) => setView({ kind: "chat", sessionId })}
         onNewChat={() => setView({ kind: "chat", sessionId: null })}
       />
@@ -45,6 +47,7 @@ export function ChatRouter({ familiar, sessions, onSessionStarted }: Props) {
     <ChatView
       familiar={familiar}
       sessionId={view.sessionId}
+      daemonRunning={daemonRunning}
       onBack={() => setView({ kind: "list" })}
       onSessionStarted={(sid) => {
         setView({ kind: "chat", sessionId: sid });

@@ -15,6 +15,7 @@ export function Workspace() {
   const [familiars, setFamiliars] = useState<Familiar[]>([]);
   const [familiarsError, setFamiliarsError] = useState<string | null>(null);
   const [sessions, setSessions] = useState<SessionRow[]>([]);
+  const [daemonRunning, setDaemonRunning] = useState<boolean>(false);
   const [responseNeeded, setResponseNeeded] = useState<Set<string>>(new Set());
   const responseNeededRef = useRef(responseNeeded);
   responseNeededRef.current = responseNeeded;
@@ -91,6 +92,7 @@ export function Workspace() {
         onDaemonStarted={loadFamiliars}
         sessions={sessions}
         responseNeededCount={responseNeeded.size}
+        onRunningChange={setDaemonRunning}
       />
 
       <Group orientation="horizontal" className="flex-1 min-h-0 flex">
@@ -119,6 +121,7 @@ export function Workspace() {
           <ChatRouter
             familiar={active}
             sessions={sessions}
+            daemonRunning={daemonRunning}
             onSessionStarted={loadSessions}
           />
         </Panel>

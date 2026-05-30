@@ -3,9 +3,14 @@
 import { useMemo, useState } from "react";
 import type { Familiar, SessionRow } from "@/lib/types";
 
+const PROJECT_ROOT =
+  process.env.NEXT_PUBLIC_COVEN_PROJECT_ROOT ??
+  "/Users/buns/Documents/GitHub/OpenCoven/coven-cave";
+
 type Props = {
   familiar: Familiar;
   sessions: SessionRow[];
+  daemonRunning?: boolean;
   onOpen: (sessionId: string) => void;
   onNewChat: () => void;
 };
@@ -21,7 +26,7 @@ function age(iso: string): string {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-export function ChatList({ familiar, sessions, onOpen, onNewChat }: Props) {
+export function ChatList({ familiar, sessions, daemonRunning, onOpen, onNewChat }: Props) {
   const [busyTuiId, setBusyTuiId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,25 +55,39 @@ export function ChatList({ familiar, sessions, onOpen, onNewChat }: Props) {
     }
   };
 
+  const projectName = PROJECT_ROOT.split("/").slice(-2).join("/");
+
   return (
-    <section className="flex h-full flex-col bg-zinc-950">
-      <header className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="shrink-0 text-lg">{familiar.emoji}</span>
-          <div className="min-w-0">
-            <div className="truncate text-sm font-semibold">{familiar.display_name}</div>
-            <div className="truncate text-[11px] text-zinc-500">
-              {familiar.harness ?? "?"} ·{" "}
-              <span className="font-mono">{familiar.model ?? "?"}</span>
-            </div>
-          </div>
-        </div>
-        <button
-          onClick={onNewChat}
-          className="rounded-md bg-violet-600 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-violet-500"
-        >
-          + New chat
-        </button>
+    <section className="flex h-full flex-col bg-zinc-950 font-mono text-[13px] text-zinc-200">
+      {/* TUI-style status row */}
+      <header className="flex items-center gap-2 border-b border-zinc-800 px-4 py-2 text-[11px] text-zinc-400">
+        <span className="text-zinc-100">
+          Coven <span className="text-violet-300">{familiar.harness ?? "codex"}</span>
+        </span>
+        <span className="text-zinc-600">·</span>
+        <span className="truncate text-zinc-500">{projectName}</span>
+        <span className="text-zinc-600">·</span>
+        <span className="text-zinc-500">
+          daemon:{" "}
+          <span className={daemonRunning ? "text-emerald-400" : "text-rose-400"}>
+            {daemonRunning ? "running" : "offline"}
+          </span>
+        </span>
+        <span className="text-zinc-600">·</span>
+        <span className="truncate text-zinc-500">
+          <span className="text-zinc-400">{familiar.display_name}</span>
+          <span className="ml-1.5 text-zinc-600">{familiar.model ?? ""}</span>
+        </span>
+        <span className="ml-auto flex items-center gap-2">
+          <span className="text-zinc-600">{mine.length} chat{mine.length === 1 ? "" : "s"}</span>
+          <button
+            onClick={onNewChat}
+            className="rounded border border-violet-500 px-2 py-0.5 text-[11px] text-violet-200 hover:bg-violet-500/10"
+            title="Start a new chat (Ctrl+N)"
+          >
+            + new chat
+          </button>
+        </span>
       </header>
 
       {error ? (
@@ -77,23 +96,31 @@ export function ChatList({ familiar, sessions, onOpen, onNewChat }: Props) {
         </div>
       ) : null}
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
-        {mine.length === 0 ? (
-          <div className="mx-auto mt-12 max-w-sm text-center text-sm text-zinc-500">
-            <p className="mb-3 text-zinc-400">No chats with {familiar.display_name} yet.</p>
-            <p className="text-xs text-zinc-600">
-              Start one — {familiar.display_name} runs on{" "}
-              <span className="font-mono text-zinc-400">{familiar.harness}</span> with{" "}
-              <span className="font-mono text-zinc-400">{familiar.model}</span>.
-            </p>
-            <button
-              onClick={onNewChat}
-              className="mt-5 rounded-md bg-violet-600 px-4 py-1.5 text-xs font-medium text-white transition-colors hover:bg-violet-500"
-            >
-              + New chat
-            </button>
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+        {/* Standing "✦ coven" greeting block */}
+        <div className="my-3">
+          <div className="flex items-center gap-2 text-violet-300">
+            <span className="select-none">✦</span>
+            <span className="text-[12px] uppercase tracking-widest">coven</span>
           </div>
-        ) : (
+          <div className="mt-1 ml-4 text-zinc-300">
+            {mine.length === 0 ? (
+              <>
+                No chats with <span className="text-zinc-100">{familiar.display_name}</span> yet.
+                Type <span className="text-violet-300">+ new chat</span> above or press{" "}
+                <span className="text-zinc-100">N</span>.
+              </>
+            ) : (
+              <>
+                Chats with <span className="text-zinc-100">{familiar.display_name}</span> — pick
+                one or start a new thread.
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Sessions listed plain, with `✦` accents */}
+        {mine.length > 0 ? (
           <ul className="space-y-1">
             {mine.map((s) => {
               const running = s.status === "running";
@@ -106,44 +133,49 @@ export function ChatList({ familiar, sessions, onOpen, onNewChat }: Props) {
                     onKeyDown={(e) => {
                       if (e.key === "Enter") onOpen(s.id);
                     }}
-                    className="group flex w-full cursor-pointer items-start gap-3 rounded-lg border border-transparent px-3 py-2 transition-colors hover:border-zinc-800 hover:bg-zinc-900/60"
+                    className="group grid cursor-pointer grid-cols-[20px_minmax(0,1fr)_auto_auto] items-center gap-3 px-2 py-1.5 transition-colors hover:bg-zinc-900/60"
                   >
                     <span
-                      className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${
-                        running ? "bg-emerald-400 animate-pulse" : "bg-zinc-600"
-                      }`}
-                    />
-                    <span className="flex min-w-0 flex-1 flex-col">
-                      <span className="flex items-center justify-between gap-2">
-                        <span className="truncate text-sm text-zinc-100">
-                          {s.title || "(untitled chat)"}
-                        </span>
-                        <span className="shrink-0 font-mono text-[10px] text-zinc-500">
-                          {age(s.updated_at)}
-                        </span>
+                      className={
+                        running
+                          ? "text-emerald-400 animate-pulse"
+                          : "text-zinc-600"
+                      }
+                      title={running ? "running" : "idle"}
+                    >
+                      {running ? "●" : "○"}
+                    </span>
+                    <span className="flex min-w-0 flex-col">
+                      <span className="truncate text-zinc-100">
+                        {s.title || "(untitled chat)"}
                       </span>
-                      <span className="mt-0.5 flex items-center gap-2 text-[10px] text-zinc-500">
-                        <span className="rounded bg-zinc-800 px-1 py-px font-mono text-zinc-400">
-                          {s.harness}
-                        </span>
-                        <span className="truncate">{s.project_root}</span>
+                      <span className="truncate text-[10px] text-zinc-500">
+                        <span className="text-zinc-400">{s.harness}</span>
+                        <span className="mx-1 text-zinc-700">·</span>
+                        {s.project_root}
                       </span>
                     </span>
+                    <span className="text-[10px] text-zinc-500">{age(s.updated_at)}</span>
                     <button
                       onClick={(e) => openInTui(e, s.id)}
                       disabled={busyTuiId === s.id}
-                      title="Open this session in Coven Code TUI"
-                      className="shrink-0 self-center rounded border border-zinc-700 px-2 py-0.5 text-[10px] text-zinc-400 opacity-0 transition-opacity hover:bg-zinc-800 group-hover:opacity-100 disabled:opacity-50"
+                      title="Open this session in Coven Code TUI (external terminal)"
+                      className="rounded border border-zinc-700 px-1.5 py-0 text-[10px] text-zinc-400 opacity-0 transition-opacity hover:bg-zinc-800 group-hover:opacity-100 disabled:opacity-40"
                     >
-                      {busyTuiId === s.id ? "opening…" : "tui"}
+                      {busyTuiId === s.id ? "…" : "tui"}
                     </button>
                   </div>
                 </li>
               );
             })}
           </ul>
-        )}
+        ) : null}
       </div>
+
+      {/* TUI-style hint footer */}
+      <footer className="border-t border-zinc-800 px-4 py-2 text-[10px] text-zinc-600">
+        ↵ open · n new · t toggle tui · /help
+      </footer>
     </section>
   );
 }

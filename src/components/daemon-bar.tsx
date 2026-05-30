@@ -7,9 +7,15 @@ type Props = {
   onDaemonStarted?: () => void;
   sessions?: SessionRow[];
   responseNeededCount?: number;
+  onRunningChange?: (running: boolean) => void;
 };
 
-export function DaemonBar({ onDaemonStarted, sessions = [], responseNeededCount = 0 }: Props) {
+export function DaemonBar({
+  onDaemonStarted,
+  sessions = [],
+  responseNeededCount = 0,
+  onRunningChange,
+}: Props) {
   const [status, setStatus] = useState<DaemonStatus | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -18,8 +24,10 @@ export function DaemonBar({ onDaemonStarted, sessions = [], responseNeededCount 
       const res = await fetch("/api/daemon/status", { cache: "no-store" });
       const json = (await res.json()) as DaemonStatus;
       setStatus(json);
+      onRunningChange?.(json.running === true);
     } catch {
       setStatus({ running: false, reason: "fetch failed" });
+      onRunningChange?.(false);
     }
   };
 

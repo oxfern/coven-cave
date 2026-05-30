@@ -9,7 +9,8 @@ const PROJECT_ROOT =
 
 type Turn = {
   id: string;
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "system";
+  speaker?: string;
   text: string;
   pending?: boolean;
   error?: boolean;
@@ -18,6 +19,7 @@ type Turn = {
 type Props = {
   familiar: Familiar;
   sessionId: string | null;
+  daemonRunning?: boolean;
   onSessionStarted?: (sessionId: string) => void;
   onBack?: () => void;
 };
@@ -29,7 +31,19 @@ type StreamEvent =
   | { kind: "done"; durationMs?: number; isError?: boolean; sessionId?: string }
   | { kind: "error"; message: string };
 
-export function ChatView({ familiar, sessionId, onSessionStarted, onBack }: Props) {
+const HINTS = [
+  'Try "review this branch" or /help',
+  'Try "fix the failing tests" or /sessions',
+  'Try "summarize recent changes" or /help',
+];
+
+export function ChatView({
+  familiar,
+  sessionId,
+  daemonRunning,
+  onSessionStarted,
+  onBack,
+}: Props) {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -38,11 +52,18 @@ export function ChatView({ familiar, sessionId, onSessionStarted, onBack }: Prop
   const tailRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
 
-  // Load persisted history for an attached session
+  // Load history on attach; show "ready" greeting on a new chat
   useEffect(() => {
     currentSessionRef.current = sessionId;
     if (!sessionId) {
-      setTurns([]);
+      setTurns([
+        {
+          id: "ready",
+          role: "system",
+          speaker: "coven",
+          text: `Ready. Type a task or /help.`,
+        },
+      ]);
       return;
     }
     void (async () => {
@@ -60,6 +81,7 @@ export function ChatView({ familiar, sessionId, onSessionStarted, onBack }: Prop
               .map((t: { id: string; role: "user" | "assistant"; text: string }) => ({
                 id: t.id,
                 role: t.role,
+                speaker: t.role === "assistant" ? familiar.harness : undefined,
                 text: t.text,
               })),
           );
@@ -68,7 +90,7 @@ export function ChatView({ familiar, sessionId, onSessionStarted, onBack }: Prop
         /* fall through */
       }
     })();
-  }, [sessionId]);
+  }, [sessionId, familiar.harness]);
 
   useEffect(() => {
     tailRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -87,8 +109,14 @@ export function ChatView({ familiar, sessionId, onSessionStarted, onBack }: Prop
 
     const userTurn: Turn = { id: crypto.randomUUID(), role: "user", text };
     const assistantId = crypto.randomUUID();
-    const assistantTurn: Turn = { id: assistantId, role: "assistant", text: "", pending: true };
-    setTurns((prev) => [...prev, userTurn, assistantTurn]);
+    const assistantTurn: Turn = {
+      id: assistantId,
+      role: "assistant",
+      speaker: familiar.harness ?? "codex",
+      text: "",
+      pending: true,
+    };
+    setTurns((prev) => [...prev.filter((t) => t.id !== "ready"), userTurn, assistantTurn]);
 
     try {
       const res = await fetch("/api/chat/send", {
@@ -159,9 +187,7 @@ export function ChatView({ familiar, sessionId, onSessionStarted, onBack }: Prop
       case "done": {
         setTurns((prev) =>
           prev.map((t) =>
-            t.id === assistantId
-              ? { ...t, pending: false, error: ev.isError ?? false }
-              : t,
+            t.id === assistantId ? { ...t, pending: false, error: ev.isError ?? false } : t,
           ),
         );
         if (ev.sessionId && !currentSessionRef.current) {
@@ -184,67 +210,57 @@ export function ChatView({ familiar, sessionId, onSessionStarted, onBack }: Prop
     );
   };
 
+  const hint = HINTS[Math.floor(Date.now() / 30000) % HINTS.length];
+  const projectName = PROJECT_ROOT.split("/").slice(-2).join("/");
+
   return (
-    <section className="flex h-full flex-col bg-zinc-950">
-      <header className="flex items-center justify-between border-b border-zinc-800 px-3 py-2.5">
-        <div className="flex min-w-0 items-center gap-2">
-          {onBack ? (
-            <button
-              onClick={onBack}
-              className="shrink-0 rounded border border-zinc-700 px-2 py-0.5 text-[11px] text-zinc-300 transition-colors hover:bg-zinc-800"
-              title="Back to chats"
-            >
-              ← chats
-            </button>
-          ) : null}
-          <span className="shrink-0 text-lg">{familiar.emoji}</span>
-          <div className="min-w-0">
-            <div className="truncate text-sm font-semibold">{familiar.display_name}</div>
-            <div className="truncate text-[11px] text-zinc-500">
-              {familiar.harness ?? "?"} ·{" "}
-              <span className="font-mono">{familiar.model ?? "?"}</span>
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 text-xs text-zinc-500">
+    <section className="flex h-full flex-col bg-zinc-950 font-mono text-[13px] text-zinc-200">
+      {/* Compact status row — matches the TUI's "Coven codex · path · daemon: running" header */}
+      <header className="flex items-center gap-2 border-b border-zinc-800 px-4 py-2 text-[11px] text-zinc-400">
+        {onBack ? (
+          <button
+            onClick={onBack}
+            className="rounded border border-zinc-700 px-1.5 py-0.5 text-zinc-300 transition-colors hover:bg-zinc-800"
+            title="Back to chats"
+          >
+            ← chats
+          </button>
+        ) : null}
+        <span className="text-zinc-100">
+          Coven <span className="text-violet-300">{familiar.harness ?? "codex"}</span>
+        </span>
+        <span className="text-zinc-600">·</span>
+        <span className="truncate text-zinc-500">{projectName}</span>
+        <span className="text-zinc-600">·</span>
+        <span className="text-zinc-500">
+          daemon:{" "}
+          <span className={daemonRunning ? "text-emerald-400" : "text-rose-400"}>
+            {daemonRunning ? "running" : "offline"}
+          </span>
+        </span>
+        <span className="text-zinc-600">·</span>
+        <span className="truncate text-zinc-500">
+          <span className="text-zinc-400">{familiar.display_name}</span>
+          <span className="ml-1.5 text-zinc-600">{familiar.model ?? ""}</span>
+        </span>
+        <span className="ml-auto text-zinc-500">
           {busy ? (
-            <span className="font-mono text-amber-400/80">streaming…</span>
+            <span className="text-amber-400">streaming…</span>
           ) : currentSessionRef.current ? (
-            <span className="font-mono text-emerald-400/80">● live</span>
+            <span className="text-emerald-400">● live</span>
           ) : (
-            <span className="font-mono">new</span>
+            <span>new</span>
           )}
-        </div>
+        </span>
       </header>
 
-      <ol className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-3">
-        {turns.length === 0 ? (
-          <li className="mx-auto max-w-md py-10 text-center text-sm text-zinc-600">
-            Start a chat with {familiar.display_name}. Runs on{" "}
-            <span className="font-mono text-zinc-400">{familiar.harness}</span> via the{" "}
-            <span className="font-mono text-zinc-400">coven</span> CLI under the hood.
-          </li>
-        ) : null}
+      {/* Transcript — left-aligned blocks, no bubbles */}
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
         {turns.map((t) => (
-          <li key={t.id} className={`flex ${t.role === "user" ? "justify-end" : "justify-start"}`}>
-            <div
-              className={`max-w-[78%] whitespace-pre-wrap break-words rounded-2xl px-4 py-2 text-sm leading-relaxed ${
-                t.role === "user"
-                  ? "bg-violet-600/80 text-white"
-                  : t.error
-                    ? "border border-amber-700/40 bg-amber-900/20 text-amber-200"
-                    : "bg-zinc-800/80 text-zinc-100"
-              }`}
-            >
-              {t.text || (t.pending ? "…" : "")}
-              {t.pending && t.text ? (
-                <span className="ml-1 inline-block animate-pulse text-zinc-400">▌</span>
-              ) : null}
-            </div>
-          </li>
+          <Block key={t.id} turn={t} familiarName={familiar.display_name} />
         ))}
         <div ref={tailRef} />
-      </ol>
+      </div>
 
       {error ? (
         <div className="border-t border-amber-700/40 bg-amber-900/20 px-4 py-1.5 text-xs text-amber-200">
@@ -252,8 +268,10 @@ export function ChatView({ familiar, sessionId, onSessionStarted, onBack }: Prop
         </div>
       ) : null}
 
-      <footer className="border-t border-zinc-800 p-3">
-        <div className="flex items-end gap-2 rounded-xl border border-zinc-800 bg-zinc-900/60 px-3 py-2">
+      {/* Composer — bottom bar with a `>` indicator like the TUI */}
+      <footer className="border-t border-zinc-800 px-4 py-3">
+        <div className="flex items-start gap-2">
+          <span className="pt-1 text-violet-400 select-none">{">"}</span>
           <textarea
             ref={inputRef}
             value={input}
@@ -264,20 +282,60 @@ export function ChatView({ familiar, sessionId, onSessionStarted, onBack }: Prop
                 void send();
               }
             }}
-            placeholder={`Message ${familiar.display_name}…`}
+            placeholder={hint}
             rows={1}
             disabled={busy}
-            className="flex-1 resize-none bg-transparent text-sm text-zinc-100 outline-none placeholder:text-zinc-500 disabled:opacity-50"
+            className="flex-1 resize-none bg-transparent text-[13px] text-zinc-100 outline-none placeholder:text-zinc-600 disabled:opacity-50"
           />
           <button
             onClick={() => void send()}
             disabled={busy || !input.trim()}
-            className="rounded-lg bg-violet-600 px-3 py-1 text-xs font-medium text-white hover:bg-violet-500 disabled:opacity-50"
+            className="self-start rounded border border-zinc-700 px-2 py-0.5 text-[11px] text-zinc-300 hover:bg-zinc-800 disabled:opacity-50"
+            title="Send (Enter)"
           >
-            {busy ? "…" : "Send"}
+            send
           </button>
+        </div>
+        <div className="mt-1 flex items-center gap-3 text-[10px] text-zinc-600">
+          <span>↵ send</span>
+          <span>⇧↵ newline</span>
+          <span>/help</span>
         </div>
       </footer>
     </section>
+  );
+}
+
+function Block({ turn, familiarName }: { turn: Turn; familiarName: string }) {
+  if (turn.role === "user") {
+    return (
+      <div className="my-3 flex items-start gap-2">
+        <span className="select-none text-violet-400">{">"}</span>
+        <span className="whitespace-pre-wrap break-words text-zinc-100">{turn.text}</span>
+      </div>
+    );
+  }
+
+  const speaker =
+    turn.speaker ?? (turn.role === "assistant" ? familiarName.toLowerCase() : "coven");
+  const speakerColor = turn.error ? "text-amber-300" : "text-violet-300";
+
+  return (
+    <div className="my-3">
+      <div className={`flex items-center gap-2 ${speakerColor}`}>
+        <span className="select-none">✦</span>
+        <span className="text-[12px] uppercase tracking-widest">{speaker}</span>
+      </div>
+      <div
+        className={`mt-1 ml-4 whitespace-pre-wrap break-words leading-relaxed ${
+          turn.error ? "text-amber-200" : "text-zinc-200"
+        }`}
+      >
+        {turn.text || (turn.pending ? "…" : "")}
+        {turn.pending && turn.text ? (
+          <span className="ml-1 inline-block animate-pulse text-zinc-400">▌</span>
+        ) : null}
+      </div>
+    </div>
   );
 }
