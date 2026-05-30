@@ -1,0 +1,7 @@
+strictDepBuilds: false
+onlyBuiltDependencies:
+  - sharp
+  - "@tauri-apps/cli"
+  - unrs-resolver
+allowBuilds:
+  sharp: set this to true or false
