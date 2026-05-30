@@ -271,6 +271,11 @@ export function Workspace() {
               familiars={familiars}
               sessions={sessions}
               activeFamiliarId={activeId}
+              onJumpToSession={(sessionId, familiarId) => {
+                if (familiarId) setActiveId(familiarId);
+                setMode("chats");
+                setTimeout(() => routerRef.current?.openSession(sessionId), 0);
+              }}
             />
           )}
         </Panel>

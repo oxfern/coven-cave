@@ -2,6 +2,7 @@
 
 import type { Familiar, SessionRow } from "@/lib/types";
 import { useEffect, useMemo, useState } from "react";
+import { computePresence } from "@/lib/presence";
 
 type HarnessReport = {
   id: string;
@@ -80,9 +81,17 @@ export function FamiliarRail({
 
         {familiars.map((f) => {
           const isActive = activeId === f.id;
-          const online = f.status === "online";
           const liveCount = liveCounts.get(f.id) ?? 0;
           const needsReply = responseNeeded.has(f.id);
+          const harnessInstalled = f.harness
+            ? harnesses.find((h) => h.id === f.harness)?.installed
+            : undefined;
+          const presence = computePresence({
+            familiar: f,
+            sessions,
+            needsReply,
+            harnessInstalled,
+          });
           return (
             <li key={f.id}>
               <button
@@ -98,28 +107,27 @@ export function FamiliarRail({
                   <span className="flex items-center gap-1.5 truncate">
                     <span className="truncate">{f.display_name}</span>
                     <span
-                      className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-                        online ? "bg-emerald-400" : "bg-zinc-600"
+                      title={`${presence.label}${liveCount > 0 ? ` · ${liveCount} live` : ""}`}
+                      className={`h-1.5 w-1.5 shrink-0 rounded-full ${presence.dot} ${
+                        presence.state === "focused" || presence.state === "blocked"
+                          ? "animate-pulse"
+                          : ""
                       }`}
                     />
-                    {needsReply ? (
-                      <span
-                        title="Waiting for your response"
-                        className="ml-auto rounded bg-amber-500/80 px-1.5 py-[1px] text-[9px] font-bold uppercase tracking-widest text-zinc-900"
-                      >
-                        reply
-                      </span>
-                    ) : liveCount > 0 ? (
-                      <span
-                        title={`${liveCount} live session${liveCount === 1 ? "" : "s"}`}
-                        className="ml-auto rounded bg-emerald-600/40 px-1.5 py-[1px] text-[9px] font-mono text-emerald-200"
-                      >
+                    <span
+                      title={presence.label}
+                      className={`ml-auto rounded px-1.5 py-[1px] text-[9px] font-bold uppercase tracking-widest ${presence.pill}`}
+                    >
+                      {presence.label}
+                    </span>
+                  </span>
+                  <span className="flex items-center gap-1.5 truncate text-[10px] uppercase tracking-widest text-zinc-500">
+                    <span className="truncate">{f.role}</span>
+                    {liveCount > 0 ? (
+                      <span className="rounded bg-emerald-600/30 px-1 font-mono text-emerald-200">
                         {liveCount}
                       </span>
                     ) : null}
-                  </span>
-                  <span className="truncate text-[10px] uppercase tracking-widest text-zinc-500">
-                    {f.role}
                   </span>
                 </span>
               </button>

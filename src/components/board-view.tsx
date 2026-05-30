@@ -38,9 +38,10 @@ type Props = {
   familiars: Familiar[];
   sessions: SessionRow[];
   activeFamiliarId: string | null;
+  onJumpToSession?: (sessionId: string, familiarId: string | null) => void;
 };
 
-export function BoardView({ familiars, sessions, activeFamiliarId }: Props) {
+export function BoardView({ familiars, sessions, activeFamiliarId, onJumpToSession }: Props) {
   const [cards, setCards] = useState<Card[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -303,6 +304,7 @@ export function BoardView({ familiars, sessions, activeFamiliarId }: Props) {
                       onDragEnd={handleDragEnd}
                       onPatch={(patch) => patchCard(card.id, patch)}
                       onDelete={() => removeCard(card.id)}
+                      onJumpToSession={onJumpToSession}
                     />
                   ))}
                 </ul>
@@ -334,6 +336,7 @@ function CardItem({
   onDragEnd,
   onPatch,
   onDelete,
+  onJumpToSession,
 }: {
   card: Card;
   familiars: Familiar[];
@@ -343,6 +346,7 @@ function CardItem({
   onDragEnd?: () => void;
   onPatch: (patch: Partial<Card>) => void;
   onDelete: () => void;
+  onJumpToSession?: (sessionId: string, familiarId: string | null) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const draggedRef = useRef(false);
@@ -402,9 +406,22 @@ function CardItem({
           <span className="text-zinc-600">unassigned</span>
         )}
         {session ? (
-          <span className="ml-auto rounded bg-emerald-600/20 px-1.5 py-px text-emerald-300">
-            ● linked
-          </span>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onJumpToSession?.(session.id, session.familiarId ?? null);
+            }}
+            title={`Open session: ${session.title || "(untitled)"}`}
+            className={`ml-auto rounded px-1.5 py-px transition-colors ${
+              session.status === "running"
+                ? "bg-emerald-600/20 text-emerald-300 hover:bg-emerald-600/40"
+                : session.status === "failed"
+                  ? "bg-rose-600/20 text-rose-300 hover:bg-rose-600/40"
+                  : "bg-zinc-700/40 text-zinc-300 hover:bg-zinc-700/70"
+            }`}
+          >
+            {session.status === "running" ? "● open" : session.status === "failed" ? "✗ open" : "open"}
+          </button>
         ) : null}
       </div>
 
