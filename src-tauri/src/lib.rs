@@ -36,21 +36,10 @@ fn fatal_exit(msg: &str) -> ! {
 fn find_node() -> Option<PathBuf> {
     let home = std::env::var("HOME").ok()?;
 
-    // Fixed candidates, in order of likelihood
-    let candidates = [
-        PathBuf::from("/opt/homebrew/bin/node"),
-        PathBuf::from("/usr/local/bin/node"),
-        PathBuf::from(format!("{}/.local/bin/node", home)),
-        PathBuf::from(format!("{}/.bun/bin/node", home)),
-        PathBuf::from(format!("{}/.volta/bin/node", home)),
-    ];
-    for c in candidates.iter() {
-        if c.exists() {
-            return Some(c.clone());
-        }
-    }
-
-    // nvm — scan ~/.nvm/versions/node/<version>/bin/node, prefer the newest
+    // Prefer nvm — its installs are the most common dev managed-version layout
+    // and it tends to lag a step behind the bleeding edge that Homebrew ships,
+    // which avoids native-module ABI mismatches with whatever the developer
+    // used to build CovenCave's bundled node_modules.
     let nvm_root = PathBuf::from(format!("{}/.nvm/versions/node", home));
     if let Ok(entries) = std::fs::read_dir(&nvm_root) {
         let mut versions: Vec<PathBuf> = entries
@@ -58,13 +47,26 @@ fn find_node() -> Option<PathBuf> {
             .map(|e| e.path())
             .filter(|p| p.is_dir())
             .collect();
-        // Sort lexicographically (good enough for v20 < v24 etc.)
-        versions.sort();
+        versions.sort(); // lexicographic — good enough for v20 < v24 etc.
         if let Some(latest) = versions.into_iter().rev().next() {
             let node = latest.join("bin").join("node");
             if node.exists() {
                 return Some(node);
             }
+        }
+    }
+
+    // Other fixed install locations, in order of likelihood
+    let candidates = [
+        PathBuf::from(format!("{}/.volta/bin/node", home)),
+        PathBuf::from(format!("{}/.local/bin/node", home)),
+        PathBuf::from(format!("{}/.bun/bin/node", home)),
+        PathBuf::from("/opt/homebrew/bin/node"),
+        PathBuf::from("/usr/local/bin/node"),
+    ];
+    for c in candidates.iter() {
+        if c.exists() {
+            return Some(c.clone());
         }
     }
 
@@ -152,16 +154,46 @@ pub fn run() {
             };
             log::info!("[cave] using node at {}", node.display());
 
-            let child = match Command::new(&node)
-                .arg(&server_js)
+            // Capture sidecar logs so we can show what went wrong if it never
+            // becomes ready. Goes to ~/Library/Logs/CovenCave/sidecar.log on
+            // macOS.
+            let log_dir = std::env::var("HOME")
+                .map(|h| PathBuf::from(h).join("Library/Logs/CovenCave"))
+                .unwrap_or_else(|_| std::env::temp_dir());
+            let _ = std::fs::create_dir_all(&log_dir);
+            let log_path = log_dir.join("sidecar.log");
+            log::info!("[cave] sidecar log → {}", log_path.display());
+
+            let stdout_log = std::fs::File::create(&log_path).ok();
+            let stderr_log = stdout_log
+                .as_ref()
+                .and_then(|f| f.try_clone().ok());
+
+            // Crucially, run from the directory that contains server.js so
+            // Next.js standalone can locate its sibling .next/ and public/.
+            let server_dir = server_js
+                .parent()
+                .ok_or("server_js has no parent dir")?;
+
+            let mut cmd = Command::new(&node);
+            cmd.arg(&server_js)
+                .current_dir(server_dir)
                 .env("PORT", port.to_string())
                 .env("HOSTNAME", "127.0.0.1")
                 .env("NODE_ENV", "production")
-                .env("COVEN_CAVE_BUNDLE", "1")
-                .stdout(Stdio::null())
-                .stderr(Stdio::null())
-                .spawn()
-            {
+                .env("COVEN_CAVE_BUNDLE", "1");
+            if let Some(out) = stdout_log {
+                cmd.stdout(Stdio::from(out));
+            } else {
+                cmd.stdout(Stdio::null());
+            }
+            if let Some(err) = stderr_log {
+                cmd.stderr(Stdio::from(err));
+            } else {
+                cmd.stderr(Stdio::null());
+            }
+
+            let child = match cmd.spawn() {
                 Ok(c) => c,
                 Err(e) => fatal_exit(&format!("failed to spawn node sidecar: {}", e)),
             };
@@ -173,10 +205,28 @@ pub fn run() {
                 .expect("sidecar lock") = Some(child);
 
             if !wait_for_port(port, Duration::from_secs(20)) {
+                // Read the tail of the sidecar log to give the user a clue.
+                let tail = std::fs::read_to_string(&log_path)
+                    .ok()
+                    .map(|s| {
+                        let lines: Vec<&str> = s.lines().rev().take(8).collect();
+                        let mut tail = lines
+                            .into_iter()
+                            .rev()
+                            .collect::<Vec<_>>()
+                            .join("\n");
+                        if tail.is_empty() {
+                            tail.push_str("(no output captured)");
+                        }
+                        tail
+                    })
+                    .unwrap_or_else(|| "(could not read sidecar log)".to_string());
                 fatal_exit(&format!(
-                    "Sidecar (node {}) did not become ready on port {} within 20s.",
+                    "Sidecar (node {}) did not become ready on port {} within 20s.\n\nLast lines from {}:\n{}",
                     node.display(),
-                    port
+                    port,
+                    log_path.display(),
+                    tail
                 ));
             }
 
