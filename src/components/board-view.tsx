@@ -47,6 +47,8 @@ export function BoardView({ familiars, sessions, activeFamiliarId }: Props) {
   const [modalDefaultStatus, setModalDefaultStatus] = useState<CardStatus>("inbox");
   const [priorityFilter, setPriorityFilter] = useState<Set<CardPriority>>(new Set());
   const [scopeToFamiliar, setScopeToFamiliar] = useState<boolean>(false);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<CardStatus | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -103,13 +105,43 @@ export function BoardView({ familiars, sessions, activeFamiliarId }: Props) {
   };
 
   const patchCard = async (id: string, patch: Partial<Card>) => {
+    // Optimistic local update so drag-and-drop feels instant
+    setCards((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
     const res = await fetch(`/api/board/${id}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(patch),
     });
     const json = await res.json();
-    if (json.ok) await load();
+    if (!json.ok) await load(); // reconcile on failure
+  };
+
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    setDraggingId(id);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", id);
+  };
+  const handleDragEnd = () => {
+    setDraggingId(null);
+    setDropTarget(null);
+  };
+  const handleDragOver = (e: React.DragEvent, status: CardStatus) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (dropTarget !== status) setDropTarget(status);
+  };
+  const handleDragLeave = (status: CardStatus) => {
+    if (dropTarget === status) setDropTarget(null);
+  };
+  const handleDrop = (e: React.DragEvent, status: CardStatus) => {
+    e.preventDefault();
+    const id = e.dataTransfer.getData("text/plain") || draggingId;
+    setDraggingId(null);
+    setDropTarget(null);
+    if (!id) return;
+    const card = cards.find((c) => c.id === id);
+    if (!card || card.status === status) return;
+    void patchCard(id, { status });
   };
 
   const removeCard = async (id: string) => {
@@ -191,10 +223,18 @@ export function BoardView({ familiars, sessions, activeFamiliarId }: Props) {
         <div className="flex h-full min-w-max gap-3 px-5 py-4">
           {COLUMNS.map((col) => {
             const rows = grouped.get(col.id) ?? [];
+            const isDropTarget = dropTarget === col.id;
             return (
               <div
                 key={col.id}
-                className="flex h-full w-[300px] shrink-0 flex-col rounded-xl border border-zinc-900 bg-zinc-900/30"
+                onDragOver={(e) => handleDragOver(e, col.id)}
+                onDragLeave={() => handleDragLeave(col.id)}
+                onDrop={(e) => handleDrop(e, col.id)}
+                className={`flex h-full w-[300px] shrink-0 flex-col rounded-xl border bg-zinc-900/30 transition-colors ${
+                  isDropTarget
+                    ? "border-violet-500/60 bg-violet-500/5"
+                    : "border-zinc-900"
+                }`}
               >
                 <div
                   className={`flex items-center justify-between border-b ${col.accent} px-3 py-2`}
@@ -219,8 +259,14 @@ export function BoardView({ familiars, sessions, activeFamiliarId }: Props) {
 
                 <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2">
                   {rows.length === 0 ? (
-                    <li className="rounded-md border border-dashed border-zinc-800 px-3 py-4 text-center text-[11px] text-zinc-600">
-                      Empty
+                    <li
+                      className={`rounded-md border border-dashed px-3 py-4 text-center text-[11px] transition-colors ${
+                        isDropTarget
+                          ? "border-violet-500/40 text-violet-300"
+                          : "border-zinc-800 text-zinc-600"
+                      }`}
+                    >
+                      {isDropTarget ? "Drop here" : "Empty"}
                     </li>
                   ) : null}
                   {rows.map((card) => (
@@ -229,6 +275,9 @@ export function BoardView({ familiars, sessions, activeFamiliarId }: Props) {
                       card={card}
                       familiars={familiars}
                       sessions={sessions}
+                      isDragging={draggingId === card.id}
+                      onDragStart={(e) => handleDragStart(e, card.id)}
+                      onDragEnd={handleDragEnd}
                       onPatch={(patch) => patchCard(card.id, patch)}
                       onDelete={() => removeCard(card.id)}
                     />
@@ -257,12 +306,18 @@ function CardItem({
   card,
   familiars,
   sessions,
+  isDragging,
+  onDragStart,
+  onDragEnd,
   onPatch,
   onDelete,
 }: {
   card: Card;
   familiars: Familiar[];
   sessions: SessionRow[];
+  isDragging?: boolean;
+  onDragStart?: (e: React.DragEvent) => void;
+  onDragEnd?: () => void;
   onPatch: (patch: Partial<Card>) => void;
   onDelete: () => void;
 }) {
@@ -273,8 +328,13 @@ function CardItem({
 
   return (
     <li
+      draggable
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
       onClick={() => setExpanded((v) => !v)}
-      className="cursor-pointer rounded-lg border border-zinc-800 bg-zinc-950/60 p-3 transition-colors hover:border-zinc-700"
+      className={`cursor-grab rounded-lg border border-zinc-800 bg-zinc-950/60 p-3 transition-all active:cursor-grabbing hover:border-zinc-700 ${
+        isDragging ? "opacity-40" : ""
+      }`}
     >
       <div className="flex items-start justify-between gap-2">
         <span className="flex-1 text-[13px] leading-snug text-zinc-100">{card.title}</span>
