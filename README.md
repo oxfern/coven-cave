@@ -10,6 +10,8 @@ A familiar isn't a chat window. It has a name, a purpose, a memory, a toolset, a
 
 - A Tauri 2 desktop app (macOS / Windows / Linux)
 - A Next.js 16 frontend (App Router, Turbopack, Tailwind v4)
+- Full markdown rendering with syntax highlighting (Shiki)
+- Integrated terminal (xterm.js) alongside the familiar interface
 - Talks to the local `coven` daemon over `~/.coven/coven.sock`
 - Local-first. Your familiars, your memory, your machine.
 
@@ -17,6 +19,20 @@ A familiar isn't a chat window. It has a name, a purpose, a memory, a toolset, a
 
 - Not a replacement for [CastCodes](https://github.com/OpenCoven/cast-codes) — Cave is its sibling. CastCodes is the terminal and code workspace; Cave is the desktop home for the Coven itself.
 - Not a cloud service. There's no upstream to call.
+
+## Features
+
+- **Familiar rail** — persistent sidebar with all your named agents, glyphs, and live health status
+- **Chat** — threaded conversations with full markdown, inline code, syntax-highlighted blocks, and copy buttons
+- **Inspector pane** — dig into memory, tool calls, and agent internals without leaving the app
+- **Board view** — kanban-style overview of active work across familiars
+- **Delegation cards** — see what your familiars are doing and hand off tasks
+- **Schedules & reminders** — manage cron jobs and one-shot reminders from the UI
+- **Plugins** — install skills and plugins directly from the app
+- **HomeComposer** — universal intent surface on cold start; describe what you need and let the Coven route it
+- **Inbox** — cross-familiar notification feed with snooze and quick-reply
+- **System tray** — always accessible, even when the window is closed
+- **Cross-platform fatal error dialogs** — startup failures surface clearly on macOS, Windows, and Linux
 
 ## Develop
 
@@ -52,6 +68,7 @@ Bypass a confirmed false positive with `git commit --no-verify`.
 | Native shell | Tauri 2 |
 | Frontend | Next.js 16 (App Router, Turbopack) |
 | Styles | Tailwind v4 |
+| Markdown | Shiki (syntax highlighting) |
 | Terminal | xterm.js |
 | IPC | Unix socket → `~/.coven/coven.sock` |
 
