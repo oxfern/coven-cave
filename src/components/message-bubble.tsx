@@ -144,7 +144,7 @@ async function renderCodeBlock(
             : "";
           return `<span class="cave-line${gutterClass}">${lineNum}${line}</span>`;
         });
-        return `${co}${wrappedLines.join("\n")}${cc}`;
+        return `${co}${wrappedLines.join("")}${cc}`;
       });
       return `${open}${codeInner}${close}`;
     },
