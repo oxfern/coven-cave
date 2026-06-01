@@ -31,13 +31,16 @@ async function loadTauri(): Promise<TauriBridge | null> {
 export function BottomTerminal({ threadId, active = true }: { threadId: string; active?: boolean }) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const fitRef = useRef<(() => void) | null>(null);
+  const termRef = useRef<import("@xterm/xterm").Terminal | null>(null);
   const [unavailable, setUnavailable] = useState(false);
 
-  // Re-fit whenever this terminal becomes the active tab.
+  // Re-fit + refocus whenever this terminal becomes the active tab.
   useEffect(() => {
     if (active) {
-      // Small rAF delay so the visibility change has taken effect in layout.
-      const id = requestAnimationFrame(() => fitRef.current?.());
+      const id = requestAnimationFrame(() => {
+        fitRef.current?.();
+        termRef.current?.focus();
+      });
       return () => cancelAnimationFrame(id);
     }
   }, [active]);
@@ -77,6 +80,7 @@ export function BottomTerminal({ threadId, active = true }: { threadId: string; 
           selectionBackground: "rgba(154,142,205,0.35)",
         },
       });
+      termRef.current = term;
       const fit = new FitAddon();
       term.loadAddon(fit);
       term.loadAddon(new WebLinksAddon());
@@ -105,10 +109,12 @@ export function BottomTerminal({ threadId, active = true }: { threadId: string; 
       });
 
       // Pipe user input back to the PTY.
+      // NOTE: Tauri v2 invoke does NOT auto-convert camelCase → snake_case;
+      // param names must match the Rust fn signature exactly.
       const onDataDispose = term.onData((data) => {
         if (stopped) return;
         void bridge.invoke("pty_write", {
-          threadId,
+          thread_id: threadId,
           bytes: Array.from(new TextEncoder().encode(data)),
         });
       });
@@ -121,39 +127,37 @@ export function BottomTerminal({ threadId, active = true }: { threadId: string; 
             rows: term.rows,
           },
         });
+        // Focus so keyboard input is routed to the terminal immediately.
+        term.focus();
       } catch (err) {
         // Already running for this id (eg. React strict-mode double effect) —
         // just attach to the stream we already opened.
         if (!String(err).includes("already running")) {
           term.write(`\r\n\x1b[31mpty_start failed: ${String(err)}\x1b[0m\r\n`);
+        } else {
+          term.focus();
         }
       }
 
-      // Refit on container size changes.
-      const ro = new ResizeObserver(() => {
+      const doResize = () => {
         try {
           fit.fit();
           void bridge.invoke("pty_resize", {
-            threadId,
+            thread_id: threadId,
             cols: term.cols,
             rows: term.rows,
           });
-        } catch {
-          /* harmless mid-tear-down */
-        }
-      });
+        } catch { /* harmless mid-tear-down */ }
+      };
+
+      // Refit on container size changes.
+      const ro = new ResizeObserver(doResize);
       ro.observe(wrap);
 
-      // Store fit+resize so the active-tab effect can trigger a refit.
+      // Store fit+resize so the active-tab effect can trigger a refit + refocus.
       fitRef.current = () => {
-        try {
-          fit.fit();
-          void bridge.invoke("pty_resize", {
-            threadId,
-            cols: term.cols,
-            rows: term.rows,
-          });
-        } catch { /* ignore */ }
+        doResize();
+        term.focus();
       };
 
       cleanup = () => {
@@ -161,8 +165,9 @@ export function BottomTerminal({ threadId, active = true }: { threadId: string; 
         onDataDispose.dispose();
         unlistenData();
         unlistenExit();
+        termRef.current = null;
         term.dispose();
-        void bridge.invoke("pty_stop", { threadId });
+        void bridge.invoke("pty_stop", { thread_id: threadId });
       };
 
       if (disposed) cleanup();
@@ -187,6 +192,10 @@ export function BottomTerminal({ threadId, active = true }: { threadId: string; 
       ref={wrapRef}
       className="h-full w-full overflow-hidden"
       style={{ background: "#16131f", padding: "6px 8px" }}
+      // Clicking anywhere in the terminal area refocuses xterm so keyboard
+      // input is routed correctly without the user having to click exactly
+      // on the cursor.
+      onClick={() => termRef.current?.focus()}
     />
   );
 }
