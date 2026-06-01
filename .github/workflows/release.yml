@@ -56,7 +56,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: macos-latest
+          - platform: macos-14
             label: macOS (DMG, signed + notarized)
             args: "--bundles dmg"
           - platform: ubuntu-22.04
@@ -67,6 +67,8 @@ jobs:
             args: "--bundles msi"
 
     runs-on: ${{ matrix.platform }}
+    # macos-14 = Sequoia + Xcode 15.x which has a stable notarytool.
+    # macos-latest (= macOS 15 + Xcode 16.3) has a notarytool crash bug (exit 133).
 
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
@@ -104,10 +106,9 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      # Decode the App Store Connect API key so the explicit notarize step
-      # below can call xcrun notarytool with --key / --key-id / --issuer.
+      # Decode the App Store Connect API key for tauri-action notarization.
       - name: Stage Apple API key
-        if: matrix.platform == 'macos-latest'
+        if: matrix.platform == 'macos-14'
         run: |
           KEY_PATH="$RUNNER_TEMP/apple_api_key.p8"
           printf '%s' "$APPLE_API_KEY_BASE64" | base64 -D > "$KEY_PATH"
@@ -120,12 +121,14 @@ jobs:
         uses: tauri-apps/tauri-action@1ddc7b49b13c3038297360482fcb3e058764d7c9 # v0.6.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Signing only — notarization is handled by the explicit step below.
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          # Intentionally omitting APPLE_API_ISSUER / APPLE_API_KEY so
-          # tauri-action skips its built-in notarization path.
+          # Pass API key to tauri-action so it handles notarization internally.
+          # Avoids calling xcrun notarytool directly (exit-133 crash on Xcode 16.x).
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_PATH: ${{ env.APPLE_API_KEY_PATH }}
         with:
           tagName: ${{ github.event.inputs.tag || github.ref_name }}
           releaseName: "CovenCave ${{ github.event.inputs.tag || github.ref_name }}"
@@ -134,47 +137,14 @@ jobs:
           includeUpdaterJson: false
           args: ${{ matrix.args }}
 
-      # Notarize the DMG with xcrun notarytool directly.
-      # Uses stored keychain credentials to avoid fragile direct-flag invocations
-      # that can crash (exit 133) on GitHub macOS runners with certain Xcode versions.
-      - name: Notarize macOS DMG
-        if: matrix.platform == 'macos-latest'
-        shell: bash
-        env:
-          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
-          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-        run: |
-          set -euo pipefail
-
-          DMG=$(find src-tauri/target/release/bundle/dmg -name "CovenCave*.dmg" -type f | head -n1)
-          [ -n "$DMG" ] || { echo "::error::No DMG found after tauri-action build"; exit 1; }
-
-          # Preflight: validate key material before invoking notarytool
-          [ -s "$APPLE_API_KEY_PATH" ] || { echo "::error::APPLE_API_KEY_PATH missing or empty"; exit 1; }
-          [ -n "${APPLE_API_KEY:-}" ]   || { echo "::error::APPLE_API_KEY secret is empty"; exit 1; }
-          [ -n "${APPLE_API_ISSUER:-}" ] || { echo "::error::APPLE_API_ISSUER secret is empty"; exit 1; }
-          grep -q "BEGIN PRIVATE KEY" "$APPLE_API_KEY_PATH" || { echo "::error::Decoded key is not a valid .p8 private key"; exit 1; }
-
-          # Store credentials in a temporary keychain profile so notarytool
-          # doesn't crash when passed key flags directly (exit 133 bug on
-          # some macOS runner + Xcode version combos).
-          xcrun notarytool store-credentials "AC_NOTARY" \
-            --key "$APPLE_API_KEY_PATH" \
-            --key-id "$APPLE_API_KEY" \
-            --issuer "$APPLE_API_ISSUER"
-
-          echo "Notarizing $DMG"
-          xcrun notarytool submit "$DMG" \
-            --keychain-profile "AC_NOTARY" \
-            --wait
-
-          echo "Stapling notarization ticket"
-          xcrun stapler staple "$DMG"
+      # tauri-action handles notarization via APPLE_API_* env vars above.
+      # No manual xcrun notarytool step needed — and avoids the exit-133
+      # crash that affects notarytool on Xcode 16.x (macos-latest/macos-15).
 
       # Hard gate: fail the macOS leg if the produced DMG is not accepted
       # by Gatekeeper as a notarized Developer ID app.
       - name: Verify macOS DMG is notarized
-        if: matrix.platform == 'macos-latest'
+        if: matrix.platform == 'macos-14'
         shell: bash
         run: |
           set -euo pipefail
