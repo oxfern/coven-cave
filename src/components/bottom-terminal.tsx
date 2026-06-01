@@ -28,9 +28,19 @@ async function loadTauri(): Promise<TauriBridge | null> {
   return { invoke, listen };
 }
 
-export function BottomTerminal({ threadId }: { threadId: string }) {
+export function BottomTerminal({ threadId, active = true }: { threadId: string; active?: boolean }) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
+  const fitRef = useRef<(() => void) | null>(null);
   const [unavailable, setUnavailable] = useState(false);
+
+  // Re-fit whenever this terminal becomes the active tab.
+  useEffect(() => {
+    if (active) {
+      // Small rAF delay so the visibility change has taken effect in layout.
+      const id = requestAnimationFrame(() => fitRef.current?.());
+      return () => cancelAnimationFrame(id);
+    }
+  }, [active]);
 
   useEffect(() => {
     const wrap = wrapRef.current;
@@ -133,6 +143,18 @@ export function BottomTerminal({ threadId }: { threadId: string }) {
         }
       });
       ro.observe(wrap);
+
+      // Store fit+resize so the active-tab effect can trigger a refit.
+      fitRef.current = () => {
+        try {
+          fit.fit();
+          void bridge.invoke("pty_resize", {
+            threadId,
+            cols: term.cols,
+            rows: term.rows,
+          });
+        } catch { /* ignore */ }
+      };
 
       cleanup = () => {
         ro.disconnect();

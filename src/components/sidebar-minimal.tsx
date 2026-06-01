@@ -110,7 +110,7 @@ const FOLDER_MODES: Array<{
   { id: "vals-inbox", label: "Val's Inbox", iconName: "ph:bell-fill" },
   { id: "schedules",  label: "Schedules",   iconName: "ph:clock" },
   { id: "browser",    label: "Browser",     iconName: "ph:globe" },
-  { id: "comux",      label: "Comux",       iconName: "ph:squares-four" },
+  { id: "comux",      label: "Coven Code",   iconName: "ph:squares-four" },
 ];
 
 function FolderRow({

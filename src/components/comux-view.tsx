@@ -135,7 +135,7 @@ export function ComuxView() {
               : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
           }`}
         >
-          Comux
+          Coven Code
         </button>
         <button
           type="button"
@@ -203,7 +203,7 @@ export function ComuxView() {
           </div>
 
           {/* Terminal area */}
-          <div className="flex-1 min-h-0">
+          <div className="flex-1 min-h-0 relative">
             {sessions.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center gap-2 text-xs text-[var(--text-muted)]">
                 <p>No terminal sessions.</p>
@@ -220,9 +220,14 @@ export function ComuxView() {
                 <div
                   key={s.id}
                   className="h-full w-full"
-                  style={{ display: i === currentIdx ? "block" : "none" }}
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    visibility: i === currentIdx ? "visible" : "hidden",
+                    pointerEvents: i === currentIdx ? "auto" : "none",
+                  }}
                 >
-                  <BottomTerminal threadId={`cave.comux.${s.id}`} />
+                  <BottomTerminal threadId={`cave.comux.${s.id}`} active={i === currentIdx} />
                 </div>
               ))
             )}

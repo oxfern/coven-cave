@@ -32,7 +32,7 @@ const MODE_LABEL: Record<Mode, string> = {
   browser: "Browser",
   schedules: "Schedules",
   calls: "Calls",
-  comux: "Comux",
+  comux: "Coven Code",
 };
 
 export function DaemonBar({
