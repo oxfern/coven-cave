@@ -209,7 +209,7 @@ export function Shell({
           <Panel
             id="bottom"
             className="shell-bottom-panel"
-            defaultSize="240px"
+            defaultSize="0"
             minSize="120px"
             maxSize="60%"
             collapsible

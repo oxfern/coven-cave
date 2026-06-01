@@ -125,7 +125,9 @@ export function HealthStrip({ familiars }: { familiars: Familiar[] }) {
   });
 
   const active = sessions.filter((s) => s.status !== "stopped" && s.status !== "archived");
-  for (const s of active) {
+  const MAX_VISIBLE = 8;
+  const visible = active.slice(0, MAX_VISIBLE);
+  for (const s of visible) {
     const fam = familiars.find((f) => f.id === s.familiarId);
     const label = fam?.name ?? s.title ?? s.id.slice(0, 8);
     dots.push({
@@ -136,6 +138,7 @@ export function HealthStrip({ familiars }: { familiars: Familiar[] }) {
       detail: `${s.harness} · ${s.status}`,
     });
   }
+  const overflow = active.length - visible.length;
 
   if (active.length === 0 && daemon?.running) {
     dots.push({
@@ -168,6 +171,19 @@ export function HealthStrip({ familiars }: { familiars: Familiar[] }) {
           />
         );
       })}
+      {overflow > 0 ? (
+        <span
+          className="ml-1 inline-flex h-4 items-center rounded-full px-1.5 text-[10px] tabular-nums"
+          style={{
+            color: "var(--text-muted, #9ca3af)",
+            backgroundColor: "var(--surface-soft, rgba(255,255,255,0.04))",
+            boxShadow: "0 0 0 1px var(--border-hairline, rgba(255,255,255,0.08))",
+          }}
+          title={`${overflow} more session${overflow === 1 ? "" : "s"}`}
+        >
+          +{overflow}
+        </span>
+      ) : null}
 
       {open ? (
         <div
