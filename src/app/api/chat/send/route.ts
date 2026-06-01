@@ -106,11 +106,24 @@ async function sleep(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
 }
 
+/** Normalize a path so Node's fs functions don't EISDIR on bare Windows
+ * drive letters. "C:" → "C:\\" on Windows; no-op elsewhere. */
+function normalizePath(p: string): string {
+  if (process.platform === "win32") {
+    // Bare drive letter with no trailing separator
+    if (/^[a-zA-Z]:$/.test(p)) return p + "\\";
+    // Forward slashes → backslashes
+    return p.replace(/\//g, "\\\\");
+  }
+  return p;
+}
+
 async function resolveCwd(requested?: string): Promise<string> {
   if (requested) {
     try {
-      const s = await stat(requested);
-      if (s.isDirectory()) return requested;
+      const normalized = normalizePath(requested);
+      const s = await stat(normalized);
+      if (s.isDirectory()) return normalized;
     } catch {
       /* fall through to homedir */
     }

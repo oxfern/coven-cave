@@ -15,13 +15,21 @@ function escapeForAppleScript(input: string): string {
   return input.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
+/** Returns true for absolute paths on both Unix (/foo) and Windows (C:\, C:/, \\server). */
+function isAbsolutePath(p: string): boolean {
+  if (process.platform === "win32") {
+    return /^[a-zA-Z]:[/\\]/.test(p) || p.startsWith("\\\\");
+  }
+  return p.startsWith("/");
+}
+
 function buildCovenCommand(body: LaunchBody): string | null {
   if (body.mode === "attach") {
     if (!body.sessionId || !UUID_RE.test(body.sessionId)) return null;
     return `coven attach ${body.sessionId}`;
   }
   if (body.mode === "chat") {
-    const cwd = body.cwd && body.cwd.startsWith("/") ? body.cwd : null;
+    const cwd = body.cwd && isAbsolutePath(body.cwd) ? body.cwd : null;
     return cwd ? `cd ${JSON.stringify(cwd)} && coven chat` : "coven chat";
   }
   return null;

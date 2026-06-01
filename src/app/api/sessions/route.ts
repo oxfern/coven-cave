@@ -19,7 +19,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "invalid json body" }, { status: 400 });
   }
 
-  const projectRoot = body.projectRoot ?? process.cwd();
+  const rawRoot = body.projectRoot ?? process.cwd();
+  // Normalize bare Windows drive letters ("C:" → "C:\\") so downstream
+  // fs.lstat calls don't throw EISDIR.
+  const projectRoot =
+    process.platform === "win32" && /^[a-zA-Z]:$/.test(rawRoot)
+      ? rawRoot + "\\\\"
+      : rawRoot;
   const familiarId = body.familiarId;
   const config = await loadConfig();
   const binding = familiarId

@@ -102,25 +102,33 @@ pub fn pty_start(app: AppHandle, options: StartOptions) -> Result<(), String> {
         })
         .map_err(|e| e.to_string())?;
 
-    let command = options.command.unwrap_or_else(|| "/bin/zsh".to_string());
-    let args = options.args.unwrap_or_else(|| vec!["-l".to_string()]);
-    let mut cmd = CommandBuilder::new(command);
-    cmd.args(args);
+    let command = options.command.unwrap_or_else(|| default_shell());
+    let args = options.args.unwrap_or_else(|| default_shell_args());
+    let mut cmd = CommandBuilder::new(&command);
+    cmd.args(&args);
     if let Some(root) = &options.project_root {
-        cmd.cwd(root);
+        // Normalize bare Windows drive letters like "C:" → "C:\"
+        // so portable-pty / Node's lstat doesn't hit EISDIR on the root.
+        let normalized = normalize_cwd(root);
+        cmd.cwd(&normalized);
     }
     // Sensible defaults so xterm.js renders unicode + truecolor; when launched
     // from Finder, launchd hands us a stripped PATH so we backfill with the
     // common locations needed for git, gh, node, brew tools, etc.
     cmd.env("PATH", augmented_path());
-    cmd.env("TERM", "xterm-256color");
-    cmd.env("COLORTERM", "truecolor");
     cmd.env("COVENCAVE", "1");
-    if std::env::var("LANG").is_err() {
-        cmd.env("LANG", "en_US.UTF-8");
-    }
-    if std::env::var("LC_ALL").is_err() {
-        cmd.env("LC_ALL", "en_US.UTF-8");
+    // TERM/COLORTERM/LANG are Unix-only; skip on Windows to avoid confusing
+    // cmd.exe / PowerShell which don't interpret these variables.
+    #[cfg(not(target_os = "windows"))]
+    {
+        cmd.env("TERM", "xterm-256color");
+        cmd.env("COLORTERM", "truecolor");
+        if std::env::var("LANG").is_err() {
+            cmd.env("LANG", "en_US.UTF-8");
+        }
+        if std::env::var("LC_ALL").is_err() {
+            cmd.env("LC_ALL", "en_US.UTF-8");
+        }
     }
     if let Some(extra) = options.env {
         for (k, v) in extra {
@@ -239,28 +247,114 @@ pub fn pty_list() -> Vec<String> {
     SESSIONS.lock().keys().cloned().collect()
 }
 
+/// Normalize a working directory path so portable-pty / Node's lstat
+/// doesn't trip on edge cases.
+///
+/// - Windows bare drive letter "C:" → "C:\" (lstat("C:") returns EISDIR)
+/// - Windows drive letter with forward slashes "C:/foo" → "C:\foo"
+/// - Everything else: returned as-is.
+fn normalize_cwd(raw: &str) -> String {
+    #[cfg(target_os = "windows")]
+    {
+        // "C:" or "c:" with nothing after → append backslash
+        if raw.len() == 2 && raw.as_bytes()[1] == b':' {
+            return format!("{}\\" , raw);
+        }
+        // Replace forward slashes with backslashes on Windows
+        return raw.replace('/', "\\");
+    }
+    #[cfg(not(target_os = "windows"))]
+    raw.to_string()
+}
+
+/// Default shell for the current platform.
+fn default_shell() -> String {
+    #[cfg(target_os = "windows")]
+    {
+        // Prefer PowerShell when available; fall back to cmd.exe.
+        let ps_paths = [
+            "C:\\Program Files\\PowerShell\\7\\pwsh.exe",
+            "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        ];
+        for p in ps_paths.iter() {
+            if std::path::Path::new(p).exists() {
+                return p.to_string();
+            }
+        }
+        "cmd.exe".to_string()
+    }
+    #[cfg(target_os = "macos")]
+    {
+        "/bin/zsh".to_string()
+    }
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    {
+        std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string())
+    }
+}
+
+/// Default args for the default shell.
+fn default_shell_args() -> Vec<String> {
+    #[cfg(target_os = "windows")]
+    {
+        // PowerShell: -NoLogo for clean startup; cmd.exe takes no login flag.
+        let shell = default_shell();
+        if shell.ends_with("pwsh.exe") || shell.ends_with("powershell.exe") {
+            return vec!["-NoLogo".to_string()];
+        }
+        vec![]
+    }
+    #[cfg(not(target_os = "windows"))]
+    vec!["-l".to_string()]
+}
+
 fn augmented_path() -> String {
     let inherited = std::env::var("PATH").unwrap_or_default();
-    let extras = [
-        "/opt/homebrew/bin",
-        "/opt/homebrew/sbin",
-        "/usr/local/bin",
-        "/usr/local/sbin",
-        "/usr/bin",
-        "/bin",
-        "/usr/sbin",
-        "/sbin",
-    ];
-    let mut seen: HashSet<&str> = HashSet::new();
-    let mut out = String::new();
-    for part in inherited.split(':').chain(extras.iter().copied()) {
-        if part.is_empty() || !seen.insert(part) {
-            continue;
+
+    #[cfg(target_os = "windows")]
+    {
+        // On Windows, augment with common tool locations not always on PATH.
+        let home = std::env::var("USERPROFILE").unwrap_or_default();
+        let pf = std::env::var("ProgramFiles").unwrap_or_else(|_| "C:\\Program Files".into());
+        let extras = [
+            format!("{}\\nodejs", pf),
+            format!("{}\\Git\\cmd", pf),
+            format!("{}\\Git\\bin", pf),
+            format!("{}\\PowerShell\\7", pf),
+            format!("{}\\.cargo\\bin", home),
+            format!("{}\\.volta\\bin", home),
+            format!("{}\\.bun\\bin", home),
+        ];
+        let sep = ';';
+        let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+        let mut out = String::new();
+        for part in inherited.split(sep).chain(extras.iter().map(|s| s.as_str())) {
+            if part.is_empty() || !seen.insert(part.to_string()) { continue; }
+            if !out.is_empty() { out.push(sep); }
+            out.push_str(part);
         }
-        if !out.is_empty() {
-            out.push(':');
-        }
-        out.push_str(part);
+        return out;
     }
-    out
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let extras = [
+            "/opt/homebrew/bin",
+            "/opt/homebrew/sbin",
+            "/usr/local/bin",
+            "/usr/local/sbin",
+            "/usr/bin",
+            "/bin",
+            "/usr/sbin",
+            "/sbin",
+        ];
+        let mut seen: HashSet<&str> = HashSet::new();
+        let mut out = String::new();
+        for part in inherited.split(':').chain(extras.iter().copied()) {
+            if part.is_empty() || !seen.insert(part) { continue; }
+            if !out.is_empty() { out.push(':'); }
+            out.push_str(part);
+        }
+        out
+    }
 }
