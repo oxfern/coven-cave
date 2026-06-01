@@ -483,17 +483,17 @@ function CardItem({
       {expanded ? (
         <div
           onClick={(e) => e.stopPropagation()}
-          className="mt-3 space-y-2 rounded border border-border bg-card p-2"
+          className="mt-3 space-y-3 rounded border border-border bg-card p-3"
         >
           {card.notes ? (
             <p className="whitespace-pre-wrap text-[11px] text-muted-foreground">{card.notes}</p>
           ) : null}
-          <div className="grid grid-cols-2 gap-1.5 text-[11px]">
+          <div className="grid grid-cols-2 gap-2 text-[11px]">
             <Mini label="Status">
               <select
                 value={card.status}
                 onChange={(e) => onPatch({ status: e.target.value as CardStatus })}
-                className="w-full rounded border border-border bg-background px-1.5 py-0.5 text-[11px] text-foreground"
+                className="w-full rounded border border-border bg-background px-1.5 py-1 text-[11px] text-foreground"
               >
                 {COLUMNS.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -506,7 +506,7 @@ function CardItem({
               <select
                 value={card.priority}
                 onChange={(e) => onPatch({ priority: e.target.value as CardPriority })}
-                className="w-full rounded border border-border bg-background px-1.5 py-0.5 text-[11px] text-foreground"
+                className="w-full rounded border border-border bg-background px-1.5 py-1 text-[11px] text-foreground"
               >
                 {PRIORITIES.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -519,7 +519,7 @@ function CardItem({
               <select
                 value={card.familiarId ?? ""}
                 onChange={(e) => onPatch({ familiarId: e.target.value || null })}
-                className="w-full rounded border border-border bg-background px-1.5 py-0.5 text-[11px] text-foreground"
+                className="w-full rounded border border-border bg-background px-1.5 py-1 text-[11px] text-foreground"
               >
                 <option value="">Default familiar</option>
                 {familiars.map((f) => (
@@ -533,7 +533,7 @@ function CardItem({
               <select
                 value={card.sessionId ?? ""}
                 onChange={(e) => onPatch({ sessionId: e.target.value || null })}
-                className="w-full rounded border border-border bg-background px-1.5 py-0.5 text-[11px] text-foreground"
+                className="w-full rounded border border-border bg-background px-1.5 py-1 text-[11px] text-foreground"
               >
                 <option value="">No linked session</option>
                 {sessions
@@ -554,12 +554,12 @@ function CardItem({
             </p>
           ) : null}
           <LifecycleActions card={card} onChanged={onCardReplaced} />
-          <div className="flex justify-end">
+          <div className="flex justify-end pt-1">
             <button
               onClick={() => {
                 if (confirm("Delete card?")) onDelete();
               }}
-              className="rounded border border-border px-2 py-0.5 text-[10px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="rounded border border-border px-2 py-1 text-[10px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
               delete
             </button>
