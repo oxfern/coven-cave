@@ -64,6 +64,10 @@ export const ICON_NAMES = [
   "ph:folder",
   "ph:folder-open",
   "ph:calendar-blank",
+  "ph:caret-down-bold",
+  "ph:puzzle-piece-bold",
+  "ph:sparkle-bold",
+  "ph:bell-bold",
 ] as const;
 
 export type IconName = (typeof ICON_NAMES)[number];

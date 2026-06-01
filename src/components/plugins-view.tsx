@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/lib/icon";
+import type { IconName } from "@/lib/icon";
 
 type Tab = "plugins" | "skills";
 type FilterChip = "curated" | "shared" | "created" | "more";
@@ -27,6 +28,9 @@ type SkillEntry = {
 
 type Props = {
   onOpenChat: () => void;
+  onCreateReminder?: () => void;
+  onCreateSkill?: () => void;
+  onCreatePlugin?: () => void;
 };
 
 const HARNESS_TAGLINE: Record<string, string> = {
@@ -45,7 +49,7 @@ const HARNESS_TAGLINE: Record<string, string> = {
 // so harness initial tiles all read on the same hairline-card palette.
 const HARNESS_TILE = "bg-muted text-foreground";
 
-export function PluginsView({ onOpenChat }: Props) {
+export function PluginsView({ onOpenChat, onCreateReminder, onCreateSkill, onCreatePlugin }: Props) {
   const [tab, setTab] = useState<Tab>("plugins");
   const [filter, setFilter] = useState<FilterChip>("curated");
   const [query, setQuery] = useState("");
@@ -55,6 +59,8 @@ export function PluginsView({ onOpenChat }: Props) {
   const [skills, setSkills] = useState<SkillEntry[]>([]);
   const [skillsLoaded, setSkillsLoaded] = useState(false);
   const [skillsError, setSkillsError] = useState<string | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const createRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (tab === "plugins" && !harnessesLoaded) {
@@ -150,13 +156,29 @@ export function PluginsView({ onOpenChat }: Props) {
             <Icon name="ph:gear-six-bold" className="text-muted-foreground" />
             <span>Manage</span>
           </button>
-          <button
-            className="flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-foreground transition-colors hover:bg-muted"
-            title="Create plugin (not wired in v1)"
-          >
-            <span>Create</span>
-            <span className="text-[10px] text-muted-foreground">▾</span>
-          </button>
+          <div ref={createRef} className="relative">
+            <button
+              className="flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-foreground transition-colors hover:bg-muted"
+              onClick={() => setCreateOpen((v) => !v)}
+            >
+              <span>Create</span>
+              <Icon
+                name="ph:caret-down-bold"
+                className={`text-[10px] text-muted-foreground transition-transform duration-150 ${
+                  createOpen ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+            {createOpen && (
+              <CreateDropdown
+                onClose={() => setCreateOpen(false)}
+                containerRef={createRef}
+                onCreatePlugin={onCreatePlugin}
+                onCreateSkill={onCreateSkill}
+                onCreateReminder={onCreateReminder}
+              />
+            )}
+          </div>
           <button
             className="rounded-md px-2 py-1.5 text-muted-foreground transition-colors hover:bg-card hover:text-foreground"
             title="More"
@@ -392,6 +414,99 @@ function GridSkeleton() {
           </span>
           <span className="h-5 w-5 animate-pulse rounded-full bg-muted" />
         </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Create Dropdown ───────────────────────────────────────────────────────────
+
+type CreateDropdownProps = {
+  containerRef: React.RefObject<HTMLDivElement | null>;
+  onClose: () => void;
+  onCreatePlugin?: () => void;
+  onCreateSkill?: () => void;
+  onCreateReminder?: () => void;
+};
+
+const CREATE_ITEMS: {
+  id: "plugin" | "skill" | "reminder";
+  label: string;
+  icon: IconName;
+  desc: string;
+}[] = [
+  {
+    id: "plugin",
+    label: "Plugin",
+    icon: "ph:puzzle-piece-bold",
+    desc: "Add a new Cave plugin",
+  },
+  {
+    id: "skill",
+    label: "Skill",
+    icon: "ph:sparkle-bold",
+    desc: "Define a reusable familiar skill",
+  },
+  {
+    id: "reminder",
+    label: "Reminder",
+    icon: "ph:bell-bold",
+    desc: "Schedule a one-time or recurring alert",
+  },
+];
+
+function CreateDropdown({
+  containerRef,
+  onClose,
+  onCreatePlugin,
+  onCreateSkill,
+  onCreateReminder,
+}: CreateDropdownProps) {
+  // Close on outside click
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
+        onClose();
+      }
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [containerRef, onClose]);
+
+  const handlers: Record<string, (() => void) | undefined> = {
+    plugin: onCreatePlugin,
+    skill: onCreateSkill,
+    reminder: onCreateReminder,
+  };
+
+  return (
+    <div
+      className="absolute right-0 top-[calc(100%+6px)] z-50 w-52 overflow-hidden rounded-xl border border-border bg-card shadow-lg"
+      role="menu"
+    >
+      {CREATE_ITEMS.map((item, i) => (
+        <button
+          key={item.id}
+          role="menuitem"
+          className={`flex w-full items-center gap-3 px-3 py-2.5 text-left text-[12px] transition-colors hover:bg-muted ${
+            i < CREATE_ITEMS.length - 1 ? "border-b border-border" : ""
+          }`}
+          onClick={() => {
+            handlers[item.id]?.();
+            onClose();
+          }}
+        >
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+            <Icon name={item.icon} className="text-[13px]" />
+          </span>
+          <span className="flex flex-col">
+            <span className="font-medium text-foreground">{item.label}</span>
+            <span className="text-[10px] text-muted-foreground">{item.desc}</span>
+          </span>
+        </button>
       ))}
     </div>
   );
