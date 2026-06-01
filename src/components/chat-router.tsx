@@ -93,7 +93,15 @@ export const ChatRouter = forwardRef<ChatRouterHandle, Props>(function ChatRoute
       daemonRunning={daemonRunning}
       onBack={() => setView({ kind: "list" })}
       onSessionStarted={(sid) => {
-        setView({ kind: "chat", sessionId: sid });
+        // Only promote the sessionId in the view state when the current chat
+        // has no session yet (null). If a session is already set, leave the
+        // view alone — updating it would re-mount ChatView and lose the live
+        // currentSessionRef, breaking follow-up messages.
+        setView((prev) =>
+          prev.kind === "chat" && prev.sessionId === null
+            ? { kind: "chat", sessionId: sid }
+            : prev,
+        );
         onSessionStarted?.();
       }}
       onSlashCommand={onSlashFromChat}
