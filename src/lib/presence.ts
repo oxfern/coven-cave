@@ -32,10 +32,10 @@ const PRESETS: Record<PresenceState, Pick<Presence, "label" | "pill" | "dot">> =
   blocked: { label: "needs reply", pill: "bg-amber-500/20 text-amber-200", dot: "bg-amber-400" },
   dreaming: { label: "dreaming", pill: "bg-purple-500/15 text-purple-200", dot: "bg-purple-400" },
   failed: { label: "failed", pill: "bg-rose-500/20 text-rose-200", dot: "bg-rose-400" },
-  offline: { label: "offline", pill: "bg-zinc-700/40 text-zinc-400", dot: "bg-zinc-600" },
+  offline: { label: "offline", pill: "bg-[var(--bg-raised)]/60 text-[var(--text-secondary)]", dot: "bg-[var(--text-muted)]" },
   remote:  { label: "remote",  pill: "bg-sky-900/40 text-sky-400",  dot: "bg-sky-600" },
   missing: { label: "missing", pill: "bg-rose-700/30 text-rose-200", dot: "bg-rose-500" },
-  idle: { label: "idle", pill: "bg-zinc-800 text-zinc-400", dot: "bg-zinc-600" },
+  idle: { label: "idle", pill: "bg-[var(--bg-raised)] text-[var(--text-secondary)]", dot: "bg-[var(--text-muted)]" },
 };
 
 type Args = {
