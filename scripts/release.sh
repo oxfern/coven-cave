@@ -33,7 +33,11 @@ rm -rf "$DMG_DIR"
 mkdir -p "$DMG_DIR"
 
 echo "==> Running pnpm tauri build"
-APPLE_SIGNING_IDENTITY="$SIGNING_IDENTITY" pnpm tauri build
+# Build the .app only (--bundles app). The DMG is assembled below by the
+# release script using hdiutil so we're not dependent on Tauri's
+# bundle_dmg.sh which requires a background image and can fail on version
+# mismatches between the generated script and the installed create-dmg.
+APPLE_SIGNING_IDENTITY="$SIGNING_IDENTITY" pnpm tauri build --bundles app
 
 APP_PATH=$(find "$BUILD_DIR/macos" -name "${APP_NAME}.app" -type d -maxdepth 2 | head -n1)
 if [ -z "$APP_PATH" ] || [ ! -d "$APP_PATH" ]; then
