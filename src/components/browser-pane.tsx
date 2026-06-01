@@ -248,13 +248,12 @@ export function BrowserPane({ label = "default" }: { label?: string }) {
         {/* Open in system browser */}
         <button
           type="button"
-          onClick={async () => {
+          onClick={() => {
+            // bridge.invoke shell_open if available, else window.open
             if (bridge) {
-              // Open in system default browser via Tauri shell
-              // @ts-expect-error Tauri shell plugin
-              const { open } = await import("@tauri-apps/plugin-shell").catch(() => ({ open: null }));
-              if (open) { await open(url); }
-              else { window.open(url, "_blank", "noopener"); }
+              void bridge.invoke("shell_open", { url }).catch(() => {
+                window.open(url, "_blank", "noopener");
+              });
             } else {
               window.open(url, "_blank", "noopener");
             }

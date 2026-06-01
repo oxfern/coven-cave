@@ -302,6 +302,18 @@ fn wait_for_port(port: u16, timeout: Duration) -> bool {
 mod browser;
 mod pty;
 
+/// Open a URL in the system default browser.
+#[tauri::command]
+fn shell_open(url: String) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    { std::process::Command::new("open").arg(&url).spawn().map_err(|e| e.to_string())?; }
+    #[cfg(target_os = "windows")]
+    { std::process::Command::new("cmd").args(["/c", "start", "", &url]).spawn().map_err(|e| e.to_string())?; }
+    #[cfg(target_os = "linux")]
+    { std::process::Command::new("xdg-open").arg(&url).spawn().map_err(|e| e.to_string())?; }
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -316,6 +328,7 @@ pub fn run() {
             browser::browser_hide,
             browser::browser_hide_all_except,
             browser::browser_close,
+            shell_open,
         ])
         .manage(SidecarState(Mutex::new(None)))
         .setup(|app| {
