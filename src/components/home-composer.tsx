@@ -26,6 +26,9 @@ import {
 } from "react";
 import type { Familiar, SessionRow } from "@/lib/types";
 import type { InboxItem } from "@/lib/cave-inbox";
+import { FamiliarGlyph } from "@/components/familiar-glyph";
+import { resolveFamiliarGlyph } from "@/lib/familiar-glyph";
+import { useGlyphOverrides } from "@/lib/cave-glyph-overrides";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -312,6 +315,7 @@ export function HomeComposer({
   }, [text, destination, familiarId, familiars, sending]);
 
   const active = familiars.find((f) => f.id === familiarId) ?? familiars[0] ?? null;
+  const glyphOverrides = useGlyphOverrides();
 
   return (
     <div className="home-composer-root">
@@ -327,6 +331,11 @@ export function HomeComposer({
           {/* Familiar chip */}
           <div className="hc-chip-group">
             <label className="hc-chip-label" htmlFor="hc-familiar-select">With</label>
+            {active ? (
+              <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-xs" aria-hidden>
+                <FamiliarGlyph glyph={resolveFamiliarGlyph(active, glyphOverrides)} size="sm" />
+              </span>
+            ) : null}
             <select
               id="hc-familiar-select"
               className="hc-chip-select"

@@ -162,7 +162,7 @@ export function FamiliarRail({
                     e.stopPropagation();
                     onEditGlyph(f);
                   }}
-                  className="grid h-7 w-7 shrink-0 cursor-pointer place-items-center rounded-md bg-card transition-colors hover:bg-muted"
+                  className="relative group/glyph grid h-7 w-7 shrink-0 cursor-pointer place-items-center rounded-md bg-card transition-colors hover:bg-muted"
                   aria-label="Change glyph"
                   title="Change glyph"
                 >
@@ -170,6 +170,7 @@ export function FamiliarRail({
                     glyph={resolveFamiliarGlyph(f, glyphOverrides)}
                     size="sm"
                   />
+                  <span className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-md text-[10px] opacity-0 transition-opacity group-hover/glyph:opacity-100" aria-hidden>✏</span>
                 </span>
                 <span className="flex flex-1 flex-col min-w-0">
                   <span className="flex items-center gap-1.5 truncate">

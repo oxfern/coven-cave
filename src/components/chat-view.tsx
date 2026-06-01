@@ -118,18 +118,11 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
     setSlashIdx(0);
   }, [input]);
 
-  // Load history on attach; new chats open with the /help block visible
+  // Load history on attach; new chats open with a clean empty state
   useEffect(() => {
     currentSessionRef.current = sessionId;
     if (!sessionId) {
-      setTurns([
-        {
-          id: "help-bootstrap",
-          role: "system",
-          text: formatHelp(),
-          createdAt: new Date().toISOString(),
-        },
-      ]);
+      setTurns([]);
       return;
     }
     void (async () => {
@@ -553,7 +546,7 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={onComposerKey}
-              placeholder={busy ? "Streaming… (esc to cancel)" : "Ask for follow-up changes"}
+              placeholder={busy ? "Streaming… (esc to cancel)" : `Message ${familiar.display_name}…`}
               rows={1}
               className="w-full resize-none bg-transparent px-4 pt-4 pb-2 text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]"
             />

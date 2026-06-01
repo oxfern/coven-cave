@@ -59,6 +59,18 @@ function dotColor(state: DotState): string {
   }
 }
 
+function relTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  if (Number.isNaN(diff) || diff < 0) return "just now";
+  const s = Math.floor(diff / 1000);
+  if (s < 60) return `${s}s ago`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
 export function HealthStrip({ familiars }: { familiars: Familiar[] }) {
   const [daemon, setDaemon] = useState<DaemonHealth | null>(null);
   const [sessions, setSessions] = useState<SessionLite[]>([]);
@@ -213,7 +225,7 @@ export function HealthStrip({ familiars }: { familiars: Familiar[] }) {
                 ) : null}
                 {d.lastSeen ? (
                   <div style={{ color: "var(--text-muted, #6b7280)" }}>
-                    last seen {new Date(d.lastSeen).toLocaleTimeString()}
+                    last seen {relTime(d.lastSeen)}
                   </div>
                 ) : null}
               </div>
