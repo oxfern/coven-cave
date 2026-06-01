@@ -140,9 +140,12 @@ export function BrowserPane({ label = "default" }: { label?: string }) {
       </header>
       <div className="relative flex-1 overflow-hidden">
         {unavailable ? (
-          <div className="flex h-full items-center justify-center text-[11px] text-[--text-muted]">
-            Browser is only available inside the CovenCave desktop app.
-          </div>
+          <iframe
+            src={url}
+            title="Browser preview"
+            className="absolute inset-0 h-full w-full border-0 bg-white"
+            sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+          />
         ) : (
           <div ref={surfaceRef} className="absolute inset-0" />
         )}
