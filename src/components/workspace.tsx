@@ -1,9 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FamiliarRail } from "@/components/familiar-rail";
+import { SidebarFamiliars } from "@/components/sidebar-familiars";
 import { ChatRouter, type ChatRouterHandle } from "@/components/chat-router";
-import { InspectorPane } from "@/components/inspector-pane";
 import { DaemonBar } from "@/components/daemon-bar";
 import { CommandPalette, type PaletteIntent } from "@/components/command-palette";
 import { BoardView } from "@/components/board-view";
@@ -21,13 +20,14 @@ import { BottomTerminal } from "@/components/bottom-terminal";
 import { BrowserPane } from "@/components/browser-pane";
 import { SchedulesView } from "@/components/schedules-view";
 import { CallsView } from "@/components/calls-view";
+import { ComuxView } from "@/components/comux-view";
 import { nativeNotify } from "@/lib/native-notify";
 import type { InboxItem } from "@/lib/cave-inbox";
 import type { InboxPrefs } from "@/lib/cave-inbox-prefs";
 import type { Familiar, SessionRow } from "@/lib/types";
 import { DEMO_MODE, DEMO_FAMILIARS } from "@/lib/demo-seed";
 
-type Mode = "chats" | "board" | "plugins" | "inbox" | "vals-inbox" | "browser" | "schedules" | "calls";
+type Mode = "chats" | "board" | "plugins" | "inbox" | "vals-inbox" | "browser" | "schedules" | "calls" | "comux";
 
 export function Workspace() {
   const routerRef = useRef<ChatRouterHandle | null>(null);
@@ -393,6 +393,9 @@ export function Workspace() {
         case "/palette":
           setPaletteOpen(true);
           return;
+        case "/comux":
+          setMode("comux");
+          return;
         case "/quit":
           setMode("chats");
           routerRef.current?.goToList();
@@ -594,7 +597,31 @@ export function Workspace() {
           active: mode === "calls",
           onClick: () => setMode("calls"),
         },
+        {
+          id: "comux",
+          label: "Comux",
+          icon: "ph:squares-four" as const,
+          active: mode === "comux",
+          onClick: () => setMode("comux"),
+        },
       ] as ShellNavItem[],
+    },
+    {
+      label: "Familiars",
+      items: [] as ShellNavItem[],
+      customContent: (
+        <SidebarFamiliars
+          familiars={familiars}
+          activeId={activeId}
+          sessions={sessions}
+          responseNeeded={responseNeeded}
+          onSelect={(id) => {
+            setActiveId(id);
+            setMode("chats");
+          }}
+          error={familiarsError}
+        />
+      ),
     },
     {
       label: "Configure",
@@ -609,48 +636,22 @@ export function Workspace() {
     },
   ];
 
-  const list =
-    mode === "chats" ? (
-      <FamiliarRail
-        familiars={familiars}
-        activeId={activeId}
-        onSelect={setActiveId}
-        onEditGlyph={(f) => setGlyphPickerFor(f)}
-        error={familiarsError}
-        sessions={sessions}
-        responseNeeded={responseNeeded}
-        onOpenOnboarding={openOnboarding}
-      />
-    ) : undefined;
+  const list = undefined;
 
   const detail =
     mode === "chats" ? (
-      <div className="flex flex-1 min-h-0">
-        <div className="flex-1 min-w-0">
-          <ChatRouter
-            ref={routerRef}
-            familiar={active}
-            sessions={sessions}
-            daemonRunning={daemonRunning}
-            onSessionStarted={loadSessions}
-            onSlashFromChat={(command, args) => {
-              onPaletteIntent({ kind: "slash", command, args });
-              return true;
-            }}
-            onOpenOnboarding={openOnboarding}
-          />
-        </div>
-        <aside
-          className="hidden lg:flex flex-col w-[320px] shrink-0 overflow-y-auto"
-          style={{ borderLeft: "1px solid var(--border-hairline)" }}
-        >
-          <InspectorPane
-            familiar={active}
-            inboxItems={inboxItemsWithEphemeral}
-            onOpenInbox={() => setMode("inbox")}
-          />
-        </aside>
-      </div>
+      <ChatRouter
+        ref={routerRef}
+        familiar={active}
+        sessions={sessions}
+        daemonRunning={daemonRunning}
+        onSessionStarted={loadSessions}
+        onSlashFromChat={(command, args) => {
+          onPaletteIntent({ kind: "slash", command, args });
+          return true;
+        }}
+        onOpenOnboarding={openOnboarding}
+      />
     ) : mode === "board" ? (
       <BoardView
         familiars={familiars}
@@ -691,6 +692,8 @@ export function Workspace() {
       <SchedulesView familiars={familiars} />
     ) : mode === "calls" ? (
       <CallsView familiars={familiars} />
+    ) : mode === "comux" ? (
+      <ComuxView />
     ) : (
       <PluginsView
         onOpenChat={() => {
@@ -737,20 +740,18 @@ export function Workspace() {
         list={list}
         detail={detail}
         agent={
-          mode === "chats" ? undefined : (
-            <AgentPanel
-              ref={routerRef}
-              familiar={active}
-              sessions={sessions}
-              daemonRunning={daemonRunning}
-              onSessionStarted={loadSessions}
-              onSlashFromChat={(command, args) => {
-                onPaletteIntent({ kind: "slash", command, args });
-                return true;
-              }}
-              onOpenOnboarding={openOnboarding}
-            />
-          )
+          <AgentPanel
+            ref={routerRef}
+            familiar={active}
+            sessions={sessions}
+            daemonRunning={daemonRunning}
+            onSessionStarted={loadSessions}
+            onSlashFromChat={(command, args) => {
+              onPaletteIntent({ kind: "slash", command, args });
+              return true;
+            }}
+            onOpenOnboarding={openOnboarding}
+          />
         }
         bottom={<BottomTerminal threadId="cave.bottom.main" />}
       />
