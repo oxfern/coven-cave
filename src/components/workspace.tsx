@@ -522,6 +522,9 @@ export function Workspace() {
       sessions={sessions}
       activeSessionId={routerRef.current?.currentSessionId() ?? null}
       inboxBadgeCount={inboxBadgeCount}
+      familiars={familiars}
+      activeId={activeId}
+      onFamiliarSelect={setActiveId}
       onNewChat={() => {
         setMode("chats");
         setTimeout(() => routerRef.current?.newChat(), 0);

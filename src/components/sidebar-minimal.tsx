@@ -7,15 +7,18 @@
  *   1. 4 primary actions  (New chat / Search / Plugins / Automations)
  *   2. 5 folder mode rows (Board / Inbox / Val's Inbox / Browser / Comux)
  *   3. Flat recent-chats list with relative timestamps
- *   4. Gear settings row (bottom, pinned)
+ *   4. Familiar switcher strip (above settings)
+ *   5. Gear settings row (bottom, pinned)
  *
- * Familiars and the harness/model config block live in AgentPanel (right pane).
  * Settings gear opens the onboarding overlay.
  */
 
 import { useMemo, useState } from "react";
 import { Icon } from "@/lib/icon";
-import type { SessionRow } from "@/lib/types";
+import { FamiliarGlyph } from "@/components/familiar-glyph";
+import { resolveFamiliarGlyph } from "@/lib/familiar-glyph";
+import { useGlyphOverrides } from "@/lib/cave-glyph-overrides";
+import type { Familiar, SessionRow } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
 // Relative timestamp
@@ -59,6 +62,9 @@ export type SidebarMinimalProps = {
   sessions: SessionRow[];
   activeSessionId?: string | null;
   inboxBadgeCount?: number;
+  familiars?: Familiar[];
+  activeId?: string | null;
+  onFamiliarSelect?: (id: string) => void;
   onNewChat: () => void;
   onOpenSearch: () => void;
   onModeChange: (mode: string) => void;
@@ -174,11 +180,48 @@ function RecentRow({
 // SidebarMinimal
 // ---------------------------------------------------------------------------
 
+function NavFamiliarStrip({
+  familiars,
+  activeId,
+  onSelect,
+}: {
+  familiars: Familiar[];
+  activeId: string | null;
+  onSelect: (id: string) => void;
+}) {
+  const overrides = useGlyphOverrides();
+  if (familiars.length === 0) return null;
+  return (
+    <div className="sidebar-familiar-strip">
+      {familiars.map((f) => {
+        const glyph = resolveFamiliarGlyph(f, overrides);
+        const isActive = f.id === activeId;
+        return (
+          <button
+            key={f.id}
+            type="button"
+            title={`${f.display_name}${f.role ? ` · ${f.role}` : ""}`}
+            aria-label={f.display_name}
+            aria-pressed={isActive}
+            onClick={() => onSelect(f.id)}
+            className={`sidebar-familiar-btn${isActive ? " sidebar-familiar-btn--active" : ""}`}
+          >
+            <FamiliarGlyph glyph={glyph} size="sm" />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function SidebarMinimal(props: SidebarMinimalProps) {
   const {
     mode,
     sessions,
     activeSessionId,
+    familiars = [],
+    activeId = null,
+    onFamiliarSelect,
     onNewChat,
     onOpenSearch,
     onModeChange,
@@ -261,6 +304,17 @@ export function SidebarMinimal(props: SidebarMinimalProps) {
           ))
         )}
       </div>
+
+      {/* ── Familiar switcher (above settings) ──────────────── */}
+      {familiars.length > 0 && onFamiliarSelect && (
+        <div className="sidebar-familiar-section">
+          <NavFamiliarStrip
+            familiars={familiars}
+            activeId={activeId}
+            onSelect={onFamiliarSelect}
+          />
+        </div>
+      )}
 
       {/* ── Settings gear (bottom) ────────────────────────────── */}
       <div className="sidebar-bottom">

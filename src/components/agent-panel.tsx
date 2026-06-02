@@ -83,15 +83,6 @@ export const AgentPanel = forwardRef<ChatRouterHandle, Props>(function AgentPane
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {/* Familiar avatar strip — always rendered when familiars exist */}
-      <FamiliarStrip
-        familiars={familiars}
-        activeId={activeId}
-        onSelect={(id) => {
-          onFamiliarSelect(id);
-        }}
-      />
-
       {/* Chat area */}
       {!familiar ? (
         <div className="flex flex-1 flex-col items-center justify-center px-6 text-center text-[12px] text-[var(--text-muted)]">

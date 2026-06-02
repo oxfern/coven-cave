@@ -138,6 +138,11 @@ body {
   display: flex;
 }
 
+/* Inner panel border — subtle dividing line on the right edge of side panels */
+.shell-nav-panel { border-right: 1px solid var(--border-hairline); }
+.shell-agent-panel { border-left: 1px solid var(--border-hairline); }
+.shell-list-panel { border-right: 1px solid var(--border-hairline); }
+
 .shell-nav-panel > .shell-nav,
 .shell-list-panel > .shell-list,
 .shell-detail-panel > .shell-detail,
