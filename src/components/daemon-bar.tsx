@@ -7,7 +7,7 @@ import type { InboxPrefs } from "@/lib/cave-inbox-prefs";
 import { NotificationBell } from "@/components/notification-bell";
 import { HealthStrip } from "@/components/health-strip";
 
-export type Mode = "chats" | "board" | "inbox" | "plugins" | "vals-inbox" | "browser" | "schedules" | "calls" | "comux" | "home";
+export type Mode = "chats" | "board" | "inbox" | "plugins" | "browser" | "schedules" | "calls" | "comux" | "home";
 
 type Props = {
   mode: Mode;
@@ -28,7 +28,6 @@ const MODE_LABEL: Record<Mode, string> = {
   board: "Board",
   inbox: "Inbox",
   plugins: "Plugins",
-  "vals-inbox": "Val's Inbox",
   browser: "Browser",
   schedules: "Automations",
   calls: "Coven Calls",
@@ -90,6 +89,7 @@ export function DaemonBar({
             items={inboxItems}
             familiars={familiars}
             prefs={inboxPrefs}
+            badgeCount={inboxBadgeCount}
             onOpenInbox={onOpenInbox}
             onOpenItem={onOpenInboxItem}
             onPrefsChanged={onPrefsChanged}

@@ -6,7 +6,7 @@
  */
 
 import type { Familiar } from "@/lib/types";
-import type { Escalation } from "@/lib/vals-inbox-types";
+import type { Escalation } from "@/lib/escalations-types";
 import type { Card } from "@/lib/cave-board-types";
 
 export const DEMO_MODE =
@@ -65,7 +65,7 @@ export const DEMO_FAMILIARS: Familiar[] = [
     status: "idle",
     active_sessions: 0,
     emoji: "⌘",
-    note: "Needs Val input on memory archive",
+    note: "Needs input on memory archive",
   },
   {
     id: "charm",
@@ -87,7 +87,7 @@ export const DEMO_FAMILIARS: Familiar[] = [
   },
 ];
 
-// ─── Val's Inbox escalations ────────────────────────────────────────────────
+// ─── Inbox escalations ────────────────────────────────────────────────
 
 export const DEMO_ESCALATIONS: Escalation[] = [
   {
@@ -171,7 +171,7 @@ export const DEMO_ESCALATIONS: Escalation[] = [
 export const DEMO_BOARD_CARDS: Card[] = [
   {
     id: "demo-card-1",
-    title: "Val's Inbox — humans-only escalation surface (#16)",
+    title: "Inbox — humans-only escalation surface (#16)",
     notes: "Full spec implemented. On main.",
     status: "review",
     priority: "high",
@@ -235,7 +235,7 @@ export const DEMO_BOARD_CARDS: Card[] = [
   },
   {
     id: "demo-card-5",
-    title: "Val's Inbox keyboard shortcuts follow-up (#16.1)",
+    title: "Inbox keyboard shortcuts follow-up (#16.1)",
     notes: "j/k/e/r/s/x/o + g-i global jump. Filed as follow-up to #16.",
     status: "inbox",
     priority: "medium",
@@ -260,12 +260,12 @@ export const DEMO_CHAT_TURNS: Record<string, DemoChatTurn[]> = {
     {
       role: "user",
       content:
-        "Can you check if the vals-inbox API handles concurrent writes safely?",
+        "Can you check if the escalations API handles concurrent writes safely?",
     },
     {
       role: "assistant",
       content:
-        "Checked `src/lib/vals-inbox.ts` — it uses a `globalThis.__valsInboxWriteChain` mutex that serialises all read-modify-write sequences. Two concurrent POSTs can't race each other. Same pattern as the reminders inbox. Safe.",
+        "Checked `src/lib/escalations.ts` — it uses a `globalThis.__escalationsWriteChain` mutex that serialises all read-modify-write sequences. Two concurrent POSTs can't race each other. Same pattern as the reminders inbox. Safe.",
     },
     {
       role: "user",

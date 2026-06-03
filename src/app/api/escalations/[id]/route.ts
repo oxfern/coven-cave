@@ -5,7 +5,7 @@ import {
   type EscalationState,
   type SnoozePresetId,
   ESCALATION_STATES,
-} from "@/lib/vals-inbox";
+} from "@/lib/escalations";
 
 export const dynamic = "force-dynamic";
 

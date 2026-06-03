@@ -9,7 +9,7 @@ import {
   type EscalationSeverity,
   type EscalationState,
   type EscalationAction,
-} from "@/lib/vals-inbox-types";
+} from "@/lib/escalations-types";
 
 export {
   RESOLVED_EXPIRY_MS,
@@ -24,25 +24,27 @@ export {
   type SnoozePresetId,
   snoozePresetToTimestamp,
   sortEscalations,
-} from "@/lib/vals-inbox-types";
+} from "@/lib/escalations-types";
 
+// Storage filename kept as `vals-inbox.json` for backward-compat with
+// existing local installs. Do not rename without a migration step.
 const FILE_PATH = path.join(homedir(), ".coven", "vals-inbox.json");
 
-type ValsInboxFile = {
+type EscalationsFile = {
   version: number;
   items: Escalation[];
 };
 
-const EMPTY: ValsInboxFile = { version: 1, items: [] };
+const EMPTY: EscalationsFile = { version: 1, items: [] };
 
 async function ensureDir() {
   await mkdir(path.dirname(FILE_PATH), { recursive: true });
 }
 
-export async function loadValsInbox(): Promise<ValsInboxFile> {
+export async function loadEscalations(): Promise<EscalationsFile> {
   try {
     const raw = await readFile(FILE_PATH, "utf8");
-    const parsed = JSON.parse(raw) as Partial<ValsInboxFile>;
+    const parsed = JSON.parse(raw) as Partial<EscalationsFile>;
     return {
       version: parsed.version ?? 1,
       items: Array.isArray(parsed.items) ? parsed.items : [],
@@ -52,7 +54,7 @@ export async function loadValsInbox(): Promise<ValsInboxFile> {
   }
 }
 
-async function saveValsInbox(file: ValsInboxFile): Promise<void> {
+async function saveEscalations(file: EscalationsFile): Promise<void> {
   await ensureDir();
   await writeFile(FILE_PATH, JSON.stringify(file, null, 2), "utf8");
 }
@@ -82,7 +84,7 @@ export async function createEscalation(
     // when a familiar self-tags. We enforce on the boundary.
     throw new Error("severityReason required for critical");
   }
-  const file = await loadValsInbox();
+  const file = await loadEscalations();
   const now = new Date().toISOString();
   const item: Escalation = {
     id: crypto.randomUUID(),
@@ -103,7 +105,7 @@ export async function createEscalation(
     metadata: input.metadata,
   };
   file.items.push(item);
-  await saveValsInbox(file);
+  await saveEscalations(file);
   return item;
 }
 
@@ -118,7 +120,7 @@ export async function patchEscalation(
   id: string,
   patch: EscalationPatch,
 ): Promise<Escalation | null> {
-  const file = await loadValsInbox();
+  const file = await loadEscalations();
   const idx = file.items.findIndex((i) => i.id === id);
   if (idx < 0) return null;
   const current = file.items[idx];
@@ -139,7 +141,7 @@ export async function patchEscalation(
     next.snoozeUntil = undefined;
   }
   file.items[idx] = next;
-  await saveValsInbox(file);
+  await saveEscalations(file);
   return next;
 }
 
@@ -149,8 +151,8 @@ export async function patchEscalation(
  * the underlying file unless something actually changed (avoids constant
  * writes from heartbeats hitting the read path).
  */
-export async function reconcileValsInbox(now = new Date()): Promise<Escalation[]> {
-  const file = await loadValsInbox();
+export async function reconcileEscalations(now = new Date()): Promise<Escalation[]> {
+  const file = await loadEscalations();
   let dirty = false;
   const cutoff = now.getTime() - RESOLVED_EXPIRY_MS;
   const nowIso = now.toISOString();
@@ -174,7 +176,7 @@ export async function reconcileValsInbox(now = new Date()): Promise<Escalation[]
     cleaned.push(item);
   }
   if (dirty) {
-    await saveValsInbox({ ...file, items: cleaned });
+    await saveEscalations({ ...file, items: cleaned });
   }
   return cleaned;
 }

@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import {
   createEscalation,
-  reconcileValsInbox,
+  reconcileEscalations,
   sortEscalations,
   type EscalationOrigin,
   type EscalationSeverity,
-} from "@/lib/vals-inbox";
+} from "@/lib/escalations";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +23,7 @@ const VALID_ORIGINS: EscalationOrigin[] = [
 const VALID_SEVERITIES: EscalationSeverity[] = ["info", "warn", "critical"];
 
 export async function GET() {
-  const items = await reconcileValsInbox();
+  const items = await reconcileEscalations();
   return NextResponse.json({ ok: true, items: sortEscalations(items) });
 }
 

@@ -1,7 +1,7 @@
 /**
- * Val's Inbox — humans-only escalation surface. Distinct from the per-familiar
+ * Inbox — humans-only escalation surface. Distinct from the per-familiar
  * reminder inbox in `cave-inbox.ts`. The reminder inbox is "things the familiar
- * scheduled for itself"; this one is "things that need Val's eyes, right now."
+ * scheduled for itself"; this one is "things that need attention, right now."
  *
  * v1 lives in a JSON file; v2 moves to SQLite + WebSocket fanout per spec.
  * These types are kept in their own file so client components can import them
