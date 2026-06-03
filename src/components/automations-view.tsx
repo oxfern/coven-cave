@@ -112,7 +112,12 @@ export function AutomationsView({
   const schedules = useMemo(
     () =>
       items
-        .filter((it) => it.recurrence && it.recurrence.type !== "none")
+        .filter(
+          (it) =>
+            it.recurrence &&
+            it.recurrence.type !== "none" &&
+            (it.status === "pending" || it.status === "dismissed"),
+        )
         .sort((a, b) => (a.fireAt ?? "").localeCompare(b.fireAt ?? "")),
     [items],
   );
