@@ -79,6 +79,7 @@ export const ICON_NAMES = [
   "ph:pencil-simple",
   "ph:list-bullets",
   "ph:trash",
+  "ph:github-logo",
 ] as const;
 
 export type IconName = (typeof ICON_NAMES)[number];

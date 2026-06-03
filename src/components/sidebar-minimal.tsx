@@ -52,7 +52,7 @@ function shortRelTime(iso: string | undefined): string {
 // Types
 // ---------------------------------------------------------------------------
 
-export type FolderMode = "board" | "inbox" | "browser" | "comux" | "calls";
+export type FolderMode = "board" | "inbox" | "browser" | "comux" | "calls" | "github";
 
 export type SidebarMinimalProps = {
   mode: string;
@@ -100,7 +100,7 @@ function ActionRow({
 const FOLDER_MODES: Array<{
   id: FolderMode;
   label: string;
-  iconName: "ph:kanban" | "ph:tray" | "ph:bell-fill" | "ph:globe" | "ph:squares-four" | "ph:clock" | "ph:graph";
+  iconName: "ph:kanban" | "ph:tray" | "ph:bell-fill" | "ph:globe" | "ph:squares-four" | "ph:clock" | "ph:graph" | "ph:github-logo";
   badge?: (props: SidebarMinimalProps) => string | undefined;
 }> = [
   { id: "board",      label: "Board",       iconName: "ph:kanban" },
@@ -109,6 +109,7 @@ const FOLDER_MODES: Array<{
   { id: "calls",      label: "Coven Calls", iconName: "ph:graph" },
   { id: "browser",    label: "Browser",     iconName: "ph:globe" },
   { id: "comux",      label: "Coven Code",  iconName: "ph:squares-four" },
+  { id: "github",     label: "GitHub",      iconName: "ph:github-logo" },
 ];
 
 function FolderRow({

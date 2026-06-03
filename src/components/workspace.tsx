@@ -20,6 +20,7 @@ import { BrowserPane } from "@/components/browser-pane";
 import { AutomationsView } from "@/components/automations-view";
 import { CallsView } from "@/components/calls-view";
 import { ComuxView } from "@/components/comux-view";
+import { GitHubView } from "@/components/github-view";
 import { HomeComposer } from "@/components/home-composer";
 import { nativeNotify } from "@/lib/native-notify";
 import type { InboxItem } from "@/lib/cave-inbox";
@@ -27,7 +28,7 @@ import type { InboxPrefs } from "@/lib/cave-inbox-prefs";
 import type { Familiar, SessionRow } from "@/lib/types";
 import { DEMO_MODE, DEMO_FAMILIARS } from "@/lib/demo-seed";
 
-type Mode = "home" | "chats" | "board" | "plugins" | "inbox" | "browser" | "schedules" | "calls" | "comux";
+type Mode = "home" | "chats" | "board" | "plugins" | "inbox" | "browser" | "schedules" | "calls" | "comux" | "github";
 
 export function Workspace() {
   const routerRef = useRef<ChatRouterHandle | null>(null);
@@ -664,6 +665,14 @@ export function Workspace() {
       <BrowserPane label="main" />
     ) : mode === "comux" ? (
       <ComuxView />
+    ) : mode === "github" ? (
+      <GitHubView
+        onOpenSession={(sessionId) => {
+          // TODO: jump to session in chats view once session routing is wired
+          setMode("chats");
+          setTimeout(() => routerRef.current?.openSession?.(sessionId), 0);
+        }}
+      />
     ) : (
       <PluginsView
         onOpenChat={() => {
