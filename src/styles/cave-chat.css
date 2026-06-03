@@ -381,13 +381,14 @@
 .cave-syntax-block pre { font-size: inherit; }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-<<<<<<< HEAD
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    BUBBLE VARIANTS
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 /* User bubble — lavender accent, right-aligned */
 .cave-bubble-user {
-  background: color-mix(in oklch, var(--accent-presence) 70%, var(--bg-base));
+  background: var(--accent-presence);
   color: oklch(0.98 0 0);
   border-radius: 18px 18px 4px 18px;
   padding: 10px 14px;
@@ -417,7 +418,43 @@
 /* Assistant bubble — transparent, full width */
 .cave-bubble-assistant {
   width: 100%;
-=======
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ASSISTANT TURN LAYOUT — avatar + content columns
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+.cave-turn-assistant {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+.cave-turn-avatar {
+  display: flex;
+  justify-content: center;
+  padding-top: 2px;
+}
+
+.cave-turn-avatar-ring {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: color-mix(in oklch, var(--accent-presence) 12%, var(--bg-raised));
+  border: 1px solid color-mix(in oklch, var(--accent-presence) 20%, transparent);
+  flex-shrink: 0;
+  color: var(--accent-presence);
+}
+
+.cave-turn-content {
+  min-width: 0;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    SYSTEM TURN — terminal chrome
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
@@ -503,5 +540,43 @@
 
 .cave-bubble-timestamp--right {
   text-align: right;
->>>>>>> d4ca5e4 (feat(chat): Task 4 — timestamp grouping with hover-reveal)
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   MODEL BADGE — clickable, opens inline input
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+.cave-model-badge {
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding: 2px 6px;
+  border-radius: 5px;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+  line-height: 1.4;
+}
+
+.cave-model-badge:hover {
+  color: var(--text-primary);
+  background: color-mix(in oklch, var(--accent-presence) 8%, transparent);
+  border-color: color-mix(in oklch, var(--accent-presence) 20%, transparent);
+}
+
+.cave-model-input {
+  font-size: 11px;
+  width: 160px;
+  padding: 2px 6px;
+  border-radius: 5px;
+  border: 1px solid color-mix(in oklch, var(--accent-presence) 40%, transparent);
+  background: color-mix(in oklch, var(--accent-presence) 6%, var(--bg-raised));
+  color: var(--text-primary);
+  outline: none;
+  line-height: 1.4;
+}
+
+.cave-model-input:focus {
+  border-color: var(--accent-presence);
+  box-shadow: 0 0 0 2px color-mix(in oklch, var(--accent-presence) 20%, transparent);
 }
