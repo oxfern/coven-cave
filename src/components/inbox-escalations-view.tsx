@@ -11,7 +11,7 @@ import {
   type EscalationState,
   type SnoozePresetId,
   sortEscalations,
-} from "@/lib/vals-inbox-types";
+} from "@/lib/escalations-types";
 import { DEMO_MODE, DEMO_ESCALATIONS } from "@/lib/demo-seed";
 
 type Props = {
@@ -59,7 +59,7 @@ function age(iso: string): string {
   return `${Math.floor(h / 24)}d`;
 }
 
-export function ValsInboxView({ onOpenSource }: Props) {
+export function InboxEscalationsView({ onOpenSource }: Props) {
   const [items, setItems] = useState<Escalation[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [showResolved, setShowResolved] = useState(false);
@@ -69,7 +69,7 @@ export function ValsInboxView({ onOpenSource }: Props) {
 
   const refresh = useCallback(async () => {
     try {
-      const res = await fetch("/api/vals-inbox", { cache: "no-store" });
+      const res = await fetch("/api/escalations", { cache: "no-store" });
       const json = await res.json();
       if (json.ok) {
         const loaded = json.items as Escalation[];
@@ -110,7 +110,7 @@ export function ValsInboxView({ onOpenSource }: Props) {
   const patchItem = useCallback(
     async (id: string, body: Record<string, unknown>) => {
       try {
-        const res = await fetch(`/api/vals-inbox/${id}`, {
+        const res = await fetch(`/api/escalations/${id}`, {
           method: "PATCH",
           headers: { "content-type": "application/json" },
           body: JSON.stringify(body),
@@ -191,7 +191,7 @@ export function ValsInboxView({ onOpenSource }: Props) {
         className="flex items-center gap-3 px-5 py-3 text-[11px]"
         style={{ borderBottom: "1px solid var(--border-hairline)" }}
       >
-        <span className="font-medium text-foreground">Val's Inbox</span>
+        <span className="font-medium text-foreground">Inbox</span>
         <span className="text-muted-foreground">
           {newCount} new · {criticalCount} critical
         </span>
@@ -233,7 +233,7 @@ export function ValsInboxView({ onOpenSource }: Props) {
             >
               <p className="text-sm text-foreground">Nothing needs you.</p>
               <p className="mt-1 text-[11px] text-muted-foreground">
-                The Inbox surfaces items when a familiar (or a system signal) decides Val should look. Quiet means everything is handled.
+                The Inbox surfaces items when a familiar (or a system signal) decides the user should look. Quiet means everything is handled.
               </p>
             </div>
           ) : (

@@ -14,7 +14,7 @@ import { SnoozeMenu } from "@/components/snooze-menu";
 //     next-fire, last-run, run-now, pause/resume.
 //   • Pending   — one-shot reminders waiting to fire.
 //   • History   — fired/done/dismissed entries (audit log).
-// The dedicated triage page (Val's Inbox) takes over the "Inbox" mode;
+// The dedicated triage page (Inbox) takes over the "Inbox" mode;
 // this view absorbs everything that was tracking automation timing.
 
 type Props = {

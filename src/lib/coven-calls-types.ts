@@ -1,7 +1,7 @@
 // Pure types + pure-function helpers for Coven Calls — extracted out of
 // coven-calls.ts so client components can import without dragging
 // node:fs/promises into the browser bundle. Same split-pattern as
-// vals-inbox-types vs vals-inbox.
+// escalations-types vs escalations.
 
 export type CallStatus = "running" | "completed" | "failed" | "cancelled";
 

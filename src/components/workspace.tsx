@@ -8,7 +8,7 @@ import { CommandPalette, type PaletteIntent } from "@/components/command-palette
 import { BoardView } from "@/components/board-view";
 import { PluginsView } from "@/components/plugins-view";
 import { OnboardingOverlay } from "@/components/onboarding-overlay";
-import { ValsInboxView } from "@/components/vals-inbox-view";
+import { InboxEscalationsView } from "@/components/inbox-escalations-view";
 import { NewReminderModal, draftFromSlashArgs } from "@/components/new-reminder-modal";
 import { InboxToastStack, toastFromItem, type Toast } from "@/components/inbox-toast";
 import { FamiliarGlyphPicker } from "@/components/familiar-glyph-picker";
@@ -42,7 +42,7 @@ export function Workspace() {
   const [mode, setMode] = useState<Mode>("home");
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [inboxItems, setInboxItems] = useState<InboxItem[]>([]);
-  const [valsInboxUnresolved, setValsInboxUnresolved] = useState(0);
+  const [escalationsUnresolved, setEscalationsUnresolved] = useState(0);
   const [inboxPrefs, setInboxPrefs] = useState<InboxPrefs>({
     version: 1,
     mutedFamiliars: [],
@@ -285,14 +285,14 @@ export function Workspace() {
     }
   }, []);
 
-  // Poll Val's Inbox for unresolved-escalations count — drives the
+  // Poll Inbox for unresolved-escalations count — drives the
   // sidebar/daemon-bar Inbox badge. Cheap GET every 30s; the route
-  // already de-dupes via reconcileValsInbox().
+  // already de-dupes via reconcileEscalations().
   useEffect(() => {
     let cancelled = false;
     const tick = async () => {
       try {
-        const res = await fetch("/api/vals-inbox", { cache: "no-store" });
+        const res = await fetch("/api/escalations", { cache: "no-store" });
         const json = await res.json();
         if (cancelled) return;
         if (json.ok && Array.isArray(json.items)) {
@@ -307,7 +307,7 @@ export function Workspace() {
             }
             return true;
           }).length;
-          setValsInboxUnresolved(unresolved);
+          setEscalationsUnresolved(unresolved);
         }
       } catch {
         /* keep last value on transient failure */
@@ -561,10 +561,10 @@ export function Workspace() {
   //   detail = the active view. Chats mode renders an inline inspector
   //           rail on its right edge so we keep the inspector affordance
   //           without spawning a 4th pane.
-  // Inbox badge counts unresolved escalations (Val's Inbox is now the
+  // Inbox badge counts unresolved escalations (Inbox is now the
   // primary Inbox surface). "new" + "acknowledged" + "snoozed-due" all
   // count as needing attention; resolved/dismissed do not.
-  const inboxBadgeCount = valsInboxUnresolved;
+  const inboxBadgeCount = escalationsUnresolved;
 
   const sidebar = (
     <SidebarMinimal
@@ -637,7 +637,7 @@ export function Workspace() {
         }}
       />
     ) : mode === "inbox" ? (
-      <ValsInboxView
+      <InboxEscalationsView
         onOpenSource={(item) => {
           if (item.sourceSessionKey) {
             setMode("chats");
