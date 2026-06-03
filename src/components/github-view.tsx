@@ -2,26 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { Icon } from "@/lib/icon";
+import { loadGitHubTasks, type GitHubTask, type GitHubTaskStatus } from "@/lib/github-tasks";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-
-type GitHubTaskStatus = "running" | "review" | "done" | "failed";
-
-type GitHubTask = {
-  id: string;
-  repo: string;
-  issueNumber: number;
-  issueTitle: string;
-  branch?: string;
-  prNumber?: number;
-  prUrl?: string;
-  status: GitHubTaskStatus;
-  familiarId: string;
-  familiarName: string;
-  sessionId?: string;
-  updatedAt: string;
-  checkRunUrl?: string;
-};
 
 // ── Status styles ─────────────────────────────────────────────────────────────
 
@@ -82,16 +65,36 @@ type Props = {
 export function GitHubView({ onOpenSession }: Props) {
   const [tasks, setTasks] = useState<GitHubTask[]>([]);
   const [loading, setLoading] = useState(true);
+  const [source, setSource] = useState<"api" | "demo">("api");
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<GitHubTaskStatus | "all">("all");
 
   useEffect(() => {
-    // TODO: replace with real /api/github/tasks endpoint once coven-github is wired.
-    // For now, show demo data so the UI is visible and reviewable.
-    const timer = setTimeout(() => {
-      setTasks(PLACEHOLDER_TASKS);
-      setLoading(false);
-    }, 300);
-    return () => clearTimeout(timer);
+    let cancelled = false;
+
+    async function refresh() {
+      try {
+        const next = await loadGitHubTasks();
+        if (cancelled) return;
+        setTasks(next.tasks);
+        setSource("api");
+        setError(null);
+      } catch (e) {
+        if (cancelled) return;
+        setTasks(PLACEHOLDER_TASKS);
+        setSource("demo");
+        setError(e instanceof Error ? e.message : "GitHub task endpoint unavailable");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void refresh();
+    const timer = window.setInterval(() => void refresh(), 15_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
   }, []);
 
   const filtered = filter === "all" ? tasks : tasks.filter((t) => t.status === filter);
@@ -113,7 +116,7 @@ export function GitHubView({ onOpenSession }: Props) {
           <h2 className="text-[15px] font-semibold">GitHub Tasks</h2>
         </div>
         <p className="text-[11px] text-[var(--text-muted)]">
-          Familiar-driven issues and PRs from coven-github
+          Familiar-driven issues and PRs from coven-github{source === "demo" ? " · demo fallback" : ""}
         </p>
 
         {counts.running > 0 && (
@@ -163,6 +166,12 @@ export function GitHubView({ onOpenSession }: Props) {
           );
         })}
       </div>
+
+      {error ? (
+        <div className="border-b border-[var(--border-hairline)] bg-[var(--bg-raised)] px-5 py-1.5 text-[11px] text-[var(--text-muted)]">
+          {error}
+        </div>
+      ) : null}
 
       {/* ── List ── */}
       <div className="min-h-0 flex-1 overflow-y-auto">
