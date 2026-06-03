@@ -365,7 +365,7 @@ function PrimaryBtn({
   children: React.ReactNode;
   onClick: () => void;
   disabled?: boolean;
-  title?: string;
+  title: string;
 }) {
   return (
     <button
