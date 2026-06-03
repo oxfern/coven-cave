@@ -8,7 +8,6 @@ import { CommandPalette, type PaletteIntent } from "@/components/command-palette
 import { BoardView } from "@/components/board-view";
 import { PluginsView } from "@/components/plugins-view";
 import { OnboardingOverlay } from "@/components/onboarding-overlay";
-import { InboxView } from "@/components/inbox-view";
 import { ValsInboxView } from "@/components/vals-inbox-view";
 import { NewReminderModal, draftFromSlashArgs } from "@/components/new-reminder-modal";
 import { InboxToastStack, toastFromItem, type Toast } from "@/components/inbox-toast";
@@ -18,7 +17,7 @@ import { ChooserModal, type ChooserOption } from "@/components/ui/chooser-modal"
 import { AgentPanel } from "@/components/agent-panel";
 import { BottomTerminal } from "@/components/bottom-terminal";
 import { BrowserPane } from "@/components/browser-pane";
-import { SchedulesView } from "@/components/schedules-view";
+import { AutomationsView } from "@/components/automations-view";
 import { CallsView } from "@/components/calls-view";
 import { ComuxView } from "@/components/comux-view";
 import { HomeComposer } from "@/components/home-composer";
@@ -28,7 +27,7 @@ import type { InboxPrefs } from "@/lib/cave-inbox-prefs";
 import type { Familiar, SessionRow } from "@/lib/types";
 import { DEMO_MODE, DEMO_FAMILIARS } from "@/lib/demo-seed";
 
-type Mode = "home" | "chats" | "board" | "plugins" | "inbox" | "vals-inbox" | "browser" | "schedules" | "calls" | "comux";
+type Mode = "home" | "chats" | "board" | "plugins" | "inbox" | "browser" | "schedules" | "calls" | "comux";
 
 export function Workspace() {
   const routerRef = useRef<ChatRouterHandle | null>(null);
@@ -43,6 +42,7 @@ export function Workspace() {
   const [mode, setMode] = useState<Mode>("home");
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [inboxItems, setInboxItems] = useState<InboxItem[]>([]);
+  const [valsInboxUnresolved, setValsInboxUnresolved] = useState(0);
   const [inboxPrefs, setInboxPrefs] = useState<InboxPrefs>({
     version: 1,
     mutedFamiliars: [],
@@ -285,6 +285,42 @@ export function Workspace() {
     }
   }, []);
 
+  // Poll Val's Inbox for unresolved-escalations count — drives the
+  // sidebar/daemon-bar Inbox badge. Cheap GET every 30s; the route
+  // already de-dupes via reconcileValsInbox().
+  useEffect(() => {
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const res = await fetch("/api/vals-inbox", { cache: "no-store" });
+        const json = await res.json();
+        if (cancelled) return;
+        if (json.ok && Array.isArray(json.items)) {
+          const now = Date.now();
+          const unresolved = (json.items as Array<{
+            state: string;
+            snoozeUntil?: string;
+          }>).filter((it) => {
+            if (it.state === "resolved" || it.state === "dismissed") return false;
+            if (it.state === "snoozed" && it.snoozeUntil) {
+              return new Date(it.snoozeUntil).getTime() <= now;
+            }
+            return true;
+          }).length;
+          setValsInboxUnresolved(unresolved);
+        }
+      } catch {
+        /* keep last value on transient failure */
+      }
+    };
+    void tick();
+    const t = setInterval(tick, 30_000);
+    return () => {
+      cancelled = true;
+      clearInterval(t);
+    };
+  }, []);
+
   const openReminderModal = useCallback((title = "", whenText = "") => {
     setReminderModalDefaults({ title, whenText });
     setReminderModalOpen(true);
@@ -525,11 +561,10 @@ export function Workspace() {
   //   detail = the active view. Chats mode renders an inline inspector
   //           rail on its right edge so we keep the inspector affordance
   //           without spawning a 4th pane.
-  const inboxBadgeCount = inboxItemsWithEphemeral.filter(
-    (i) =>
-      i.status === "fired" ||
-      (i.status === "pending" && i.kind === "response-needed"),
-  ).length;
+  // Inbox badge counts unresolved escalations (Val's Inbox is now the
+  // primary Inbox surface). "new" + "acknowledged" + "snoozed-due" all
+  // count as needing attention; resolved/dismissed do not.
+  const inboxBadgeCount = valsInboxUnresolved;
 
   const sidebar = (
     <SidebarMinimal
@@ -602,18 +637,6 @@ export function Workspace() {
         }}
       />
     ) : mode === "inbox" ? (
-      <InboxView
-        items={inboxItemsWithEphemeral}
-        familiars={familiars}
-        onRefresh={refreshInbox}
-        onNewReminder={() => openReminderModal()}
-        onOpenSession={(sessionId, familiarId) => {
-          if (familiarId) setActiveId(familiarId);
-          setMode("chats");
-          setTimeout(() => routerRef.current?.openSession(sessionId), 0);
-        }}
-      />
-    ) : mode === "vals-inbox" ? (
       <ValsInboxView
         onOpenSource={(item) => {
           if (item.sourceSessionKey) {
@@ -625,7 +648,15 @@ export function Workspace() {
         }}
       />
     ) : mode === "schedules" ? (
-      <SchedulesView familiars={familiars} />
+      <AutomationsView
+        familiars={familiars}
+        onNewReminder={() => openReminderModal()}
+        onOpenSession={(sessionId, familiarId) => {
+          if (familiarId) setActiveId(familiarId);
+          setMode("chats");
+          setTimeout(() => routerRef.current?.openSession(sessionId), 0);
+        }}
+      />
     ) : mode === "calls" ? (
       <CallsView familiars={familiars} />
     ) : mode === "browser" ? (

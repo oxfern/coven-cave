@@ -5,7 +5,7 @@
  *
  * Layout (top → bottom):
  *   1. 4 primary actions  (New chat / Search / Plugins / Automations)
- *   2. Folder mode rows   (Board / Inbox / Val's Inbox / Browser / Comux / Coven Calls)
+ *   2. Folder mode rows   (Board / Inbox / Browser / Comux / Coven Calls)
  *   3. Familiar sections  (each familiar = header row + session list; no emoji row)
  *   4. Settings gear (pinned bottom)
  */
@@ -52,7 +52,7 @@ function shortRelTime(iso: string | undefined): string {
 // Types
 // ---------------------------------------------------------------------------
 
-export type FolderMode = "board" | "inbox" | "vals-inbox" | "browser" | "comux" | "calls";
+export type FolderMode = "board" | "inbox" | "browser" | "comux" | "calls";
 
 export type SidebarMinimalProps = {
   mode: string;
@@ -104,9 +104,8 @@ const FOLDER_MODES: Array<{
   badge?: (props: SidebarMinimalProps) => string | undefined;
 }> = [
   { id: "board",      label: "Board",       iconName: "ph:kanban" },
-  { id: "inbox",      label: "Inbox",       iconName: "ph:tray",
+  { id: "inbox",      label: "Inbox",       iconName: "ph:bell-fill",
     badge: (p) => p.inboxBadgeCount && p.inboxBadgeCount > 0 ? String(p.inboxBadgeCount) : undefined },
-  { id: "vals-inbox", label: "Val's Inbox", iconName: "ph:bell-fill" },
   { id: "calls",      label: "Coven Calls", iconName: "ph:graph" },
   { id: "browser",    label: "Browser",     iconName: "ph:globe" },
   { id: "comux",      label: "Coven Code",  iconName: "ph:squares-four" },

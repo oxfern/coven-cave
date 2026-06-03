@@ -78,6 +78,7 @@ export const ICON_NAMES = [
   "ph:copy",
   "ph:pencil-simple",
   "ph:list-bullets",
+  "ph:trash",
 ] as const;
 
 export type IconName = (typeof ICON_NAMES)[number];
