@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Icon } from "@/lib/icon";
+import { BrowserQuickOpen } from "@/components/browser-quick-open";
 
 // Browser pane — uses Tauri's child WebviewBuilder under the hood. A real
 // Chromium webview is overlaid on top of the placeholder <div> below; we
@@ -104,6 +105,7 @@ async function probeLocalhost(port: number): Promise<boolean> {
 
 export function BrowserPane({ label = "default" }: { label?: string }) {
   const surfaceRef = useRef<HTMLDivElement | null>(null);
+  const paneRef = useRef<HTMLDivElement | null>(null);
   const [bridge, setBridge] = useState<TauriBridge | null>(null);
   const [unavailable, setUnavailable] = useState(false);
 
@@ -113,6 +115,7 @@ export function BrowserPane({ label = "default" }: { label?: string }) {
   const [tabTitles, setTabTitles] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [addressBar, setAddressBar] = useState<string>(HOME_URL);
+  const [quickOpen, setQuickOpen] = useState(false);
 
   // History per-tab
   const historyRef = useRef<Record<string, { stack: string[]; idx: number }>>({});
@@ -376,8 +379,23 @@ export function BrowserPane({ label = "default" }: { label?: string }) {
     setAddressBar(next);
   };
 
+  // Cmd+K / Ctrl+K → open quick-open palette.
+  // Uses capture phase + paneRef containment check so the global workspace
+  // Cmd+K palette is NOT triggered when focus is inside the browser pane.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== "k") return;
+      if (!paneRef.current?.contains(e.target as Node)) return;
+      e.stopPropagation();
+      e.preventDefault();
+      setQuickOpen((v) => !v);
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, []);
+
   return (
-    <div className="flex h-full flex-row" style={{ background: "#0c0c0e" }}>
+    <div ref={paneRef} className="flex h-full flex-row" style={{ background: "#0c0c0e" }}>
       {/* ── Vertical tab rail ─────────────────────────────────────── */}
       <div className="browser-tab-rail flex flex-col items-center border-r border-[--border-hairline] bg-[#080809] py-1.5" style={{ width: 48, minWidth: 48 }}>
         {tabs.map((tab) => {
@@ -522,6 +540,14 @@ export function BrowserPane({ label = "default" }: { label?: string }) {
 
       {/* ── Viewport (webview overlay target) ─────────────────────── */}
       <div className="relative flex-1 overflow-hidden" style={{ background: "#0c0c0e" }}>
+        {quickOpen && (
+          <BrowserQuickOpen
+            tabs={tabs}
+            activeId={activeTabId}
+            onSelect={switchTab}
+            onClose={() => setQuickOpen(false)}
+          />
+        )}
         {unavailable ? (
           <iframe
             src={activeUrl}
