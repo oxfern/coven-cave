@@ -392,6 +392,7 @@ function GhostBtn({
       onClick={onClick}
       disabled={disabled}
       title={title}
+      aria-label={title}
       className="rounded-full border border-[var(--border-hairline)] px-2.5 py-1 text-[11px] text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-raised)] hover:text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-40"
     >
       {children}
