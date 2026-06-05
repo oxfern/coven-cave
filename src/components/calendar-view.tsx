@@ -200,6 +200,66 @@ function AgendaView({
   );
 }
 
+// ─── All-day strip ───────────────────────────────────────────────────────────
+
+const MAX_ALLDAY_VISIBLE = 3;
+
+function AllDayStrip({
+  columns,
+  onOpenItem,
+  onDayClick,
+}: {
+  columns: { date: Date; items: InboxItem[] }[];
+  onOpenItem?: (item: InboxItem) => void;
+  onDayClick?: (day: Date) => void;
+}) {
+  return (
+    <div className="flex shrink-0 border-b border-[var(--border-subtle)] bg-[var(--bg-panel)]">
+      {/* Label */}
+      <div className="w-12 shrink-0 border-r border-[var(--border-subtle)] flex items-center justify-end pr-1.5 py-1">
+        <span className="text-[9px] uppercase tracking-wider text-[var(--text-muted)] leading-tight text-right">
+          All
+          <br />
+          day
+        </span>
+      </div>
+      {/* Per-column chips */}
+      <div className="flex flex-1 divide-x divide-[var(--border-subtle)]">
+        {columns.map((col, i) => (
+          <div key={i} className="flex-1 min-w-[80px] flex flex-col gap-0.5 p-1">
+            {col.items.slice(0, MAX_ALLDAY_VISIBLE).map((item) => (
+              <button
+                key={item.id}
+                onClick={() => onOpenItem?.(item)}
+                className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] bg-[var(--accent-presence)]/15 border border-[var(--accent-presence)]/30 hover:bg-[var(--accent-presence)]/25 transition-colors w-full text-left truncate"
+              >
+                <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${urgencyColor(item)}`} />
+                <span className="truncate text-[var(--text-primary)]">{item.title}</span>
+              </button>
+            ))}
+            {col.items.length > MAX_ALLDAY_VISIBLE && (
+              <button
+                onClick={() => onDayClick?.(col.date)}
+                className="text-[9px] text-[var(--text-muted)] px-1 hover:text-[var(--accent-presence)] transition-colors text-left w-full"
+                title={`${col.items.length - MAX_ALLDAY_VISIBLE} more — click to see all`}
+              >
+                +{col.items.length - MAX_ALLDAY_VISIBLE} more
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function isAllDay(item: InboxItem): boolean {
+  const iso = item.fireAt ?? item.firedAt;
+  if (!iso) return true; // no time → all-day
+  const d = new Date(iso);
+  return d.getHours() === 0 && d.getMinutes() === 0 && d.getSeconds() === 0;
+}
+
 // ─── TimeGrid ─────────────────────────────────────────────────────────────────
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
@@ -304,37 +364,54 @@ function DayView({
   anchor: Date;
   onOpenItem?: (item: InboxItem) => void;
 }) {
-  const dayItems = useMemo(
-    () =>
-      items
-        .filter((it) => {
-          const d = itemDate(it);
-          return d && isSameDay(d, anchor);
-        })
-        .sort((a, b) => {
-          const ta = new Date(a.fireAt ?? a.createdAt).getTime();
-          const tb = new Date(b.fireAt ?? b.createdAt).getTime();
-          return ta - tb;
-        }),
+  const today = new Date();
+
+  const allDayItems = useMemo(
+    () => items.filter((it) => {
+      const d = itemDate(it);
+      return d && isSameDay(d, anchor) && isAllDay(it);
+    }),
     [items, anchor]
   );
 
+  const timedItems = useMemo(
+    () => items.filter((it) => {
+      const d = itemDate(it);
+      return d && isSameDay(d, anchor) && !isAllDay(it);
+    }),
+    [items, anchor]
+  );
+
+  const columns = useMemo(() => [{
+    label: fmtDateHeading(anchor),
+    date: anchor,
+    isToday: isSameDay(anchor, today),
+    items: timedItems,
+  }], [anchor, timedItems]);
+
   return (
-    <div className="flex flex-col px-6 py-4 gap-4 overflow-y-auto">
-      <h2 className="text-sm font-medium text-[var(--text-primary)]">
-        {fmtDateHeading(anchor)}
-      </h2>
-      {dayItems.length === 0 ? (
+    <div className="flex flex-col flex-1 overflow-hidden">
+      {/* Header */}
+      <div className="px-6 py-3 border-b border-[var(--border-subtle)] shrink-0">
+        <h2 className="text-sm font-medium text-[var(--text-primary)]">
+          {fmtDateHeading(anchor)}
+        </h2>
+      </div>
+      {/* All-day strip */}
+      {allDayItems.length > 0 && (
+        <AllDayStrip
+          columns={[{ date: anchor, items: allDayItems }]}
+          onOpenItem={onOpenItem}
+        />
+      )}
+      {/* Time grid */}
+      {timedItems.length === 0 && allDayItems.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-[var(--text-muted)] text-sm gap-2">
           <Icon name="ph:sun" className="text-3xl opacity-30" />
           <span>Nothing scheduled for this day</span>
         </div>
-      ) : (
-        <div className="flex flex-col gap-1">
-          {dayItems.map((item) => (
-            <ItemChip key={item.id} item={item} onClick={() => onOpenItem?.(item)} />
-          ))}
-        </div>
+      ) : timedItems.length === 0 ? null : (
+        <TimeGrid columns={columns} onOpenItem={onOpenItem} />
       )}
     </div>
   );
@@ -355,58 +432,61 @@ function WeekView({
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const today = new Date();
 
-  const byDay = useMemo(() => {
-    const map = new Map<number, InboxItem[]>();
-    for (let i = 0; i < 7; i++) map.set(i, []);
-    for (const item of items) {
-      const d = itemDate(item);
-      if (!d) continue;
-      const idx = days.findIndex((day) => isSameDay(day, d));
-      if (idx >= 0) map.get(idx)!.push(item);
-    }
-    return map;
+  const columns = useMemo(() => {
+    return days.map((day) => ({
+      label: `${WEEKDAYS[day.getDay()]} ${day.getDate()}`,
+      date: day,
+      isToday: isSameDay(day, today),
+      items: items.filter((it) => {
+        const d = itemDate(it);
+        return d && isSameDay(d, day) && !isAllDay(it);
+      }),
+    }));
+  }, [items, days]);
+
+  const allDayColumns = useMemo(() => {
+    return days.map((day) => ({
+      date: day,
+      items: items.filter((it) => {
+        const d = itemDate(it);
+        return d && isSameDay(d, day) && isAllDay(it);
+      }),
+    }));
   }, [items, days]);
 
   return (
-    <div className="grid grid-cols-7 flex-1 overflow-auto min-w-[360px] divide-x divide-[var(--border-subtle)]">
-      {days.map((day, i) => {
-        const dayItems = byDay.get(i) ?? [];
-        const isToday = isSameDay(day, today);
-        return (
-          <div key={i} className="flex flex-col overflow-hidden">
-            {/* Day header */}
+    <div className="flex flex-col flex-1 overflow-hidden">
+      {/* Sticky column headers */}
+      <div className="flex shrink-0 border-b border-[var(--border-subtle)]">
+        {/* Spacer for the time axis */}
+        <div className="w-12 shrink-0 border-r border-[var(--border-subtle)]" />
+        <div className="flex flex-1 min-w-[320px] divide-x divide-[var(--border-subtle)] overflow-x-auto">
+          {columns.map((col, i) => (
             <div
-              className={`px-2 py-2 text-center border-b border-[var(--border-subtle)] ${
-                isToday ? "bg-[#8E3DFF]/10" : ""
+              key={i}
+              className={`flex-1 min-w-[80px] px-2 py-2 text-center ${
+                col.isToday ? "bg-[#8E3DFF]/10" : ""
               }`}
             >
               <div className="text-[10px] uppercase tracking-wider text-[var(--text-muted)]">
-                {WEEKDAYS[day.getDay()]}
+                {WEEKDAYS[col.date.getDay()]}
               </div>
               <div
                 className={`text-sm font-semibold ${
-                  isToday ? "text-[#8E3DFF]" : "text-[var(--text-primary)]"
+                  col.isToday ? "text-[#8E3DFF]" : "text-[var(--text-primary)]"
                 }`}
               >
-                {day.getDate()}
+                {col.date.getDate()}
               </div>
             </div>
-            {/* Items */}
-            <div className="flex flex-col gap-1 overflow-y-auto p-1.5">
-              {dayItems.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => onOpenItem?.(item)}
-                  className="flex items-center gap-1 rounded px-1.5 py-1 text-left text-[10px] bg-[var(--bg-raised)] border border-[var(--border-subtle)] hover:bg-[var(--bg-elevated)] transition-colors w-full"
-                >
-                  <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${urgencyColor(item)}`} />
-                  <span className="truncate text-[var(--text-primary)]">{item.title}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        );
-      })}
+          ))}
+        </div>
+      </div>
+      {/* All-day strip */}
+      {allDayColumns.some((c) => c.items.length > 0) && (
+        <AllDayStrip columns={allDayColumns} onOpenItem={onOpenItem} />
+      )}
+      <TimeGrid columns={columns} onOpenItem={onOpenItem} />
     </div>
   );
 }
@@ -505,7 +585,7 @@ function MonthView({
                       e.stopPropagation();
                       onDayClick?.(day);
                     }}
-                    className="text-[9px] text-[var(--text-muted)] px-1 hover:text-[var(--accent-presence)] transition-colors text-left"
+                    className="text-[9px] text-[var(--text-muted)] px-1 hover:text-[var(--accent-presence)] transition-colors text-left w-full"
                     title={`${dayItems.length - 3} more items — click to see all`}
                   >
                     +{dayItems.length - 3} more
