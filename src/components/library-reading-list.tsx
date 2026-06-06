@@ -198,19 +198,10 @@ export function LibraryReadingList({ selectedId, onSelect, onDelete }: Props) {
       <div className="library-list-header">
         <span className="library-list-header-title">
           <Icon name="ph:books" width={14} />
-          Reading List
+          Reading
           <span className="board-table-group-badge">{items.length}</span>
         </span>
         <div className="library-list-header-controls">
-          <select
-            className="board-toolbar-select"
-            value={groupBy}
-            onChange={(e) => setGroupBy(e.target.value as GroupBy)}
-          >
-            <option value="status">Group: Status</option>
-            <option value="sourceType">Group: Type</option>
-            <option value="none">No grouping</option>
-          </select>
           <button type="button" className="board-toolbar-btn" onClick={() => setAdding((v) => !v)}>
             <Icon name="ph:plus" width={12} /> Add
           </button>
