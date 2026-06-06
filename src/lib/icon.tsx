@@ -126,6 +126,7 @@ export const ICON_NAMES = [
   "ph:check",
   "ph:file",
   "ph:file-code",
+  "ph:file-bold",
   "ph:file-text",
   "ph:flask",
   "ph:book-bookmark",
