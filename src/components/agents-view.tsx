@@ -9,6 +9,7 @@ import { AgentPanel } from "@/components/agent-panel";
 import { Icon } from "@/lib/icon";
 import type { IconName } from "@/lib/icon";
 import type { InboxItem } from "@/lib/cave-inbox";
+import { inferOrigin } from "@/lib/session-origin";
 import type { Familiar, SessionRow } from "@/lib/types";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
