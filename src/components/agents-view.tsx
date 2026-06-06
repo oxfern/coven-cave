@@ -16,6 +16,7 @@ import {
   type DelegationGraph,
   type DelegationTrace,
 } from "@/lib/coven-calls-types";
+import { inferOrigin } from "@/lib/session-origin";
 import type { Familiar, SessionRow } from "@/lib/types";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -289,6 +290,7 @@ export function AgentsView({
   const filteredSessions = useMemo(() => {
     const q = query.trim().toLowerCase();
     return [...sessions]
+      .filter((s) => (s.origin ?? inferOrigin(s)) === "chat")
       .filter((s) => (showClosed ? isClosed(s) : !isClosed(s)))
       .filter((s) => {
         if (!q) return true;
@@ -575,208 +577,106 @@ export function AgentsView({
               </div>
             )}
 
-            {/* Sessions table */}
-            {/* Bulk action bar — shown when any rows selected */}
-            {someSelected && (
-              <div className="flex shrink-0 items-center gap-2 border-b border-[var(--border-hairline)] bg-[var(--bg-elevated)] px-4 py-1.5 text-[11px]">
-                <span className="text-[var(--text-secondary)]">
-                  {selectedIds.size} selected
-                </span>
-                <div className="ml-auto flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => void bulkArchive()}
-                    className="inline-flex h-6 items-center gap-1 rounded border border-[var(--border-hairline)] px-2 text-[var(--text-secondary)] hover:bg-[var(--bg-raised)] hover:text-[var(--text-primary)]"
-                  >
-                    <Icon name="ph:archive" width={11} />
-                    Archive
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void bulkDelete()}
-                    className="inline-flex h-6 items-center gap-1 rounded border border-rose-500/30 bg-rose-500/10 px-2 text-rose-300 hover:bg-rose-500/20"
-                  >
-                    <Icon name="ph:trash" width={11} />
-                    Delete
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedIds(new Set())}
-                    className="ml-1 rounded p-0.5 text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
-                    title="Clear selection"
-                  >
-                    <Icon name="ph:x" width={11} />
-                  </button>
-                </div>
-              </div>
-            )}
+            {/* Chats list */}
             <div className="min-h-0 flex-1 overflow-y-auto">
               {filteredSessions.length === 0 ? (
                 <div className="flex h-full min-h-[180px] flex-col items-center justify-center gap-3 text-center">
-                  <Icon name="ph:robot" width={22} className="text-[var(--text-muted)]" />
-                  <p className="text-[12px] text-[var(--text-secondary)]">No sessions yet</p>
+                  <Icon name="ph:chats-circle" width={28} className="text-[var(--text-muted)]" />
+                  <p className="text-[13px] text-[var(--text-secondary)]">No chats yet</p>
                   <button
                     type="button"
                     onClick={() => startConversation(activeFamiliarId)}
-                    className="rounded-md border border-[var(--border-hairline)] px-3 py-1.5 text-[11px] text-[var(--text-primary)] hover:bg-[var(--bg-raised)]"
+                    className="rounded-md border border-[var(--border-hairline)] px-3 py-1.5 text-[12px] text-[var(--text-primary)] hover:bg-[var(--bg-raised)]"
                   >
-                    Start a task
+                    Start a chat
                   </button>
                 </div>
               ) : (
-                <table className="w-full text-[11px]">
-                  <thead className="sticky top-0 border-b border-[var(--border-hairline)] bg-[var(--bg-canvas)] text-[10px] uppercase tracking-wide text-[var(--text-muted)]">
-                    <tr>
-                      <th className="w-8 pl-3 py-1.5">
-                        <input
-                          type="checkbox"
-                          checked={allSelected}
-                          ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected; }}
-                          onChange={toggleSelectAll}
-                          className="h-3.5 w-3.5 cursor-pointer accent-[var(--accent-presence)]"
-                          aria-label="Select all"
-                        />
-                      </th>
-                      <th className="px-3 py-1.5 text-left font-medium w-[120px]">Familiar</th>
-                      <th className="px-3 py-1.5 text-left font-medium">Title</th>
-                      <th className="px-3 py-1.5 text-left font-medium w-[80px]">Status</th>
-                      <th className="px-3 py-1.5 text-left font-medium w-[80px]">Harness</th>
-                      <th className="px-3 py-1.5 text-left font-medium w-[36px]">Origin</th>
-                      <th className="px-3 py-1.5 text-right font-medium w-20">Started</th>
-                      <th className="px-3 py-1.5 text-right font-medium w-[72px]">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[var(--border-hairline)]">
-                    {groupedSessions.map(({ label, sessions: groupSessions }) => (
-                      <React.Fragment key={label ?? "__ungrouped__"}>
-                        {label !== null && (
-                          <tr key={`group-${label}`} className="bg-[var(--bg-canvas)]">
-                            <td
-                              colSpan={8}
-                              className="px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] border-b border-[var(--border-hairline)]"
-                            >
-                              {label}
-                              <span className="ml-1.5 font-normal opacity-50">{groupSessions.length}</span>
-                            </td>
-                          </tr>
-                        )}
-                        {groupSessions.map((session) => {
-                          const familiar = session.familiarId ? famById.get(session.familiarId) : undefined;
-                          const isActive = session.id === activeSessionId;
-                          const originIcon = (session.origin && ORIGIN_ICONS[session.origin]) ?? "ph:question";
-                          return (
-                            <tr
-                              key={session.id}
-                              className={[
-                                "group cursor-pointer transition-colors hover:bg-[var(--bg-raised)]",
-                                isActive ? "relative bg-[var(--bg-raised)] border-l-2 border-[var(--accent-presence)]" : "",
-                              ].join(" ")}
-                              onClick={() => openConversation(session)}
-                            >
-                              {/* Checkbox */}
-                              <td
-                                className="w-8 pl-3 py-2"
-                                onClick={(e) => { e.stopPropagation(); toggleSelect(session.id); }}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={selectedIds.has(session.id)}
-                                  onChange={() => toggleSelect(session.id)}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="h-3.5 w-3.5 cursor-pointer accent-[var(--accent-presence)]"
-                                  aria-label="Select session"
-                                />
-                              </td>
-                              {/* Familiar */}
-                              <td className="px-3 py-2 w-[120px] max-w-[120px]">
-                                <div className="flex items-center gap-1.5 truncate">
-                                  {familiar?.emoji
-                                    ? <span className="text-[14px] leading-none">{familiar.emoji}</span>
-                                    : <Icon name="ph:robot" width={14} className="shrink-0 text-[var(--text-muted)]" />
-                                  }
-                                  <span className="truncate text-[var(--text-secondary)]">
-                                    {familiar?.display_name ?? session.familiarId ?? "—"}
-                                  </span>
-                                </div>
-                              </td>
-                              {/* Title */}
-                              <td className="px-3 py-2">
-                                <span className="truncate font-medium text-[var(--text-primary)]">
+                <div className="divide-y divide-[var(--border-hairline)]">
+                  {groupedSessions.map(({ label, sessions: groupSessions }) => (
+                    <React.Fragment key={label ?? "__ungrouped__"}>
+                      {label !== null && (
+                        <div className="sticky top-0 z-10 bg-[var(--bg-canvas)] px-4 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] border-b border-[var(--border-hairline)]">
+                          {label}
+                          <span className="ml-1.5 font-normal opacity-50">{groupSessions.length}</span>
+                        </div>
+                      )}
+                      {groupSessions.map((session) => {
+                        const familiar = session.familiarId ? famById.get(session.familiarId) : undefined;
+                        const isActive = session.id === activeSessionId;
+                        return (
+                          <div
+                            key={session.id}
+                            role="button"
+                            tabIndex={0}
+                            className={[
+                              "group flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-[var(--bg-raised)]",
+                              isActive ? "bg-[var(--bg-raised)] border-l-2 border-[var(--accent-presence)]" : "",
+                            ].join(" ")}
+                            onClick={() => openConversation(session)}
+                            onKeyDown={(e) => e.key === "Enter" && openConversation(session)}
+                          >
+                            {/* Familiar glyph */}
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--bg-elevated)] text-[20px] leading-none">
+                              {familiar?.emoji
+                                ? <span>{familiar.emoji}</span>
+                                : <Icon name="ph:robot" width={18} className="text-[var(--text-muted)]" />}
+                            </div>
+                            {/* Content */}
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-baseline gap-2">
+                                <span className="flex-1 truncate text-[13px] font-medium text-[var(--text-primary)]">
                                   {session.title || "Untitled"}
                                 </span>
-                              </td>
-                              {/* Status */}
-                              <td className="px-3 py-2 w-[80px]">
-                                <span className={`inline-block rounded-full border px-1.5 py-0.5 text-[10px] capitalize ${statusTone(session)}`}>
+                                <span className="shrink-0 text-[11px] text-[var(--text-muted)]">{relTime(session.created_at)}</span>
+                              </div>
+                              <div className="mt-0.5 flex items-center gap-2">
+                                <span className="truncate text-[12px] text-[var(--text-secondary)]">
+                                  {familiar?.display_name ?? session.familiarId ?? "—"}
+                                </span>
+                                <span className={`shrink-0 inline-block rounded-full border px-1.5 py-0.5 text-[10px] capitalize ${statusTone(session)}`}>
                                   {session.status}
                                 </span>
-                              </td>
-                              {/* Harness */}
-                              <td className="px-3 py-2 w-[80px] truncate text-[var(--text-muted)]">
-                                {session.harness}
-                              </td>
-                              {/* Origin */}
-                              <td className="px-3 py-2 w-[36px]">
-                                <Icon
-                                  name={originIcon as IconName}
-                                  width={13}
-                                  className="text-[var(--text-muted)]"
-                                  title={session.origin ?? "unknown"}
-                                />
-                              </td>
-                              {/* Started */}
-                              <td className="px-3 py-2 w-20 text-right text-[var(--text-muted)]">
-                                {relTime(session.created_at)}
-                              </td>
-                              {/* Actions */}
-                              <td className="px-3 py-2 w-[72px]">
-                                <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                                  <button
-                                    type="button"
-                                    title="Open conversation"
-                                    onClick={(e) => { e.stopPropagation(); openConversation(session); }}
-                                    className="rounded p-0.5 hover:bg-[var(--bg-elevated)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                                  >
-                                    <Icon name="ph:arrow-square-out" width={13} />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    title="Archive"
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      await fetch(`/api/sessions/${session.id}`, {
-                                        method: "PATCH",
-                                        headers: { "content-type": "application/json" },
-                                        body: JSON.stringify({ archived: true }),
-                                      });
-                                      onSessionStarted();
-                                    }}
-                                    className="rounded p-0.5 hover:bg-[var(--bg-elevated)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                                  >
-                                    <Icon name="ph:archive" width={13} />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    title="Sacrifice (delete)"
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      if (!window.confirm("Sacrifice this session? This cannot be undone.")) return;
-                                      await fetch(`/api/sessions/${session.id}`, { method: "DELETE" });
-                                      onSessionStarted();
-                                    }}
-                                    className="rounded p-0.5 hover:bg-[var(--bg-elevated)] text-[var(--text-muted)] hover:text-rose-400"
-                                  >
-                                    <Icon name="ph:trash" width={13} />
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </React.Fragment>
-                    ))}
-                  </tbody>
-                </table>
+                              </div>
+                            </div>
+                            {/* Hover actions */}
+                            <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                              <button
+                                type="button"
+                                title="Archive"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  await fetch(`/api/sessions/${session.id}`, {
+                                    method: "PATCH",
+                                    headers: { "content-type": "application/json" },
+                                    body: JSON.stringify({ archived: true }),
+                                  });
+                                  onSessionStarted();
+                                }}
+                                className="rounded-md p-1.5 text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]"
+                              >
+                                <Icon name="ph:archive" width={14} />
+                              </button>
+                              <button
+                                type="button"
+                                title="Delete"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  if (!window.confirm("Delete this chat? This cannot be undone.")) return;
+                                  await fetch(`/api/sessions/${session.id}`, { method: "DELETE" });
+                                  onSessionStarted();
+                                }}
+                                className="rounded-md p-1.5 text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-rose-400"
+                              >
+                                <Icon name="ph:trash" width={14} />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </React.Fragment>
+                  ))}
+                </div>
               )}
             </div>
           </div>
