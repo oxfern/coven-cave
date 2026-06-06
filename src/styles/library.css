@@ -94,12 +94,11 @@
 
 /* ── Document List ────────────────────────────────────────────── */
 .library-doclist {
-  flex: 1;
-  min-width: 0;
+  width: 280px;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  max-width: 380px;
 }
 
 .library-doclist-search {
@@ -750,4 +749,67 @@ tr:hover .library-row-delete,
 .library-preview-md {
   max-width: 740px;
   padding-bottom: 48px;
+}
+
+/* ── Rail: shared icon wrap ───────────────────────────────────── */
+.library-rail-icon-wrap {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+/* ── Rail: hairline divider ───────────────────────────────────── */
+.library-rail-divider {
+  height: 1px;
+  margin: 8px 12px;
+  background: var(--border-hairline);
+}
+
+/* ── Rail: collapsible section header button ──────────────────── */
+.library-rail-section-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.library-rail-section-toggle:hover {
+  color: var(--text-secondary);
+}
+
+/* ── Rail: caret animation ────────────────────────────────────── */
+.library-rail-caret {
+  transition: transform 0.15s;
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+.library-rail-caret--open {
+  transform: rotate(90deg);
+}
+
+/* ── Rail: skill rows (slightly indented) ─────────────────────── */
+.library-rail-item--skill {
+  padding-left: 20px;
+}
+.library-rail-item--skill .library-rail-label {
+  font-size: 12px;
+}
+
+/* ── Rail: skill category pill ────────────────────────────────── */
+.library-rail-skill-cat {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  opacity: 0.7;
 }

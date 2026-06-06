@@ -27,6 +27,7 @@ export function LibraryView() {
   const [loading, setLoading] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
+  const [activeSkillId, setActiveSkillId] = useState<string | null>(null);
 
   const loadDocs = useCallback(async (collectionId: string) => {
     setLoading(true);
@@ -57,6 +58,7 @@ export function LibraryView() {
     setActiveSection(section);
     setSelectedItem(null);
     setSearchQuery("");
+    if (section !== "skills") setActiveSkillId(null);
   }
 
   function handleCollectionChange(collectionId: string) {
@@ -80,8 +82,17 @@ export function LibraryView() {
         docCounts={docCounts}
         onSelectCollection={handleCollectionChange}
         onSelectSection={handleSectionChange}
+        activeSkillId={activeSkillId}
+        onSelectSkill={(skill) => {
+          setActiveSkillId(skill.id);
+          setSelectedItem({ kind: "skill", skill });
+        }}
       />
       <div className="library-divider" />
+      {/* Preview pane — now the dominant left content area */}
+      <LibraryDocPreview selected={selectedItem} loading={previewLoading} />
+      <div className="library-divider" />
+      {/* List panel — right sidebar picker */}
       {activeSection === "docs" && (
         <LibraryDocList
           docs={docs}
@@ -113,8 +124,6 @@ export function LibraryView() {
           onDelete={(id) => { if (selectedGhId === id) setSelectedItem(null); }}
         />
       )}
-      <div className="library-divider" />
-      <LibraryDocPreview selected={selectedItem} loading={previewLoading} />
     </div>
   );
 }

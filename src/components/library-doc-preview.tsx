@@ -9,6 +9,7 @@ import type {
   LibraryGitHubItem,
   ReadingStatus,
 } from "@/lib/library-types";
+import type { Skill } from "@/components/library-collection-rail";
 
 // ── Discriminated union ──────────────────────────────────────────
 export type SelectedItem =
@@ -16,6 +17,7 @@ export type SelectedItem =
   | { kind: "bookmark"; item: LibraryBookmark }
   | { kind: "reading"; item: LibraryReadingItem }
   | { kind: "github"; item: LibraryGitHubItem }
+  | { kind: "skill"; skill: Skill }
   | null;
 
 type Props = { selected: SelectedItem; loading: boolean };
@@ -300,6 +302,50 @@ function DocDetail({ doc }: { doc: LibraryDocBody }) {
   );
 }
 
+// ── Skill detail ─────────────────────────────────────────────────
+function SkillDetail({ skill }: { skill: Skill }) {
+  return (
+    <div className="library-preview">
+      <div className="library-preview-header">
+        <div className="library-preview-title">{skill.name}</div>
+        <div className="library-preview-meta">
+          {skill.category && <span className="library-doclist-tag">{skill.category}</span>}
+          {skill.owner && (
+            <><span className="library-preview-sep">·</span>
+            <span className="library-preview-date">{skill.owner}</span></>
+          )}
+          {skill.score != null && (
+            <><span className="library-preview-sep">·</span>
+            <span className="library-preview-date">score {skill.score.toFixed(2)}</span></>
+          )}
+        </div>
+        {skill.tags && skill.tags.length > 0 && (
+          <div className="library-preview-tags">
+            {skill.tags.map((t) => <span key={t} className="library-doclist-tag">{t}</span>)}
+          </div>
+        )}
+      </div>
+      <div className="library-preview-body">
+        {skill.description ? (
+          <FieldRow label="Description">
+            <div style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6 }}>{skill.description}</div>
+          </FieldRow>
+        ) : (
+          <div style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic", padding: "12px 0" }}>No description available.</div>
+        )}
+        <FieldRow label="ID">
+          <code style={{ fontSize: 11, color: "var(--text-secondary)", background: "var(--bg-raised)", padding: "2px 6px", borderRadius: 4 }}>{skill.id}</code>
+        </FieldRow>
+        {skill.owner && (
+          <FieldRow label="Owner">
+            <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{skill.owner}</span>
+          </FieldRow>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Dispatcher ───────────────────────────────────────────────────
 export function LibraryDocPreview({ selected, loading }: Props) {
   if (loading) {
@@ -321,5 +367,6 @@ export function LibraryDocPreview({ selected, loading }: Props) {
   if (selected.kind === "bookmark") return <BookmarkDetail item={selected.item} />;
   if (selected.kind === "reading")  return <ReadingDetail item={selected.item} />;
   if (selected.kind === "github")   return <GitHubDetail item={selected.item} />;
+  if (selected.kind === "skill")    return <SkillDetail skill={selected.skill} />;
   return null;
 }

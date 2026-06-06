@@ -71,4 +71,4 @@ export type LibraryGitHubItem = {
   familiar: string;
 };
 
-export type LibrarySectionKind = "docs" | "bookmarks" | "reading" | "github";
+export type LibrarySectionKind = "docs" | "bookmarks" | "reading" | "github" | "skills";
