@@ -72,7 +72,7 @@ const FOLDER_MODES: Array<{
   badge?: (props: SidebarMinimalProps) => string | undefined;
 }> = [
   { id: "chats",      label: "Chat",        iconName: "ph:chat-circle-dots" },
-  { id: "board",      label: "Board",       iconName: "ph:kanban" },
+  { id: "board",      label: "Tasks",       iconName: "ph:kanban" },
   { id: "inbox",      label: "Inbox",       iconName: "ph:bell-fill",
     badge: (p) => p.inboxBadgeCount && p.inboxBadgeCount > 0 ? String(p.inboxBadgeCount) : undefined },
   { id: "terminal",   label: "Terminal",    iconName: "ph:terminal-window" },

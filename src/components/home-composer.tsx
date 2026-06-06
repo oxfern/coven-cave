@@ -31,7 +31,7 @@ export type Destination = "chat" | "board" | "reminder" | "inbox" | "call";
 
 const DESTINATIONS: { id: Destination; label: string; icon: IconName }[] = [
   { id: "chat",     label: "Chat",     icon: "ph:chat-circle-dots" },
-  { id: "board",    label: "Board",    icon: "ph:kanban" },
+  { id: "board",    label: "Tasks",    icon: "ph:kanban" },
   { id: "reminder", label: "Reminder", icon: "ph:alarm-fill" },
   { id: "inbox",    label: "Inbox",    icon: "ph:tray" },
   { id: "call",     label: "Call",     icon: "ph:phone" },

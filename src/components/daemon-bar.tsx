@@ -39,7 +39,7 @@ type Props = {
 const MODE_LABEL: Record<Mode, string> = {
   home: "Home",
   chats: "Chats",
-  board: "Board",
+  board: "Tasks",
   inbox: "Inbox",
   plugins: "Plugins",
   browser: "Browser",

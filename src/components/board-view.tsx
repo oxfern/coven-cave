@@ -137,7 +137,7 @@ export function BoardView({ familiars, sessions, activeFamiliarId, onJumpToSessi
     <section className="board-shell">
       {/* Header */}
       <header className="board-header">
-        <span className="board-header-title">Board</span>
+        <span className="board-header-title">Tasks</span>
         <div className="board-header-stats">
           <span>{stats.total} card{stats.total !== 1 ? "s" : ""}</span>
           {stats.running > 0 && <><span className="board-header-stats-sep">·</span><span>{stats.running} running</span></>}
@@ -166,7 +166,7 @@ export function BoardView({ familiars, sessions, activeFamiliarId, onJumpToSessi
             )}
           </div>
 
-          <div className="board-view-toggle" role="group" aria-label="View mode">
+          <div className="board-view-toggle" role="group" aria-label="Tasks view mode">
             <button type="button" aria-label="Kanban view"
               className={`board-view-toggle-btn${viewMode === "kanban" ? " board-view-toggle-btn--active" : ""}`}
               onClick={() => setViewMode("kanban")}>
@@ -181,7 +181,7 @@ export function BoardView({ familiars, sessions, activeFamiliarId, onJumpToSessi
 
           <button type="button" className="board-new-card-btn"
             onClick={() => { setModalDefaultStatus("backlog"); setModalOpen(true); }}>
-            + New card
+            + New task
           </button>
         </div>
       </header>
