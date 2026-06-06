@@ -1,3 +1,105 @@
+// ── GitHub item context (for attaching to board / chat / familiar) ───────────
+
+export type GitHubItem = {
+  kind: "pr" | "issue" | "review_request" | "notification";
+  id: string;
+  title: string;
+  repo: string;
+  number?: number;
+  url: string;
+  state?: string;
+  updatedAt: string;
+  draft?: boolean;
+  labels?: string[];
+};
+
+export type GitHubItemContext = {
+  title: string;
+  url: string;
+  repo: string;
+  number?: number;
+  kind: GitHubItem["kind"];
+  body?: string;
+};
+
+export function itemToContext(item: GitHubItem): GitHubItemContext {
+  return {
+    title: item.title,
+    url: item.url,
+    repo: item.repo,
+    number: item.number,
+    kind: item.kind,
+  };
+}
+
+export async function createBoardCardFromGitHubItem(
+  item: GitHubItem,
+  familiarId: string | null,
+): Promise<{ ok: boolean; cardId?: string; error?: string }> {
+  const ctx = itemToContext(item);
+  const kindLabel: Record<GitHubItem["kind"], string> = {
+    pr: "PR",
+    issue: "Issue",
+    review_request: "Review Request",
+    notification: "Notification",
+  };
+  const label = kindLabel[item.kind];
+  const numberSuffix = item.number != null ? ` #${item.number}` : "";
+  const title = `[${label}${numberSuffix}] ${item.title}`;
+  const notes = `Repo: ${ctx.repo}\nURL: ${ctx.url}`;
+
+  try {
+    const res = await fetch("/api/board", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title,
+        notes,
+        familiarId,
+        links: [item.url],
+        status: "inbox" as const,
+      }),
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data?.ok) {
+      return { ok: false, error: data?.error ?? `HTTP ${res.status}` };
+    }
+    return { ok: true, cardId: data.card?.id as string | undefined };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Network error" };
+  }
+}
+
+export async function attachGitHubItemToCard(
+  cardId: string,
+  url: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    // Fetch existing card first to merge links
+    const getRes = await fetch("/api/board");
+    const getData = await getRes.json().catch(() => null);
+    const cards: Array<{ id: string; links?: string[] }> = getData?.cards ?? [];
+    const existing = cards.find((c) => c.id === cardId);
+    const existingLinks: string[] = existing?.links ?? [];
+    const mergedLinks = [...new Set([...existingLinks, url])];
+
+    const res = await fetch(`/api/board/${cardId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ links: mergedLinks }),
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data?.ok) {
+      return { ok: false, error: data?.error ?? `HTTP ${res.status}` };
+    }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Network error" };
+  }
+}
+
+// ── GitHub task types (pre-existing) ─────────────────────────────────────────
+
 export type GitHubTaskStatus = "running" | "review" | "done" | "failed";
 
 export type GitHubTask = {

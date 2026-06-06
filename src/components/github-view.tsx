@@ -2,21 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/lib/icon";
+import type { Familiar } from "@/lib/types";
+import type { Card } from "@/lib/cave-board-types";
+import type { GitHubItem } from "@/lib/github-tasks";
+import {
+  GitHubActionPopover,
+  type PopoverMode,
+} from "@/components/github-action-popover";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-
-type GitHubItem = {
-  kind: "pr" | "issue" | "review_request" | "notification";
-  id: string;
-  title: string;
-  repo: string;
-  number?: number;
-  url: string;
-  state?: string;
-  updatedAt: string;
-  draft?: boolean;
-  labels?: string[];
-};
 
 type ActivityResult = {
   ok: true;
@@ -27,6 +21,38 @@ type ActivityResult = {
 };
 
 type PatStatus = { hasPat: boolean; login: string | null };
+
+// ── Data hooks ─────────────────────────────────────────────────────────────────
+
+function useFamiliars(): Familiar[] {
+  const [familiars, setFamiliars] = useState<Familiar[]>([]);
+  useEffect(() => {
+    fetch("/api/familiars")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.ok && Array.isArray(data.familiars)) {
+          setFamiliars(data.familiars as Familiar[]);
+        }
+      })
+      .catch(() => {});
+  }, []);
+  return familiars;
+}
+
+function useCards(): Card[] {
+  const [cards, setCards] = useState<Card[]>([]);
+  useEffect(() => {
+    fetch("/api/board")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.ok && Array.isArray(data.cards)) {
+          setCards(data.cards as Card[]);
+        }
+      })
+      .catch(() => {});
+  }, []);
+  return cards;
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -197,6 +223,137 @@ function PatSetupModal({
   );
 }
 
+// ── Item row with actions ─────────────────────────────────────────────────────
+
+function GitHubItemRow({
+  item,
+  familiars,
+  cards,
+}: {
+  item: GitHubItem;
+  familiars: Familiar[];
+  cards: Card[];
+}) {
+  const [openPopover, setOpenPopover] = useState<PopoverMode | null>(null);
+
+  function openMode(mode: PopoverMode, e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setOpenPopover((prev) => (prev === mode ? null : mode));
+  }
+
+  return (
+    <li className="group relative">
+      <a
+        href={item.url}
+        target="_blank"
+        rel="noreferrer"
+        className="flex items-start gap-3 px-5 py-3.5 hover:bg-[var(--bg-raised)]/50 transition-colors"
+      >
+        {/* Kind icon */}
+        <Icon
+          name={(KIND_ICON[item.kind] ?? "ph:github-logo") as Parameters<typeof Icon>[0]["name"]}
+          width={14}
+          className={`mt-[3px] shrink-0 ${KIND_COLOR[item.kind] ?? "text-[var(--text-muted)]"}`}
+        />
+
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          {/* Row 1: repo + number + age */}
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="flex items-center gap-1.5 min-w-0">
+              <span className="truncate font-mono text-[11px] text-[var(--text-muted)]">
+                {item.repo}{item.number ? `#${item.number}` : ""}
+              </span>
+              {item.draft && (
+                <span className="rounded px-1 py-0.5 text-[9px] bg-[var(--bg-raised)] text-[var(--text-muted)]">draft</span>
+              )}
+            </span>
+            <span className="shrink-0 text-[11px] text-[var(--text-muted)]">{age(item.updatedAt)}</span>
+          </div>
+
+          {/* Row 2: title */}
+          <span className="truncate text-[13px] font-semibold text-[var(--text-primary)] group-hover:text-[var(--accent-presence)] transition-colors">
+            {item.title}
+          </span>
+
+          {/* Row 3: kind + labels */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={`text-[11px] font-medium ${KIND_COLOR[item.kind]}`}>
+              {KIND_LABEL[item.kind]}
+            </span>
+            {item.labels?.slice(0, 3).map((l) => (
+              <span
+                key={l}
+                className="rounded px-1.5 py-0.5 text-[9px] bg-[var(--bg-raised)] text-[var(--text-muted)]"
+              >
+                {l}
+              </span>
+            ))}
+          </div>
+
+          {/* Row 4: action buttons (hover-revealed) */}
+          <div className="flex items-center gap-1 pt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              type="button"
+              onClick={(e) => openMode("board", e)}
+              title="Add to board"
+              className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] transition-colors ${
+                openPopover === "board"
+                  ? "bg-[var(--accent-presence)]/20 text-[var(--accent-presence)]"
+                  : "text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)]"
+              }`}
+            >
+              <Icon name="ph:kanban" width={11} />
+              Board
+            </button>
+            <button
+              type="button"
+              onClick={(e) => openMode("chat", e)}
+              title="Start chat"
+              className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] transition-colors ${
+                openPopover === "chat"
+                  ? "bg-[var(--accent-presence)]/20 text-[var(--accent-presence)]"
+                  : "text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)]"
+              }`}
+            >
+              <Icon name="ph:chat-circle-dots" width={11} />
+              Chat
+            </button>
+            <button
+              type="button"
+              onClick={(e) => openMode("assign", e)}
+              title="Assign to familiar"
+              className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] transition-colors ${
+                openPopover === "assign"
+                  ? "bg-[var(--accent-presence)]/20 text-[var(--accent-presence)]"
+                  : "text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)]"
+              }`}
+            >
+              <Icon name="ph:robot" width={11} />
+              Assign
+            </button>
+          </div>
+        </div>
+
+        <Icon name="ph:arrow-square-out" width={11} className="mt-1 shrink-0 text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity" />
+      </a>
+
+      {/* Action popover — rendered outside the <a> to avoid nesting issues */}
+      {openPopover && (
+        <div className="relative px-5 pb-2" onClick={(e) => e.stopPropagation()}>
+          <GitHubActionPopover
+            mode={openPopover}
+            item={item}
+            familiars={familiars}
+            cards={cards}
+            onClose={() => setOpenPopover(null)}
+          />
+        </div>
+      )}
+    </li>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 type Filter = "all" | "pr" | "review_request" | "issue";
@@ -209,6 +366,9 @@ export function GitHubView() {
   const [filter, setFilter] = useState<Filter>("all");
   const [showPatModal, setShowPatModal] = useState(false);
   const timerRef = useRef<number | null>(null);
+
+  const familiars = useFamiliars();
+  const cards = useCards();
 
   async function fetchPatStatus() {
     try {
@@ -418,58 +578,12 @@ export function GitHubView() {
         ) : (
           <ul className="divide-y divide-[var(--border-hairline)]">
             {filtered.map((item) => (
-              <li key={item.id}>
-                <a
-                  href={item.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="group flex items-start gap-3 px-5 py-3.5 hover:bg-[var(--bg-raised)]/50 transition-colors"
-                >
-                  {/* Kind icon */}
-                  <Icon
-                    name={(KIND_ICON[item.kind] ?? "ph:github-logo") as Parameters<typeof Icon>[0]["name"]}
-                    width={14}
-                    className={`mt-[3px] shrink-0 ${KIND_COLOR[item.kind] ?? "text-[var(--text-muted)]"}`}
-                  />
-
-                  <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                    {/* Row 1: repo + number + age */}
-                    <div className="flex items-baseline justify-between gap-2">
-                      <span className="flex items-center gap-1.5 min-w-0">
-                        <span className="truncate font-mono text-[11px] text-[var(--text-muted)]">
-                          {item.repo}{item.number ? `#${item.number}` : ""}
-                        </span>
-                        {item.draft && (
-                          <span className="rounded px-1 py-0.5 text-[9px] bg-[var(--bg-raised)] text-[var(--text-muted)]">draft</span>
-                        )}
-                      </span>
-                      <span className="shrink-0 text-[11px] text-[var(--text-muted)]">{age(item.updatedAt)}</span>
-                    </div>
-
-                    {/* Row 2: title */}
-                    <span className="truncate text-[13px] font-semibold text-[var(--text-primary)] group-hover:text-[var(--accent-presence)] transition-colors">
-                      {item.title}
-                    </span>
-
-                    {/* Row 3: kind + labels */}
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`text-[11px] font-medium ${KIND_COLOR[item.kind]}`}>
-                        {KIND_LABEL[item.kind]}
-                      </span>
-                      {item.labels?.slice(0, 3).map((l) => (
-                        <span
-                          key={l}
-                          className="rounded px-1.5 py-0.5 text-[9px] bg-[var(--bg-raised)] text-[var(--text-muted)]"
-                        >
-                          {l}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  <Icon name="ph:arrow-square-out" width={11} className="mt-1 shrink-0 text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity" />
-                </a>
-              </li>
+              <GitHubItemRow
+                key={item.id}
+                item={item}
+                familiars={familiars}
+                cards={cards}
+              />
             ))}
           </ul>
         )}
