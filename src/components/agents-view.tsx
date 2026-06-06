@@ -491,29 +491,7 @@ export function AgentsView({
                   />
                 )}
               </aside>
-            ) : (
-              /* Closed strip — two icon buttons */
-              <div className="right-panel-strip right-panel-strip--closed">
-                <button
-                  type="button"
-                  onClick={() => setRightPanel("chat")}
-                  className={`right-panel-strip-btn`}
-                  title="Chat"
-                  aria-label="Open chat panel"
-                >
-                  <Icon name="ph:chats" width={15} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRightPanel("inspector")}
-                  className={`right-panel-strip-btn`}
-                  title="Inspector"
-                  aria-label="Open inspector"
-                >
-                  <Icon name="ph:brain-bold" width={15} />
-                </button>
-              </div>
-            )}
+            ) : null}
           </div>
         ) : (
           <div className="flex min-h-0 flex-1 flex-col">

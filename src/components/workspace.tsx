@@ -849,6 +849,23 @@ export function Workspace() {
         agent={mode === "browser" ? undefined : <BrowserPane label="default" />}
         agentLabel="Browser"
         agentIcon="ph:globe"
+        agentExtra={
+          <>
+            <div className="shell-agent-strip-divider" />
+            <button
+              type="button"
+              className={`shell-agent-strip-btn${rightPanel === "chat" ? " shell-agent-strip-btn--active" : ""}`}
+              title="Chat"
+              aria-label={rightPanel === "chat" ? "Close chat panel" : "Open chat panel"}
+              onClick={() => {
+                if (mode !== "agents") setMode("agents");
+                setRightPanel(rightPanel === "chat" ? null : "chat");
+              }}
+            >
+              <Icon name="ph:chats" width={15} />
+            </button>
+          </>
+        }
         bottom={<BottomTerminal threadId="cave.bottom.main" />}
       />
 
