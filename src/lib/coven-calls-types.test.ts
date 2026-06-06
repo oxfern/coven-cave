@@ -1,6 +1,11 @@
 // @ts-nocheck
 import assert from "node:assert/strict";
-import { aggregateEdges, type CovenCall } from "./coven-calls-types.ts";
+import {
+  aggregateEdges,
+  buildDelegationGraph,
+  inferDelegationTraces,
+  type CovenCall,
+} from "./coven-calls-types.ts";
 
 const calls: CovenCall[] = [
   {
@@ -45,3 +50,112 @@ assert.deepEqual(aggregateEdges(calls), [
     hasRunning: false,
   },
 ]);
+
+const inferred = inferDelegationTraces({
+  cards: [
+    {
+      id: "card-1",
+      title: "Research delegation graph UX",
+      status: "running",
+      lifecycle: "running",
+      familiarId: "sage",
+      sessionId: "session-cody",
+      createdAt: "2026-06-06T01:10:00.000Z",
+      updatedAt: "2026-06-06T01:12:00.000Z",
+    },
+    {
+      id: "card-same-owner",
+      title: "Same familiar owns session and card",
+      status: "running",
+      lifecycle: "running",
+      familiarId: "cody",
+      sessionId: "session-cody",
+      createdAt: "2026-06-06T01:11:00.000Z",
+      updatedAt: "2026-06-06T01:13:00.000Z",
+    },
+  ],
+  sessions: [
+    {
+      id: "session-cody",
+      familiarId: "cody",
+      title: "Cody working session",
+      status: "running",
+      created_at: "2026-06-06T01:09:00.000Z",
+      updated_at: "2026-06-06T01:14:00.000Z",
+    },
+  ],
+});
+
+assert.equal(inferred.length, 1);
+assert.deepEqual(
+  {
+    source: inferred[0].source,
+    callerFamiliarId: inferred[0].callerFamiliarId,
+    calleeFamiliarId: inferred[0].calleeFamiliarId,
+    linkedCardId: inferred[0].linkedCardId,
+    status: inferred[0].status,
+  },
+  {
+    source: "inferred",
+    callerFamiliarId: "cody",
+    calleeFamiliarId: "sage",
+    linkedCardId: "card-1",
+    status: "running",
+  },
+);
+
+const graph = buildDelegationGraph({
+  explicitCalls: calls,
+  inferredTraces: inferred,
+  includeInferred: true,
+});
+
+assert.deepEqual(
+  graph.edges.map((edge) => ({
+    caller: edge.caller,
+    callee: edge.callee,
+    source: edge.source,
+    explicitCount: edge.explicitCount,
+    inferredCount: edge.inferredCount,
+    count: edge.count,
+    hasRunning: edge.hasRunning,
+  })),
+  [
+    {
+      caller: "nova",
+      callee: "cody",
+      source: "explicit",
+      explicitCount: 2,
+      inferredCount: 0,
+      count: 2,
+      hasRunning: true,
+    },
+    {
+      caller: "cody",
+      callee: "sage",
+      source: "inferred",
+      explicitCount: 0,
+      inferredCount: 1,
+      count: 1,
+      hasRunning: true,
+    },
+    {
+      caller: "cody",
+      callee: "nova",
+      source: "explicit",
+      explicitCount: 1,
+      inferredCount: 0,
+      count: 1,
+      hasRunning: false,
+    },
+  ],
+);
+
+assert.equal(
+  buildDelegationGraph({
+    explicitCalls: calls,
+    inferredTraces: inferred,
+    includeInferred: false,
+  }).edges.some((edge) => edge.source === "inferred"),
+  false,
+);
