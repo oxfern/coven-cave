@@ -6,7 +6,7 @@ import type { Card, CardLifecycle, CardPriority, CardStatus } from "@/lib/cave-b
 import { STATUSES, PRIORITIES } from "@/lib/cave-board-types";
 import { LifecycleBadge, formatTimeoutBadge } from "@/components/ui/lifecycle-badge";
 import type { CardStep } from "@/lib/cave-board-types";
-import type { LibraryGitHubItem } from "@/lib/library-types";
+import type { GitHubItem } from "@/lib/github-tasks";
 import { Icon } from "@/lib/icon";
 import type { IconName } from "@/lib/icon";
 
@@ -74,17 +74,25 @@ function GitHubAttachSection({
   onPatch: (id: string, patch: Partial<Card>) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [items, setItems] = useState<LibraryGitHubItem[]>([]);
+  const [items, setItems] = useState<GitHubItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState("");
   const [err, setErr] = useState<string | null>(null);
+  const [configured, setConfigured] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (!open || items.length > 0) return;
     setLoading(true);
-    fetch("/api/library/github")
+    fetch("/api/github/assigned", { cache: "no-store" })
       .then((r) => r.json())
-      .then((d) => { if (d.ok) setItems(d.items ?? []); else setErr(d.error ?? "failed"); })
+      .then((d: { ok: boolean; items?: GitHubItem[]; configured?: boolean; error?: string }) => {
+        if (d.ok) {
+          setItems(d.items ?? []);
+          setConfigured(d.configured ?? true);
+        } else {
+          setErr(d.error ?? "failed");
+        }
+      })
       .catch(() => setErr("fetch failed"))
       .finally(() => setLoading(false));
   }, [open, items.length]);
@@ -103,7 +111,7 @@ function GitHubAttachSection({
 
   const attachedItems = items.filter((i) => attachedUrls.has(i.url));
 
-  function attach(item: LibraryGitHubItem) {
+  function attach(item: GitHubItem) {
     if (attachedUrls.has(item.url)) return;
     onPatch(card.id, { links: [...card.links, item.url] });
   }
@@ -112,10 +120,9 @@ function GitHubAttachSection({
     onPatch(card.id, { links: card.links.filter((l) => l !== url) });
   }
 
-  function assignAgent(item: LibraryGitHubItem) {
+  function assignAgent(item: GitHubItem) {
     const fam = familiars.find(
-      (f) => f.id === item.familiar ||
-        f.display_name?.toLowerCase() === item.familiar?.toLowerCase()
+      (f) => f.display_name?.toLowerCase() === item.repo?.toLowerCase()
     );
     if (fam) onPatch(card.id, { familiarId: fam.id });
   }
@@ -171,7 +178,7 @@ function GitHubAttachSection({
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search PRs, issues, repos…"
+              placeholder="Search PRs, issues…"
               style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: 12, color: "var(--text-primary)" }}
             />
             {query && (
@@ -188,16 +195,24 @@ function GitHubAttachSection({
             {err && (
               <div style={{ padding: "10px", fontSize: 11, color: "#f87171" }}>{err}</div>
             )}
-            {!loading && !err && filtered.length === 0 && (
-              <div style={{ padding: "12px 10px", fontSize: 11, color: "var(--text-muted)", textAlign: "center" }}>
-                {items.length === 0 ? "No GitHub items saved in Library yet." : "No matches."}
+            {!loading && !err && configured === false && (
+              <div style={{ padding: "12px 10px", fontSize: 11, color: "var(--text-muted)", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+                <Icon name="ph:github-logo" width={18} className="text-[var(--text-muted)]" />
+                Connect a GitHub token to see your assigned items.
               </div>
+            )}
+            {!loading && !err && configured !== false && filtered.length === 0 && items.length === 0 && (
+              <div style={{ padding: "12px 10px", fontSize: 11, color: "var(--text-muted)", textAlign: "center" }}>
+                No open issues, PRs, or review requests assigned to you.
+              </div>
+            )}
+            {!loading && !err && configured !== false && items.length > 0 && filtered.length === 0 && (
+              <div style={{ padding: "12px 10px", fontSize: 11, color: "var(--text-muted)", textAlign: "center" }}>No matches.</div>
             )}
             {filtered.map((item) => {
               const attached = attachedUrls.has(item.url);
               const fam = familiars.find(
-                (f) => f.id === item.familiar ||
-                  f.display_name?.toLowerCase() === item.familiar?.toLowerCase()
+                (f) => f.display_name?.toLowerCase() === item.repo?.toLowerCase()
               );
               return (
                 <div key={item.id} style={{
@@ -255,6 +270,158 @@ function GitHubAttachSection({
 }
 
 
+
+// ── Links ────────────────────────────────────────────────────────────────────
+function LinksSection({
+  card,
+  onPatch,
+}: {
+  card: Card;
+  onPatch: (id: string, patch: Partial<Card>) => void;
+}) {
+  const [draft, setDraft] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const links = card.links ?? [];
+
+  function isValidUrl(value: string): boolean {
+    return value.startsWith("http://") || value.startsWith("https://");
+  }
+
+  function addLink() {
+    const url = draft.trim();
+    if (!url || !isValidUrl(url)) return;
+    if (links.includes(url)) return;
+    onPatch(card.id, { links: [...links, url] });
+    setDraft("");
+    inputRef.current?.focus();
+  }
+
+  function deleteLink(url: string) {
+    onPatch(card.id, { links: links.filter((l) => l !== url) });
+  }
+
+  return (
+    <div className="board-drawer-field">
+      {/* Header row */}
+      <div className="board-drawer-field-label" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <Icon name="ph:link-simple" width={12} />
+        Links
+        {links.length > 0 && (
+          <span style={{
+            fontSize: 10,
+            color: "var(--text-muted)",
+            background: "var(--bg-elevated)",
+            borderRadius: 8,
+            padding: "1px 6px",
+          }}>
+            {links.length}
+          </span>
+        )}
+      </div>
+
+      {/* Link list */}
+      {links.length > 0 && (
+        <ul style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: 8 }}>
+          {links.map((link) => {
+            const href = safeHref(link);
+            return (
+              <li
+                key={link}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "5px 8px",
+                  borderRadius: 6,
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--border-hairline)",
+                }}
+              >
+                <Icon name="ph:link-simple" width={10} className="shrink-0 text-[var(--text-muted)]" />
+                {href ? (
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{
+                      flex: 1,
+                      fontSize: 12,
+                      color: "var(--text-primary)",
+                      textDecoration: "none",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                    className="link-item-anchor"
+                  >
+                    {formatLinkLabel(link)}
+                  </a>
+                ) : (
+                  <span style={{
+                    flex: 1,
+                    fontSize: 12,
+                    color: "var(--text-primary)",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}>
+                    {link}
+                  </span>
+                )}
+                <span style={{ opacity: 0, display: "flex" }} className="step-actions">
+                  <button
+                    type="button"
+                    className="board-toolbar-btn"
+                    style={{ padding: "1px 4px", color: "#f87171" }}
+                    onClick={() => deleteLink(link)}
+                    title="Remove link"
+                  >
+                    <Icon name="ph:x-bold" width={9} />
+                  </button>
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {/* Add link input */}
+      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+        <input
+          ref={inputRef}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); addLink(); } }}
+          placeholder="Paste a URL…"
+          style={{
+            flex: 1,
+            background: "var(--bg-elevated)",
+            border: "1px solid var(--border-hairline)",
+            borderRadius: 6,
+            padding: "5px 9px",
+            fontSize: 12,
+            color: "var(--text-primary)",
+            outline: "none",
+          }}
+        />
+        <button
+          type="button"
+          className="board-toolbar-btn"
+          onClick={addLink}
+          disabled={!draft.trim() || !isValidUrl(draft.trim())}
+          style={{ padding: "4px 10px", fontSize: 11 }}
+        >
+          <Icon name="ph:plus-bold" width={11} />
+          Add
+        </button>
+      </div>
+
+      {/* CSS for hover reveal on link actions */}
+      <style>{".link-item-anchor:hover { text-decoration: underline; } li:hover .step-actions { opacity: 1; }"}</style>
+    </div>
+  );
+}
 
 // ── Steps ─────────────────────────────────────────────────────────────────────
 function StepsSection({
@@ -595,29 +762,7 @@ export function BoardInspector({ card, familiars, sessions, onClose, onPatch, on
 
           <StepsSection card={card} onPatch={onPatch} />
 
-          <div className="board-drawer-field">
-            <div className="board-drawer-field-label">Links</div>
-            {card.links.length > 0 && (
-              <div className="board-task-links">
-                {card.links.map((link) => {
-                  const href = safeHref(link);
-                  return href ? (
-                    <a key={link} className="board-task-link" href={href} target="_blank" rel="noreferrer">
-                      {formatLinkLabel(link)}
-                    </a>
-                  ) : (
-                    <span key={link} className="board-task-link">{link}</span>
-                  );
-                })}
-              </div>
-            )}
-            <textarea className="board-drawer-field-textarea" defaultValue={card.links.join("\n")}
-              placeholder="One URL or reference per line"
-              onBlur={(e) => {
-                const next = parseDelimited(e.target.value);
-                if (next.join("\n") !== card.links.join("\n")) onPatch(card.id, { links: next });
-              }} />
-          </div>
+          <LinksSection card={card} onPatch={onPatch} />
 
           <GitHubAttachSection card={card} familiars={familiars} onPatch={onPatch} />
 
@@ -692,11 +837,6 @@ export function BoardInspector({ card, familiars, sessions, onClose, onPatch, on
     </>
   );
 }
-
-function parseDelimited(value: string): string[] {
-  return [...new Set(value.split(/[\n,]+/).map((s) => s.trim()).filter(Boolean))];
-}
-
 function safeHref(value: string): string | null {
   try {
     const url = new URL(value);
