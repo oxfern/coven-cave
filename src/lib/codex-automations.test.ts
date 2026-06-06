@@ -1,6 +1,6 @@
 // @ts-nocheck
 import assert from "node:assert/strict";
-import { patchTomlAutomationFields, patchTomlStatus } from "./codex-automations.ts";
+import { humanRrule, patchTomlAutomationFields, patchTomlStatus } from "./codex-automations.ts";
 
 const original = `version = 1
 id = "ios-application-priority-audit"
@@ -63,3 +63,20 @@ assert.equal((patchedOdd.match(/^\s*prompt\s*=/gm) ?? []).length, 1);
 const bareStatus = patchTomlStatus("status = PAUSED # old\n", "ACTIVE");
 assert.match(bareStatus, /^status = "ACTIVE"$/m);
 assert.equal((bareStatus.match(/^\s*status\s*=/gm) ?? []).length, 1);
+
+assert.equal(
+  humanRrule("RRULE:FREQ=WEEKLY;BYHOUR=2;BYMINUTE=0;BYDAY=SU,MO,TU,WE,TH,FR,SA"),
+  "Daily at 02:00",
+);
+assert.equal(
+  humanRrule("RRULE:FREQ=WEEKLY;BYHOUR=9;BYMINUTE=30;BYDAY=MO,TU,WE,TH,FR"),
+  "Weekdays at 09:30",
+);
+assert.equal(
+  humanRrule("RRULE:FREQ=WEEKLY;BYHOUR=10;BYMINUTE=0;BYDAY=SA,SU"),
+  "Weekends at 10:00",
+);
+assert.equal(
+  humanRrule("RRULE:FREQ=WEEKLY;BYHOUR=6;BYMINUTE=30;BYDAY=MO,WE,FR"),
+  "Mon/Wed/Fri at 06:30",
+);

@@ -111,7 +111,7 @@ function tomlPrompt(value: string): string {
   return `'''${normalized.replace(/\n*$/g, "")}\n'''`;
 }
 
-function humanRrule(rrule: string | null): string {
+export function humanRrule(rrule: string | null): string {
   if (!rrule) return "Scheduled";
   // RRULE:FREQ=WEEKLY;BYHOUR=8;BYMINUTE=30;BYDAY=MO,TU,WE,TH,FR
   const freq = rrule.match(/FREQ=(\w+)/)?.[1];
@@ -122,15 +122,22 @@ function humanRrule(rrule: string | null): string {
   const WEEKDAY: Record<string, string> = {
     MO: "Mon", TU: "Tue", WE: "Wed", TH: "Thu", FR: "Fri", SA: "Sat", SU: "Sun",
   };
+  const dayLabel = (rawDays: string | undefined): string => {
+    if (!rawDays) return "Weekly";
+    const parsed = rawDays.split(",").filter(Boolean);
+    const key = [...parsed].sort().join(",");
+    if (key === "FR,MO,SA,SU,TH,TU,WE") return "Daily";
+    if (key === "FR,MO,TH,TU,WE") return "Weekdays";
+    if (key === "SA,SU") return "Weekends";
+    return parsed.map((d) => WEEKDAY[d] ?? d).join("/");
+  };
 
   const timeStr = hour !== undefined
     ? `${hour.padStart(2, "0")}:${(min ?? "0").padStart(2, "0")}`
     : null;
 
   if (freq === "WEEKLY") {
-    const dayStr = days
-      ? days.split(",").map((d) => WEEKDAY[d] ?? d).join("/")
-      : "Daily";
+    const dayStr = dayLabel(days);
     return timeStr ? `${dayStr} at ${timeStr}` : dayStr;
   }
   if (freq === "DAILY") {
