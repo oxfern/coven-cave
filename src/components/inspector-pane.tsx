@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Familiar } from "@/lib/types";
 import type { InboxItem } from "@/lib/cave-inbox";
@@ -9,21 +9,14 @@ import { EvalLoopPanel } from "@/components/eval-loop-panel";
 import { MemoryInspectorPanel } from "@/components/memory-inspector-panel";
 import { VaultPanel } from "@/components/vault-panel";
 import { Icon } from "@/lib/icon";
+import type { HarnessCapabilityManifest } from "@/app/api/capabilities/route";
+import type { RoleEntry } from "@/app/api/roles/route";
+import type { LocalSkillEntry } from "@/app/api/skills/local/route";
+import type { AdapterReport } from "@/lib/harness-adapters";
 
-type Tab = "memory" | "capabilities" | "inbox" | "vault";
+type Tab = "memory" | "familiar" | "inbox" | "vault";
 
-type Harness = {
-  id: string;
-  label: string;
-  binary: string;
-  installed: boolean;
-  path: string | null;
-  version: string | null;
-};
 
-type CapSectionState = {
-  open: boolean;
-};
 
 type MemoryEntry = {
   root: string;
@@ -44,15 +37,6 @@ type MemoryFile = {
   error?: string;
 };
 
-type Skill = {
-  id: string;
-  name: string;
-  owner?: string;
-  category?: string;
-  tags?: string[];
-  score?: number;
-  description?: string;
-};
 
 type Props = {
   familiar: Familiar | null;
@@ -62,7 +46,7 @@ type Props = {
 
 const TAB_LABEL: Record<Tab, string> = {
   memory: "Memory",
-  capabilities: "Capabilities",
+  familiar: "Familiar",
   inbox: "Inbox",
   vault: "Vault",
 };
@@ -101,7 +85,7 @@ export function InspectorPane({ familiar, inboxItems = [], onOpenInbox }: Props)
   return (
     <aside className="flex h-full flex-col border-l border-[var(--border-hairline)] bg-[var(--bg-raised)]/40">
       <nav className="flex border-b border-[var(--border-hairline)] text-[11px]">
-        {(["memory", "capabilities", "inbox", "vault"] as const).map((t) => (
+        {(["memory", "familiar", "inbox", "vault"] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -123,7 +107,7 @@ export function InspectorPane({ familiar, inboxItems = [], onOpenInbox }: Props)
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         {tab === "memory" ? <MemoryTab familiar={familiar} /> : null}
-        {tab === "capabilities" ? <CapabilitiesTab familiar={familiar} /> : null}
+        {tab === "familiar" ? <FamiliarCapabilityPanel familiar={familiar} /> : null}
         {tab === "inbox" ? (
           <InboxTab
             familiar={familiar}
@@ -629,151 +613,15 @@ function MemoryTab({ familiar }: { familiar: Familiar | null }) {
 
 /* ---------- Tools tab ---------- */
 
-/* ---------- Capabilities tab ----------
+/* ---------- Familiar Capability Panel ----------
  *
- * What this familiar has access to right now: skills, tools (via harness),
- * MCP servers, hooks. Issue #19. Reads existing daemon endpoints +
- * package metadata — no new state, no edits (config concern).
+ * Full per-familiar capability picture with inheritance chain:
+ *   Layer 1: Active Roles  (roles[] where active && familiar matches)
+ *   Layer 2: Local Skills  (familiar-specific + global workspace skills)
+ *   Layer 3: Harness       (plugins, MCP, scan metadata from capabilities scan)
  */
-function CapabilitiesTab({ familiar }: { familiar: Familiar | null }) {
-  const [skills, setSkills] = useState<Skill[]>([]);
-  const [skillsError, setSkillsError] = useState<string | null>(null);
-  const [harnesses, setHarnesses] = useState<Harness[]>([]);
-  const [harnessesError, setHarnessesError] = useState<string | null>(null);
 
-  useEffect(() => {
-    void (async () => {
-      try {
-        const res = await fetch("/api/skills", { cache: "no-store" });
-        const json = await res.json();
-        if (!json.ok) setSkillsError(json.error ?? "skills unavailable");
-        else setSkills(json.skills ?? []);
-      } catch (err) {
-        setSkillsError(err instanceof Error ? err.message : "fetch failed");
-      }
-    })();
-    void (async () => {
-      try {
-        const res = await fetch("/api/harnesses", { cache: "no-store" });
-        const json = await res.json();
-        if (!json.ok) setHarnessesError(json.error ?? "harnesses unavailable");
-        else setHarnesses(json.harnesses ?? []);
-      } catch (err) {
-        setHarnessesError(err instanceof Error ? err.message : "fetch failed");
-      }
-    })();
-  }, []);
-
-  const harness = familiar?.harness
-    ? harnesses.find((h) => h.id === familiar.harness) ?? null
-    : null;
-
-  if (!familiar) {
-    return (
-      <p className="p-4 text-xs text-[var(--text-muted)]">
-        Select a familiar to see its capabilities.
-      </p>
-    );
-  }
-
-  return (
-    <div className="flex flex-col gap-3 p-3 text-xs">
-      <CapSection
-        title="Skills"
-        scope={skillsError ? `error: ${skillsError}` : `${skills.length} attached`}
-        empty={!skillsError && skills.length === 0}
-        emptyText={`No skills attached to ${familiar.display_name}.`}
-      >
-        <ul className="space-y-1.5">
-          {skills.map((s) => (
-            <li
-              key={s.id}
-              className="rounded border border-[var(--border-hairline)] bg-[var(--bg-raised)]/40 px-2 py-1.5"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-medium text-[var(--text-primary)]">{s.name}</span>
-                <span className="rounded bg-[var(--bg-raised)] px-1 text-[10px] uppercase tracking-wider text-[var(--text-muted)]">
-                  {scopeFor(s.owner)}
-                </span>
-              </div>
-              {s.description ? (
-                <p className="mt-1 text-[var(--text-secondary)]">{s.description}</p>
-              ) : null}
-              {s.tags && s.tags.length > 0 ? (
-                <div className="mt-1.5 flex flex-wrap gap-1">
-                  {s.tags.map((t) => (
-                    <span
-                      key={t}
-                      className="rounded bg-purple-600/20 px-1 text-[10px] text-purple-200"
-                    >
-                      {t}
-                    </span>
-                  ))}
-                </div>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      </CapSection>
-
-      <CapSection
-        title="Tools"
-        scope={
-          harnessesError
-            ? `error: ${harnessesError}`
-            : harness
-              ? `${harness.label} ${harness.version ?? "(version unknown)"}`
-              : `harness "${familiar.harness ?? "—"}" not installed`
-        }
-        empty={!harness || !harness.installed}
-        emptyText={
-          harness
-            ? `${harness.label} CLI not on PATH.`
-            : "No harness bound — set one in Settings."
-        }
-      >
-        <ul className="space-y-1">
-          {harness ? (
-            <>
-              <CapRow label="binary" value={harness.binary} />
-              <CapRow label="path" value={harness.path ?? "—"} mono />
-              <CapRow label="version" value={harness.version ?? "—"} />
-              <CapRow label="model" value={familiar.model ?? "—"} />
-            </>
-          ) : null}
-        </ul>
-      </CapSection>
-
-      <CapSection
-        title="MCP servers"
-        scope="discovered via harness"
-        empty
-        emptyText="No MCP server inventory exposed by the daemon yet."
-      />
-
-      <CapSection
-        title="Hooks"
-        scope="registered hook events"
-        empty
-        emptyText="No hook inventory exposed by the daemon yet."
-      />
-
-      {familiar ? (
-        <section>
-          <header className="mb-1.5 flex items-baseline justify-between">
-            <h3 className="text-[10px] uppercase tracking-widest text-[var(--text-secondary)]">
-              Skill: eval-loop
-            </h3>
-          </header>
-          <EvalLoopPanel
-            familiarId={familiar.id}
-            familiarName={familiar.display_name}
-          />
-        </section>
-      ) : null}
-    </div>
-  );
-}
+// ── Shared UI primitives ─────────────────────────────────────────────────────
 
 function CapSection({
   title,
@@ -824,9 +672,483 @@ function CapRow({ label, value, mono }: { label: string; value: string; mono?: b
   );
 }
 
-function scopeFor(owner: string | undefined): string {
-  if (!owner) return "workspace";
-  if (owner.startsWith("familiar:")) return "familiar-bound";
-  if (owner === "local" || owner === "user") return "local";
-  return owner;
+function KindBadge({ kind }: { kind: string }) {
+  const colorMap: Record<string, string> = {
+    agent: "bg-purple-600/20 text-purple-200",
+    harness: "bg-sky-600/20 text-sky-200",
+    hybrid: "bg-emerald-600/20 text-emerald-200",
+    mcp: "bg-amber-600/20 text-amber-200",
+    builtin: "bg-[var(--bg-raised)] text-[var(--text-muted)]",
+  };
+  const k = (kind ?? "").toLowerCase();
+  const cls = colorMap[k] ?? "bg-[var(--bg-raised)] text-[var(--text-muted)]";
+  return (
+    <span className={`rounded px-1 text-[10px] uppercase tracking-wider ${cls}`}>
+      {kind || "—"}
+    </span>
+  );
+}
+
+function CollapsibleSection({
+  title,
+  badge,
+  open,
+  onToggle,
+  accentClass,
+  children,
+}: {
+  title: string;
+  badge?: string;
+  open: boolean;
+  onToggle: () => void;
+  accentClass?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={`rounded border border-[var(--border-hairline)] ${accentClass ?? ""}`}>
+      <button
+        onClick={onToggle}
+        className="flex w-full items-center gap-1.5 px-2 py-1.5 text-left hover:bg-[var(--bg-raised)]/40"
+      >
+        <Icon
+          name={open ? "ph:caret-down" : "ph:caret-right"}
+          width={10}
+          className="shrink-0 text-[var(--text-muted)]"
+        />
+        <span className="text-[10px] uppercase tracking-widest text-[var(--text-secondary)]">
+          {title}
+        </span>
+        {badge ? (
+          <span className="ml-auto rounded bg-[var(--bg-raised)] px-1 py-px text-[10px] text-[var(--text-muted)]">
+            {badge}
+          </span>
+        ) : null}
+      </button>
+      {open ? <div className="px-2 pb-2">{children}</div> : null}
+    </div>
+  );
+}
+
+// ── Main panel ───────────────────────────────────────────────────────────────
+
+function FamiliarCapabilityPanel({ familiar }: { familiar: Familiar | null }) {
+  const [roles, setRoles] = useState<RoleEntry[]>([]);
+  const [localSkills, setLocalSkills] = useState<LocalSkillEntry[]>([]);
+  const [harnessCapabilities, setHarnessCapabilities] = useState<HarnessCapabilityManifest[]>([]);
+  const [harnesses, setHarnesses] = useState<AdapterReport[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<string[]>([]);
+
+  // Collapsible state per sub-group
+  const [skillsRoleOpen, setSkillsRoleOpen] = useState(true);
+  const [skillsFamiliarOpen, setSkillsFamiliarOpen] = useState(true);
+  const [skillsGlobalOpen, setSkillsGlobalOpen] = useState(true);
+
+  const harnessId = familiar?.harness ?? "codex";
+
+  useEffect(() => {
+    if (!familiar) return;
+    setLoading(true);
+    setErrors([]);
+
+    const errs: string[] = [];
+
+    void Promise.all([
+      fetch("/api/roles", { cache: "no-store" })
+        .then((r) => r.json() as Promise<{ ok: boolean; roles?: RoleEntry[]; error?: string }>)
+        .catch(() => ({ ok: false as const, error: "roles fetch failed" })),
+      fetch("/api/skills/local", { cache: "no-store" })
+        .then((r) => r.json() as Promise<{ ok: boolean; skills?: LocalSkillEntry[]; error?: string }>)
+        .catch(() => ({ ok: false as const, error: "skills/local fetch failed" })),
+      fetch(`/api/capabilities?harness=${encodeURIComponent(harnessId)}`, { cache: "no-store" })
+        .then((r) => r.json() as Promise<{ ok: boolean; harness_capabilities?: HarnessCapabilityManifest[]; error?: string }>)
+        .catch(() => ({ ok: false as const, error: "capabilities fetch failed" })),
+      fetch("/api/harnesses", { cache: "no-store" })
+        .then((r) => r.json() as Promise<{ ok: boolean; harnesses?: AdapterReport[]; error?: string }>)
+        .catch(() => ({ ok: false as const, error: "harnesses fetch failed" })),
+    ]).then(([rolesRes, skillsRes, capsRes, harnessesRes]) => {
+      if (rolesRes.ok) setRoles(rolesRes.roles ?? []);
+      else errs.push(rolesRes.error ?? "roles unavailable");
+
+      if (skillsRes.ok) setLocalSkills(skillsRes.skills ?? []);
+      else errs.push(skillsRes.error ?? "local skills unavailable");
+
+      if (capsRes.ok) setHarnessCapabilities(capsRes.harness_capabilities ?? []);
+      else errs.push(capsRes.error ?? "capabilities unavailable");
+
+      if (harnessesRes.ok) setHarnesses(harnessesRes.harnesses ?? []);
+      else errs.push(harnessesRes.error ?? "harnesses unavailable");
+
+      setErrors(errs);
+      setLoading(false);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [familiar?.id]);
+
+  if (!familiar) {
+    return (
+      <p className="p-4 text-xs text-[var(--text-muted)]">
+        Select a familiar to see its capabilities.
+      </p>
+    );
+  }
+
+  if (loading) {
+    return <p className="p-4 text-xs text-[var(--text-muted)]">loading…</p>;
+  }
+
+  // ── Derive inheritance layers ────────────────────────────────────────────────
+
+  // Layer 1: Active roles for this familiar (or "all" / "global")
+  const activeRoles = roles.filter(
+    (r) =>
+      r.active &&
+      (r.familiar === familiar.id || r.familiar === "all" || r.familiar === "global"),
+  );
+  const roleGrantedSkillIds = new Set(activeRoles.flatMap((r) => r.skills));
+
+  // Layer 2: Local skills
+  const globalSkills = localSkills.filter((s) => s.familiar === "global");
+  const familiarSkills = localSkills.filter((s) => s.familiar === familiar.id);
+
+  // Layer 3: Harness capability manifest
+  const harnessManifest =
+    harnessCapabilities.find((m) => m.harness_id === harnessId) ?? null;
+  const harnessPlugins = harnessManifest?.plugins ?? [];
+  const mcpPlugins = harnessPlugins.filter((p) => p.kind?.toLowerCase() === "mcp");
+  const nonMcpPlugins = harnessPlugins.filter((p) => p.kind?.toLowerCase() !== "mcp");
+  const warnings = harnessManifest?.warnings ?? [];
+
+  // The bound harness metadata
+  const harnessReport = harnesses.find((h) => h.id === harnessId) ?? null;
+
+  // Total unique skill ids across all layers
+  const allSkillIds = new Set([
+    ...familiarSkills.map((s) => s.id),
+    ...globalSkills.map((s) => s.id),
+    ...Array.from(roleGrantedSkillIds),
+  ]);
+
+  return (
+    <div className="flex flex-col gap-2 p-3 text-xs">
+
+      {/* Error banner */}
+      {errors.length > 0 ? (
+        <div className="rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1.5">
+          {errors.map((e, i) => (
+            <p key={i} className="text-[10px] text-amber-300">{e}</p>
+          ))}
+        </div>
+      ) : null}
+
+      {/* ── Section 1: Roles ──────────────────────────────────────────────── */}
+      <CapSection title="Roles" scope={`active: ${activeRoles.length}`}>
+        {activeRoles.length === 0 ? (
+          <p className="rounded border border-dashed border-[var(--border-hairline)] px-2 py-2 text-[var(--text-muted)]">
+            No roles active — activate one in the Roles page.
+          </p>
+        ) : (
+          <ul className="space-y-1.5">
+            {activeRoles.map((role) => (
+              <li
+                key={`${role.familiar}:${role.id}`}
+                className="rounded border border-purple-500/20 bg-purple-600/10 px-2 py-1.5"
+              >
+                <div className="flex items-center gap-1.5">
+                  {role.emoji ? (
+                    <span className="text-[13px]">{role.emoji}</span>
+                  ) : null}
+                  <span className="font-medium text-[var(--text-primary)]">{role.name}</span>
+                  <span className="ml-auto rounded bg-purple-600/20 px-1 text-[10px] text-purple-200">
+                    {role.familiar}
+                  </span>
+                  {role.skills.length > 0 ? (
+                    <span className="rounded bg-[var(--bg-raised)] px-1 text-[10px] text-[var(--text-muted)]">
+                      {role.skills.length} skill{role.skills.length === 1 ? "" : "s"}
+                    </span>
+                  ) : null}
+                </div>
+                {role.description ? (
+                  <p className="mt-0.5 line-clamp-1 text-[10px] text-[var(--text-muted)]">
+                    {role.description}
+                  </p>
+                ) : null}
+                <p className="mt-0.5 font-mono text-[10px] text-[var(--text-muted)]">
+                  inherited from: roles/{role.id}/ROLE.md
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CapSection>
+
+      {/* ── Section 2: Skills (3 sub-groups) ──────────────────────────────── */}
+      <CapSection title="Skills" scope={`${allSkillIds.size} total`}>
+        <div className="flex flex-col gap-1.5">
+
+          {/* Role-granted */}
+          {roleGrantedSkillIds.size > 0 ? (
+            <CollapsibleSection
+              title="Role-granted"
+              badge={`${roleGrantedSkillIds.size} via active roles`}
+              open={skillsRoleOpen}
+              onToggle={() => setSkillsRoleOpen((v) => !v)}
+              accentClass="border-l-2 border-l-purple-500"
+            >
+              <ul className="space-y-1 pt-1">
+                {Array.from(roleGrantedSkillIds).map((sid) => {
+                  const skill = localSkills.find((s) => s.id === sid);
+                  return (
+                    <li key={sid} className="rounded bg-purple-600/10 px-2 py-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-medium text-[var(--text-primary)]">
+                          {skill?.name ?? sid}
+                        </span>
+                        <KindBadge kind={skill?.kind ?? "agent"} />
+                      </div>
+                      {skill?.description ? (
+                        <p className="mt-0.5 line-clamp-1 text-[10px] text-[var(--text-muted)]">
+                          {skill.description}
+                        </p>
+                      ) : null}
+                      {skill?.tags && skill.tags.length > 0 ? (
+                        <div className="mt-0.5 flex flex-wrap gap-1">
+                          {skill.tags.map((t) => (
+                            <span
+                              key={t}
+                              className="rounded bg-purple-600/20 px-1 text-[10px] text-purple-200"
+                            >
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            </CollapsibleSection>
+          ) : null}
+
+          {/* Familiar-specific */}
+          <CollapsibleSection
+            title="Familiar"
+            badge={String(familiarSkills.length)}
+            open={skillsFamiliarOpen}
+            onToggle={() => setSkillsFamiliarOpen((v) => !v)}
+            accentClass="border-l-2 border-l-emerald-500"
+          >
+            {familiarSkills.length === 0 ? (
+              <p className="pt-1 text-[10px] text-[var(--text-muted)]">
+                No skills in ~/.openclaw/workspace/{familiar.id}/skills/
+              </p>
+            ) : (
+              <ul className="space-y-1 pt-1">
+                {familiarSkills.map((s) => (
+                  <li key={s.id} className="rounded bg-emerald-600/10 px-2 py-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-medium text-[var(--text-primary)]">{s.name}</span>
+                      <KindBadge kind={s.kind ?? "agent"} />
+                    </div>
+                    {s.description ? (
+                      <p className="mt-0.5 line-clamp-1 text-[10px] text-[var(--text-muted)]">
+                        {s.description}
+                      </p>
+                    ) : null}
+                    {s.tags && s.tags.length > 0 ? (
+                      <div className="mt-0.5 flex flex-wrap gap-1">
+                        {s.tags.map((t) => (
+                          <span
+                            key={t}
+                            className="rounded bg-emerald-600/20 px-1 text-[10px] text-emerald-200"
+                          >
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                    <p className="mt-0.5 font-mono text-[10px] text-[var(--text-muted)]">
+                      ~/.openclaw/workspace/{familiar.id}/skills/
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CollapsibleSection>
+
+          {/* Global */}
+          <CollapsibleSection
+            title="Global"
+            badge={String(globalSkills.length)}
+            open={skillsGlobalOpen}
+            onToggle={() => setSkillsGlobalOpen((v) => !v)}
+          >
+            {globalSkills.length === 0 ? (
+              <p className="pt-1 text-[10px] text-[var(--text-muted)]">
+                No skills in ~/.openclaw/workspace/skills/
+              </p>
+            ) : (
+              <ul className="space-y-1 pt-1">
+                {globalSkills.map((s) => (
+                  <li key={s.id} className="rounded bg-[var(--bg-raised)]/60 px-2 py-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-medium text-[var(--text-primary)]">{s.name}</span>
+                      <KindBadge kind={s.kind ?? "agent"} />
+                    </div>
+                    {s.description ? (
+                      <p className="mt-0.5 line-clamp-1 text-[10px] text-[var(--text-muted)]">
+                        {s.description}
+                      </p>
+                    ) : null}
+                    {s.tags && s.tags.length > 0 ? (
+                      <div className="mt-0.5 flex flex-wrap gap-1">
+                        {s.tags.map((t) => (
+                          <span
+                            key={t}
+                            className="rounded bg-[var(--bg-raised)] px-1 text-[10px] text-[var(--text-secondary)]"
+                          >
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                    <p className="mt-0.5 font-mono text-[10px] text-[var(--text-muted)]">
+                      ~/.openclaw/workspace/skills/
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CollapsibleSection>
+        </div>
+      </CapSection>
+
+      {/* ── Section 3: Plugins ────────────────────────────────────────────── */}
+      <CapSection title="Plugins" scope={`${nonMcpPlugins.length} from harness`}>
+        {nonMcpPlugins.length === 0 ? (
+          <p className="rounded border border-dashed border-[var(--border-hairline)] px-2 py-2 text-[var(--text-muted)]">
+            No plugins in harness capability scan. Run /refresh in the Capabilities page.
+          </p>
+        ) : (
+          <ul className="space-y-1.5">
+            {nonMcpPlugins.map((p) => (
+              <li
+                key={p.id}
+                className="rounded border border-[var(--border-hairline)] bg-[var(--bg-raised)]/40 px-2 py-1.5"
+              >
+                <div className="flex items-center gap-1.5">
+                  <span className="font-medium text-[var(--text-primary)]">{p.name}</span>
+                  <KindBadge kind={p.kind} />
+                  <span
+                    className={`rounded px-1 text-[10px] uppercase tracking-wider ${
+                      p.enabled
+                        ? "bg-emerald-600/20 text-emerald-200"
+                        : "bg-[var(--bg-raised)] text-[var(--text-muted)]"
+                    }`}
+                  >
+                    {p.enabled ? "enabled" : "disabled"}
+                  </span>
+                </div>
+                {p.command ? (
+                  <p className="mt-0.5 font-mono text-[10px] text-[var(--text-muted)]">{p.command}</p>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </CapSection>
+
+      {/* ── Section 4: Harness ───────────────────────────────────────────── */}
+      <CapSection
+        title="Harness"
+        scope={
+          harnessReport
+            ? `${harnessReport.label} ${harnessReport.version ?? ""}`.trim()
+            : harnessId
+        }
+      >
+        <ul className="space-y-1">
+          <CapRow label="harness" value={harnessId} />
+          <CapRow label="binary" value={harnessReport?.binary ?? "—"} />
+          <CapRow label="path" value={harnessReport?.path ?? "—"} mono />
+          <CapRow label="version" value={harnessReport?.version ?? "—"} />
+          <CapRow label="model" value={familiar.model ?? "—"} />
+          {harnessManifest?.scanned_at ? (
+            <CapRow label="scanned" value={`${age(harnessManifest.scanned_at)} ago`} />
+          ) : null}
+        </ul>
+      </CapSection>
+
+      {/* ── Section 5: MCP Servers ───────────────────────────────────────── */}
+      <CapSection title="MCP Servers" scope={`${mcpPlugins.length} discovered`}>
+        {mcpPlugins.length === 0 ? (
+          <p className="rounded border border-dashed border-[var(--border-hairline)] px-2 py-2 text-[var(--text-muted)]">
+            No MCP servers in capability scan.
+          </p>
+        ) : (
+          <ul className="space-y-1.5">
+            {mcpPlugins.map((p) => (
+              <li
+                key={p.id}
+                className="rounded border border-amber-500/20 bg-amber-600/5 px-2 py-1.5"
+              >
+                <div className="flex items-center gap-1.5">
+                  <span className="font-medium text-[var(--text-primary)]">{p.name}</span>
+                  <KindBadge kind="mcp" />
+                  <span
+                    className={`rounded px-1 text-[10px] uppercase tracking-wider ${
+                      p.enabled
+                        ? "bg-emerald-600/20 text-emerald-200"
+                        : "bg-[var(--bg-raised)] text-[var(--text-muted)]"
+                    }`}
+                  >
+                    {p.enabled ? "enabled" : "disabled"}
+                  </span>
+                </div>
+                {p.command ? (
+                  <p className="mt-0.5 font-mono text-[10px] text-[var(--text-muted)]">{p.command}</p>
+                ) : null}
+                {p.args && p.args.length > 0 ? (
+                  <p className="mt-0.5 font-mono text-[10px] text-[var(--text-muted)]">{p.args.join(" ")}</p>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </CapSection>
+
+      {/* ── Section 6: Warnings ─────────────────────────────────────────── */}
+      {warnings.length > 0 ? (
+        <CapSection title="Warnings" scope={String(warnings.length)}>
+          <ul className="space-y-1">
+            {warnings.map((w, i) => (
+              <li
+                key={i}
+                className="flex items-start gap-1.5 rounded bg-amber-500/10 px-2 py-1.5"
+              >
+                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />
+                <div>
+                  <span className="font-medium text-amber-200">{w.kind}</span>
+                  <p className="text-[10px] text-[var(--text-secondary)]">{w.message}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </CapSection>
+      ) : null}
+
+      {/* ── Section 7: Eval Loop ─────────────────────────────────────────── */}
+      <section>
+        <header className="mb-1.5 flex items-baseline justify-between">
+          <h3 className="text-[10px] uppercase tracking-widest text-[var(--text-secondary)]">
+            Skill: eval-loop
+          </h3>
+        </header>
+        <EvalLoopPanel
+          familiarId={familiar.id}
+          familiarName={familiar.display_name}
+        />
+      </section>
+    </div>
+  );
 }
