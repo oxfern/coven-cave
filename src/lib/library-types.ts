@@ -6,16 +6,66 @@ export type LibraryCollection = {
 };
 
 export type LibraryDoc = {
-  id: string;            // relative path from workspace sage root
-  title: string;         // first H1 or filename stem
-  familiar: string;      // always "sage" for Phase 1
+  id: string;
+  title: string;
+  familiar: string;
   collection: string;
-  modifiedAt: string;    // ISO
-  tags: string[];        // from frontmatter `tags:` or empty
-  excerpt: string;       // first ~200 chars of body, stripped of markdown
+  modifiedAt: string;
+  tags: string[];
+  excerpt: string;
 };
 
 export type LibraryDocBody = LibraryDoc & {
   body: string;
   frontmatter: Record<string, string>;
 };
+
+// ── Bookmark ─────────────────────────────────────────────────────
+export type LibraryBookmark = {
+  id: string;
+  url: string;
+  title: string;
+  domain: string;
+  favicon?: string;
+  notes?: string;
+  tags: string[];
+  savedAt: string;
+  familiar: string;
+};
+
+// ── Reading List ─────────────────────────────────────────────────
+export type ReadingStatus = "want-to-read" | "reading" | "done" | "abandoned";
+
+export type LibraryReadingItem = {
+  id: string;
+  title: string;
+  url?: string;
+  author?: string;
+  sourceType: "article" | "paper" | "book" | "thread" | "video" | "other";
+  status: ReadingStatus;
+  progress?: number;
+  notes?: string;
+  tags: string[];
+  addedAt: string;
+  finishedAt?: string;
+  familiar: string;
+};
+
+// ── GitHub ───────────────────────────────────────────────────────
+export type GitHubItemKind = "repo" | "issue" | "pr" | "discussion";
+
+export type LibraryGitHubItem = {
+  id: string;
+  kind: GitHubItemKind;
+  repo: string;
+  number?: number;
+  title: string;
+  url: string;
+  state?: "open" | "closed" | "merged";
+  labels: string[];
+  notes?: string;
+  savedAt: string;
+  familiar: string;
+};
+
+export type LibrarySectionKind = "docs" | "bookmarks" | "reading" | "github";

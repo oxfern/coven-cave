@@ -376,3 +376,23 @@
 .library-preview-md {
   max-width: 720px;
 }
+
+/* ── Row delete button ─────────────────────────────────────────── */
+.library-row-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  cursor: pointer;
+  color: var(--text-muted);
+  border-radius: 4px;
+  padding: 2px;
+  transition: opacity 0.1s, color 0.1s;
+}
+tr:hover .library-row-delete {
+  opacity: 1;
+}
+.library-row-delete:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}

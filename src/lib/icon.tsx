@@ -145,6 +145,18 @@ export const ICON_NAMES = [
   "ph:archive",
   "ph:flame",
   "ph:arrow-counter-clockwise",
+  "ph:bookmark-simple",
+  "ph:link-simple",
+  "ph:git-pull-request",
+  "ph:git-merge",
+  "ph:git-diff",
+  "ph:code",
+  "ph:video",
+  "ph:newspaper",
+  "ph:graduation-cap",
+  "ph:chat-centered-text",
+  "ph:dots-three",
+  "ph:minus-circle",
 ] as const;
 
 export type IconName = (typeof ICON_NAMES)[number];
