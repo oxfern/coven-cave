@@ -691,7 +691,19 @@ export function Workspace() {
     ) : mode === "browser" ? (
       <BrowserPane label="main" />
     ) : mode === "comux" ? (
-      <ComuxView />
+      <ComuxView
+        sessions={sessions}
+        onOpenSession={(sessionId, familiarId) => {
+          if (familiarId) setActiveId(familiarId);
+          setMode("chats");
+          setTimeout(() => routerRef.current?.openSession(sessionId), 0);
+        }}
+        onNewChat={(projectRoot) => {
+          if (!activeId && familiars[0]) setActiveId(familiars[0].id);
+          setMode("chats");
+          setTimeout(() => routerRef.current?.newChat(projectRoot), 0);
+        }}
+      />
     ) : mode === "github" ? (
       <GitHubView
         onOpenSession={(sessionId) => {

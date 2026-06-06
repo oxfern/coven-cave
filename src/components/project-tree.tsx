@@ -20,6 +20,7 @@ export type ProjectTreeHandle = {
 };
 
 type Props = {
+  root?: string;
   onFileClick?: (path: string) => void;
 };
 
@@ -50,13 +51,20 @@ function resolveRoot(): string {
 }
 
 export const ProjectTree = forwardRef<ProjectTreeHandle, Props>(
-  function ProjectTree({ onFileClick }, ref) {
+  function ProjectTree({ root: rootProp, onFileClick }, ref) {
     const [root, setRoot] = useState<string>(resolveRoot);
     const [entries, setEntries] = useState<TreeEntry[]>([]);
     const [loading, setLoading] = useState(true);
 
     const load = useCallback(async () => {
       setLoading(true);
+      if (rootProp) {
+        const tree = await fetchTree(rootProp, 2);
+        setRoot(rootProp);
+        setEntries(tree);
+        setLoading(false);
+        return;
+      }
       // Try daemon status for projectRoot first
       try {
         const res = await fetch("/api/daemon/status", { cache: "no-store" });
@@ -82,7 +90,7 @@ export const ProjectTree = forwardRef<ProjectTreeHandle, Props>(
       const tree = await fetchTree(root, 2);
       setEntries(tree);
       setLoading(false);
-    }, [root]);
+    }, [root, rootProp]);
 
     useEffect(() => {
       void load();

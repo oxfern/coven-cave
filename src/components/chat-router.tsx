@@ -20,7 +20,7 @@ type Props = {
 
 export type ChatRouterHandle = {
   goToList: () => void;
-  newChat: () => void;
+  newChat: (projectRoot?: string) => void;
   openSession: (sessionId: string) => void;
   currentSessionId: () => string | null;
   clearTranscript: () => void;
@@ -48,7 +48,7 @@ export const ChatRouter = forwardRef<ChatRouterHandle, Props>(function ChatRoute
     ref,
     () => ({
       goToList: () => setView({ kind: "list" }),
-      newChat: () => setView({ kind: "chat", sessionId: null }),
+      newChat: (projectRoot?: string) => setView({ kind: "chat", sessionId: null, projectRoot }),
       openSession: (sessionId: string) => setView({ kind: "chat", sessionId }),
       currentSessionId: () => (view.kind === "chat" ? view.sessionId : null),
       clearTranscript: () => viewHandle.current?.clearTranscript(),
