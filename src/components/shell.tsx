@@ -285,14 +285,17 @@ function ShellInner({
     <div className="flex h-full w-full flex-col">
       {topBar}
       <div className="flex flex-1 min-h-0">
-        {/* Left nav tab — full-height strip, mirrors agent tab on the right */}
-        {hasIconNav && !navOpen && (
+        {/* Left nav tab — persistent full-height strip, mirrors agent tab on the right */}
+        {hasIconNav && (
           <button
             type="button"
-            className="shell-nav-tab"
-            title="Expand sidebar (⌘B)"
-            aria-label="Open sidebar"
-            onClick={() => { navRef.current?.expand(); setNavOpen(true); }}
+            className={`shell-nav-tab${navOpen ? " shell-nav-tab--open" : ""}`}
+            title={navOpen ? "Collapse sidebar (⌘B)" : "Expand sidebar (⌘B)"}
+            aria-label={navOpen ? "Close sidebar" : "Open sidebar"}
+            onClick={() => {
+              if (navOpen) { navRef.current?.collapse(); setNavOpen(false); }
+              else { navRef.current?.expand(); setNavOpen(true); }
+            }}
           >
             <Icon name="ph:sidebar-simple" width={15} />
           </button>

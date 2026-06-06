@@ -16,12 +16,16 @@ export function SkillCard({
 
   return (
     <button
+      type="button"
       onClick={onClick}
-      className="group flex min-w-0 items-center gap-3 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-card)] px-4 py-3 text-left transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--bg-raised)]"
+      className="group flex min-w-0 w-full items-center gap-3 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-card)] px-4 py-3 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
+      {/* Icon */}
       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--bg-raised)] text-[15px] font-semibold text-[var(--text-primary)]">
         {initial}
       </span>
+
+      {/* Name + meta */}
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[13px] font-medium text-[var(--text-primary)]">
           {skill.name}
@@ -29,23 +33,11 @@ export function SkillCard({
         <span className="block truncate text-[12px] text-[var(--text-muted)]">
           {meta}
         </span>
-        {skill.description && (
-          <span className="mt-0.5 block truncate text-[11px] text-[var(--text-muted)] opacity-70">
-            {skill.description}
-          </span>
-        )}
       </span>
-      <span className="flex shrink-0 items-center gap-2">
-        {skill.version && (
-          <span className="rounded-full bg-[var(--bg-raised)] px-1.5 py-0.5 text-[9px] text-[var(--text-muted)]">
-            v{skill.version}
-          </span>
-        )}
-        <Icon
-          name="ph:info-bold"
-          width={13}
-          className="text-[var(--text-muted)] opacity-0 transition-opacity group-hover:opacity-100"
-        />
+
+      {/* Arrow flush right */}
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[var(--border-hairline)] text-[var(--text-muted)] transition-colors group-hover:border-[var(--border-strong)] group-hover:text-[var(--text-primary)]">
+        <Icon name="ph:arrow-right-bold" width={12} />
       </span>
     </button>
   );
