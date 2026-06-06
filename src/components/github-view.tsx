@@ -70,11 +70,12 @@ function PatSetupModal({
   onClose,
   username,
 }: {
-  onSaved: (login: string) => void;
+  onSaved: (login: string, hasPat: boolean) => void;
   onClose: () => void;
   username: string | null;
 }) {
   const [pat, setPat] = useState("");
+  const [usernameInput, setUsernameInput] = useState(username ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -82,22 +83,32 @@ function PatSetupModal({
   useEffect(() => { inputRef.current?.focus(); }, []);
 
   async function save() {
-    const trimmed = pat.trim();
-    if (!trimmed) return;
+    const trimmedPat = pat.trim();
+    const trimmedUser = usernameInput.trim();
+
+    if (!trimmedPat && !trimmedUser) {
+      setError("Enter a GitHub username (for public data) or a PAT (for private data).");
+      return;
+    }
+
     setSaving(true);
     setError(null);
     try {
+      const body: Record<string, string> = {};
+      if (trimmedPat) body.pat = trimmedPat;
+      if (trimmedUser) body.username = trimmedUser;
+
       const res = await fetch("/api/github/pat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pat: trimmed }),
+        body: JSON.stringify(body),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.ok) {
-        setError(data?.error ?? "Failed to save PAT. Check that it has read:user and repo scopes.");
+        setError(data?.error ?? "Failed to save. Check that your PAT has read:user and repo scopes.");
         return;
       }
-      onSaved(data.login ?? username ?? "you");
+      onSaved(data.login ?? trimmedUser, !!trimmedPat);
     } catch {
       setError("Network error — please try again.");
     } finally {
@@ -123,19 +134,33 @@ function PatSetupModal({
         </div>
 
         <p className="text-[12px] text-[var(--text-muted)] mb-1">
-          Cave uses the public GitHub API by default (no auth needed, 60 req/hr, public repos only).
+          Enter your GitHub username to pull live public data (free, no auth needed).
         </p>
         <p className="text-[12px] text-[var(--text-muted)] mb-4">
-          Add a Personal Access Token to unlock private repos, review requests, and higher rate limits.
-          Your PAT is stored only in <code className="text-[var(--text-secondary)] bg-[var(--bg-raised)] px-1 rounded">.env.local</code> on this machine — never synced, never shared.
+          Optionally add a Personal Access Token to unlock private repos and review requests.
+          Your PAT is stored only on this machine — never synced, never shared.
         </p>
 
-        <div className="mb-2">
+        <div className="mb-3">
           <label className="block text-[11px] font-medium text-[var(--text-secondary)] mb-1.5">
-            GitHub PAT
+            GitHub username
           </label>
           <input
             ref={inputRef}
+            type="text"
+            value={usernameInput}
+            onChange={(e) => setUsernameInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && void save()}
+            placeholder="your-username"
+            className="w-full rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-base)] px-3 py-2 text-[13px] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--accent-presence)] focus:outline-none"
+          />
+        </div>
+
+        <div className="mb-2">
+          <label className="block text-[11px] font-medium text-[var(--text-secondary)] mb-1.5">
+            Personal Access Token <span className="font-normal text-[var(--text-muted)]">(optional — for private repos)</span>
+          </label>
+          <input
             type="password"
             value={pat}
             onChange={(e) => setPat(e.target.value)}
@@ -250,8 +275,8 @@ export function GitHubView() {
       {showPatModal && (
         <PatSetupModal
           username={patStatus?.login ?? null}
-          onSaved={(login) => {
-            setPatStatus({ hasPat: true, login });
+          onSaved={(login, hasPat) => {
+            setPatStatus({ hasPat, login });
             setShowPatModal(false);
             if (timerRef.current !== null) window.clearTimeout(timerRef.current);
             void fetchActivity();
@@ -365,11 +390,8 @@ export function GitHubView() {
                 onClick={() => setShowPatModal(true)}
                 className="rounded-lg bg-[var(--accent-presence)] px-5 py-2 text-[13px] font-medium text-white hover:opacity-90 transition-opacity"
               >
-                Add GitHub PAT
+                Set up GitHub
               </button>
-              <p className="text-[11px] text-[var(--text-muted)]">
-                Or set <code className="bg-[var(--bg-raised)] px-1 rounded">GITHUB_USERNAME</code> in <code className="bg-[var(--bg-raised)] px-1 rounded">.env.local</code> for public data only
-              </p>
             </div>
           </div>
 

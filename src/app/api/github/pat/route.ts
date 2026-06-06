@@ -72,27 +72,34 @@ export async function GET() {
 
 // POST — validate + save
 export async function POST(req: NextRequest) {
-  let body: { pat?: string } = {};
+  let body: { pat?: string; username?: string } = {};
   try { body = await req.json(); } catch { /* ignore */ }
 
   const pat = typeof body.pat === "string" ? body.pat.trim() : "";
-  if (!pat) {
-    return NextResponse.json({ ok: false, error: "pat is required" }, { status: 400 });
+  const username = typeof body.username === "string" ? body.username.trim() : "";
+
+  if (!pat && !username) {
+    return NextResponse.json({ ok: false, error: "pat or username is required" }, { status: 400 });
   }
 
-  const { valid, login } = await validatePat(pat);
-  if (!valid) {
-    return NextResponse.json({ ok: false, error: "PAT is invalid or lacks required scopes (needs read:user, repo)" }, { status: 422 });
+  let login: string | null = username || null;
+
+  if (pat) {
+    const result = await validatePat(pat);
+    if (!result.valid) {
+      return NextResponse.json({ ok: false, error: "PAT is invalid or lacks required scopes (needs read:user, repo)" }, { status: 422 });
+    }
+    login = result.login ?? login;
   }
 
   // Write to .env.local — never log the PAT value
   const env = readEnvLocal();
-  env[PAT_KEY] = pat;
+  if (pat) env[PAT_KEY] = pat;
   if (login) env[LOGIN_KEY] = login;
   writeEnvLocal(env);
 
   // Inject into current process so next request picks it up without restart
-  process.env[PAT_KEY] = pat;
+  if (pat) process.env[PAT_KEY] = pat;
   if (login) process.env[LOGIN_KEY] = login;
 
   return NextResponse.json({ ok: true, login });
