@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import type { DaemonStatus, Familiar } from "@/lib/types";
 import type { InboxItem } from "@/lib/cave-inbox";
@@ -27,7 +26,7 @@ type Props = {
   onModeChange: (mode: Mode) => void;
   onOpenSearch: () => void;
   inboxBadgeCount?: number;
-  onRunningChange?: (running: boolean) => void;
+  onRunningChange?: (running: boolean) => void; // kept for backwards compat; polling now owned by workspace
   inboxItems?: InboxItem[];
   inboxPrefs?: InboxPrefs;
   familiars?: Familiar[];
@@ -65,24 +64,7 @@ export function DaemonBar({
   onPrefsChanged,
 }: Props) {
   const router = useRouter();
-
-  // Poll daemon status silently — other panes react via onRunningChange
-  useEffect(() => {
-    if (!onRunningChange) return;
-    let cancelled = false;
-    const tick = async () => {
-      try {
-        const res = await fetch("/api/daemon/status", { cache: "no-store" });
-        const json = (await res.json()) as DaemonStatus;
-        if (!cancelled) onRunningChange(json.running === true);
-      } catch {
-        if (!cancelled) onRunningChange(false);
-      }
-    };
-    void tick();
-    const t = setInterval(tick, 5000);
-    return () => { cancelled = true; clearInterval(t); };
-  }, [onRunningChange]);
+  void onRunningChange; // no longer polls; workspace owns daemon state via useDaemonConnection
 
   return (
     <header className="flex h-10 shrink-0 items-center gap-3 border-b border-[var(--border-hairline)] bg-[var(--bg-raised)]/60 px-3">

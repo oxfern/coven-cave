@@ -30,6 +30,7 @@ import type { InboxItem } from "@/lib/cave-inbox";
 import type { InboxPrefs } from "@/lib/cave-inbox-prefs";
 import type { Familiar, SessionRow } from "@/lib/types";
 import { DEMO_MODE, DEMO_FAMILIARS } from "@/lib/demo-seed";
+import { useDaemonConnection } from "@/lib/use-daemon-connection";
 
 type WorkspaceMode = Parameters<typeof DaemonBar>[0]["mode"];
 
@@ -85,7 +86,14 @@ export function Workspace() {
   const [familiars, setFamiliars] = useState<Familiar[]>([]);
   const [familiarsError, setFamiliarsError] = useState<string | null>(null);
   const [sessions, setSessions] = useState<SessionRow[]>([]);
-  const [daemonRunning, setDaemonRunning] = useState<boolean>(false);
+  const { running: daemonRunning, state: daemonState, retry: retryDaemon } = useDaemonConnection({
+    onOnline: () => {
+      void loadFamiliars();
+      void loadSessions();
+    },
+  });
+  void daemonState;
+  void retryDaemon;
   const [responseNeeded, setResponseNeeded] = useState<Set<string>>(new Set());
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [mode, setMode] = useState<WorkspaceMode>("home");
@@ -163,11 +171,15 @@ export function Workspace() {
   }, []);
 
   useEffect(() => {
-    loadFamiliars();
-    loadSessions();
-    const t = setInterval(loadSessions, 4000);
+    void loadFamiliars();
+  }, [loadFamiliars]);
+
+  useEffect(() => {
+    void loadSessions();
+    const interval = daemonRunning ? 4_000 : 15_000;
+    const t = setInterval(loadSessions, interval);
     return () => clearInterval(t);
-  }, [loadFamiliars, loadSessions]);
+  }, [loadSessions, daemonRunning]);
 
   const refreshPrefs = useCallback(async () => {
     try {
@@ -835,7 +847,7 @@ export function Workspace() {
             onModeChange={setMode}
             onOpenSearch={() => setPaletteOpen(true)}
             inboxBadgeCount={inboxBadgeCount}
-            onRunningChange={setDaemonRunning}
+            onRunningChange={() => {}}
             inboxItems={[]}
             inboxPrefs={inboxPrefs}
             familiars={familiars}
