@@ -285,21 +285,17 @@ function ShellInner({
     <div className="flex h-full w-full flex-col">
       {topBar}
       <div className="flex flex-1 min-h-0">
-        {/* Left icon strip — shown when nav is collapsed */}
+        {/* Left nav tab — full-height strip, mirrors agent tab on the right */}
         {hasIconNav && !navOpen && (
-          <div className="shell-nav-tab">
-            <button
-              type="button"
-              className="shell-nav-tab-toggle"
-              title="Expand sidebar (⌘B)"
-              onClick={() => { navRef.current?.expand(); setNavOpen(true); }}
-            >
-              <Icon name="ph:sidebar-simple" width={15} />
-            </button>
-            <div className="shell-nav-tab-icons">
-              {iconNav}
-            </div>
-          </div>
+          <button
+            type="button"
+            className="shell-nav-tab"
+            title="Expand sidebar (⌘B)"
+            aria-label="Open sidebar"
+            onClick={() => { navRef.current?.expand(); setNavOpen(true); }}
+          >
+            <Icon name="ph:sidebar-simple" width={15} />
+          </button>
         )}
         {hasBottom ? (
           <Group
