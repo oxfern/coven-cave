@@ -9,9 +9,12 @@ assert.match(source, /<RoleGrid[\s\S]*selectedRole=/, "Roles grid should receive
 assert.match(source, /onSelect=/, "Roles grid should expose a selection handler");
 assert.match(source, /function RoleCapabilityMap/, "Selecting a role should reveal a dedicated role capability map");
 
-for (const label of ["Connected skills", "Plugins", "Workflows", "Capabilities"]) {
+for (const label of ["Skills", "Plugins", "Workflows", "Capabilities"]) {
   assert.match(source, new RegExp(label), `Role detail should show ${label}`);
 }
+
+assert.match(source, /function RoleOverview/, "Role detail should summarize the selected role before listing connections");
+assert.match(source, /function RoleCapabilitySection/, "Role detail should group declared and discovered capabilities");
 
 assert.match(
   source,
