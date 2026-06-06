@@ -4,61 +4,33 @@
  * SidebarMinimal — the redesigned Cave sidebar.
  *
  * Layout (top → bottom):
- *   1. 4 primary actions  (New chat / Search / Plugins / Automations)
- *   2. Folder mode rows   (Board / Inbox / Browser / Comux / Coven Calls)
- *   3. Familiar sections  (each familiar = header row + session list; no emoji row)
- *   4. Settings gear (pinned bottom)
+ *   1. Primary actions (new chat, plugins, automations, calendar)
+ *   2. App destinations (Chat / Board / Inbox / Terminal / Projects / etc.)
+ *   3. Settings gear (pinned bottom)
  */
 
-import { useMemo } from "react";
 import { Icon } from "@/lib/icon";
-import type { Familiar, SessionRow } from "@/lib/types";
-
-// ---------------------------------------------------------------------------
-// Relative timestamp helpers
-// ---------------------------------------------------------------------------
-
-const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto", style: "narrow" });
-
-function relTime(iso: string | undefined): string {
-  if (!iso) return "";
-  try {
-    const diffSec = (Date.now() - new Date(iso).getTime()) / 1000;
-    if (diffSec < 60)    return rtf.format(-Math.round(diffSec),        "second");
-    if (diffSec < 3600)  return rtf.format(-Math.round(diffSec / 60),   "minute");
-    if (diffSec < 86400) return rtf.format(-Math.round(diffSec / 3600), "hour");
-    return rtf.format(-Math.round(diffSec / 86400), "day");
-  } catch { return ""; }
-}
-
-// Short label: "5h", "13m", "2d"
-function shortRelTime(iso: string | undefined): string {
-  if (!iso) return "";
-  try {
-    const diffSec = (Date.now() - new Date(iso).getTime()) / 1000;
-    if (diffSec < 60)    return `${Math.round(diffSec)}s`;
-    if (diffSec < 3600)  return `${Math.round(diffSec / 60)}m`;
-    if (diffSec < 86400) return `${Math.round(diffSec / 3600)}h`;
-    const days = Math.round(diffSec / 86400);
-    if (days < 30) return `${days}d`;
-    return `${Math.round(days / 30)}mo`;
-  } catch { return ""; }
-}
+import type { SessionRow } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-export type FolderMode = "board" | "inbox" | "browser" | "comux" | "calls" | "github";
+export type FolderMode =
+  | "chats"
+  | "board"
+  | "inbox"
+  | "terminal"
+  | "projects"
+  | "browser"
+  | "calls"
+  | "github";
 
 export type SidebarMinimalProps = {
   mode: string;
   sessions: SessionRow[];
   activeSessionId?: string | null;
   inboxBadgeCount?: number;
-  familiars?: Familiar[];
-  activeId?: string | null;
-  onFamiliarSelect?: (id: string) => void;
   onNewChat: () => void;
   onOpenSearch: () => void;
   onModeChange: (mode: string) => void;
@@ -97,15 +69,17 @@ function ActionRow({
 const FOLDER_MODES: Array<{
   id: FolderMode;
   label: string;
-  iconName: "ph:kanban" | "ph:tray" | "ph:bell-fill" | "ph:globe" | "ph:squares-four" | "ph:clock" | "ph:graph" | "ph:github-logo";
+  iconName: Parameters<typeof Icon>[0]["name"];
   badge?: (props: SidebarMinimalProps) => string | undefined;
 }> = [
+  { id: "chats",      label: "Chat",        iconName: "ph:chat-circle-dots" },
   { id: "board",      label: "Board",       iconName: "ph:kanban" },
   { id: "inbox",      label: "Inbox",       iconName: "ph:bell-fill",
     badge: (p) => p.inboxBadgeCount && p.inboxBadgeCount > 0 ? String(p.inboxBadgeCount) : undefined },
+  { id: "terminal",   label: "Terminal",    iconName: "ph:terminal-window" },
+  { id: "projects",   label: "Projects",    iconName: "ph:folder-open" },
   { id: "calls",      label: "Coven Calls", iconName: "ph:graph" },
   { id: "browser",    label: "Browser",     iconName: "ph:globe" },
-  { id: "comux",      label: "Coven Code",  iconName: "ph:squares-four" },
   { id: "github",     label: "GitHub",      iconName: "ph:github-logo" },
 ];
 
@@ -130,38 +104,9 @@ function FolderRow({
       className={`sidebar-folder-row${active ? " sidebar-folder-row--active" : ""}`}
       onClick={onClick}
     >
-      <Icon name={iconName} width={13} className="sidebar-folder-icon" />
+      <Icon name={iconName} width={15} className="sidebar-folder-icon" />
       <span className="sidebar-folder-label">{label}</span>
       {badge && <span className="sidebar-badge">{badge}</span>}
-    </button>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Familiar row (flat nav item — click to show sessions in center)
-// ---------------------------------------------------------------------------
-
-function FamiliarRow({
-  familiar,
-  sessionCount,
-  active,
-  onSelect,
-}: {
-  familiar: Familiar;
-  sessionCount: number;
-  active: boolean;
-  onSelect: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      className={`sidebar-familiar-row${active ? " sidebar-familiar-row--active" : ""}`}
-      onClick={onSelect}
-    >
-      <span className="sidebar-familiar-row-name">{familiar.display_name}</span>
-      {sessionCount > 0 && (
-        <span className="sidebar-familiar-row-count">{sessionCount}</span>
-      )}
     </button>
   );
 }
@@ -173,32 +118,10 @@ function FamiliarRow({
 export function SidebarMinimal(props: SidebarMinimalProps) {
   const {
     mode,
-    sessions,
-    activeSessionId,
-    familiars = [],
-    activeId = null,
-    onFamiliarSelect,
     onNewChat,
-    onOpenSearch,
     onModeChange,
-    onOpenSession,
     onOpenSettings,
   } = props;
-
-  // Chat sessions newest-first (used for session count badges)
-  const chatSessions = useMemo(
-    () =>
-      sessions
-        .filter((s) => !s.archived_at && (!s.origin || s.origin === "chat"))
-        .sort((a, b) => {
-          const ta = a.updated_at || a.created_at;
-          const tb = b.updated_at || b.created_at;
-          return tb.localeCompare(ta);
-        }),
-    [sessions],
-  );
-
-  void chatSessions; // used in FamiliarRow count via sessions.filter below
 
   return (
     <nav className="sidebar-minimal">
@@ -241,25 +164,6 @@ export function SidebarMinimal(props: SidebarMinimalProps) {
         ))}
       </div>
 
-      {/* ── Familiar rows ──────────────────────────────────────── */}
-      <div className="sidebar-familiar-list">
-        {familiars.map((f) => {
-          const count = sessions.filter((s) => s.familiarId === f.id).length;
-          return (
-            <FamiliarRow
-              key={f.id}
-              familiar={f}
-              sessionCount={count}
-              active={f.id === activeId}
-              onSelect={() => {
-                onFamiliarSelect?.(f.id);
-                onModeChange("sessions");
-              }}
-            />
-          );
-        })}
-      </div>
-
       {/* ── Settings gear (pinned bottom) ─────────────────────── */}
       <div className="sidebar-bottom">
         <button
@@ -268,7 +172,7 @@ export function SidebarMinimal(props: SidebarMinimalProps) {
           onClick={onOpenSettings}
           aria-label="Settings"
         >
-          <Icon name="ph:gear-six" width={14} />
+          <Icon name="ph:gear-six" width={16} />
           <span>Settings</span>
         </button>
       </div>
