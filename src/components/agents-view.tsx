@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type RefObject } from "react";
+import React, { useCallback, useEffect, useMemo, useState, type RefObject } from "react";
 import { ChatRouter, type ChatRouterHandle } from "@/components/chat-router";
 import { CallsView } from "@/components/calls-view";
 import { InspectorPane } from "@/components/inspector-pane";
@@ -648,7 +648,7 @@ export function AgentsView({
                   </thead>
                   <tbody className="divide-y divide-[var(--border-hairline)]">
                     {groupedSessions.map(({ label, sessions: groupSessions }) => (
-                      <>
+                      <React.Fragment key={label ?? "__ungrouped__"}>
                         {label !== null && (
                           <tr key={`group-${label}`} className="bg-[var(--bg-canvas)]">
                             <td
@@ -773,7 +773,7 @@ export function AgentsView({
                             </tr>
                           );
                         })}
-                      </>
+                      </React.Fragment>
                     ))}
                   </tbody>
                 </table>

@@ -949,7 +949,7 @@ function AttachmentLightbox({ attachment, onClose }: { attachment: ChatAttachmen
       aria-label={`Preview ${attachment.name}`}
     >
       <div
-        className="relative max-h-[90vh] max-w-[90vw] overflow-auto rounded-xl border border-[var(--border-hairline)] bg-[#050409] shadow-2xl"
+        className="relative max-h-[90vh] max-w-[90vw] overflow-hidden rounded-xl border border-[var(--border-hairline)] bg-[#050409] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -971,11 +971,12 @@ function AttachmentLightbox({ attachment, onClose }: { attachment: ChatAttachmen
         </div>
         {/* Body */}
         {isImage && attachment.dataUrl ? (
-          <div className="flex items-center justify-center p-4">
+          <div className="flex items-center justify-center overflow-hidden p-4">
             <img
               src={attachment.dataUrl}
               alt={attachment.name}
-              className="max-h-[75vh] max-w-[85vw] rounded-lg object-contain"
+              style={{ maxHeight: "75vh", maxWidth: "min(85vw, 100%)", width: "auto", height: "auto" }}
+              className="rounded-lg object-contain block"
             />
           </div>
         ) : attachment.text ? (
