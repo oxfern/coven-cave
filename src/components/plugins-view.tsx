@@ -618,6 +618,8 @@ function RoleGrid({
   onSelect: (role: RoleEntry) => void;
   onToggle: (role: RoleEntry) => Promise<void>;
 }) {
+  const [collapsed, setCollapsed] = React.useState<Set<string>>(new Set());
+
   if (!loaded) return <GridSkeleton />;
   if (error) {
     return (
@@ -628,25 +630,88 @@ function RoleGrid({
   }
   if (items.length === 0) {
     return (
-      <p className="rounded-lg border border-border px-4 py-6 text-center text-[13px] text-muted-foreground">
-        No roles installed yet.
-      </p>
+      <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border py-10 text-center">
+        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+          <Icon name="ph:mask-happy" width={18} className="text-muted-foreground" />
+        </span>
+        <p className="text-[13px] font-medium text-foreground">No roles installed</p>
+        <p className="text-[12px] text-muted-foreground">Add a ROLE.md to a familiar&apos;s workspace to get started.</p>
+      </div>
     );
   }
+
+  // Group by familiar
+  const groups = new Map<string, RoleEntry[]>();
+  for (const r of items) {
+    const list = groups.get(r.familiar) ?? [];
+    list.push(r);
+    groups.set(r.familiar, list);
+  }
+
+  const toggleCollapse = (fam: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(fam)) next.delete(fam);
+      else next.add(fam);
+      return next;
+    });
+
   return (
-    <div className="grid grid-cols-1 gap-2">
-      {items.map((r) => (
-        <RoleCard
-          key={`${r.familiar}:${r.id}`}
-          role={r}
-          selected={selectedRole?.id === r.id && selectedRole?.familiar === r.familiar}
-          onSelect={onSelect}
-          onToggle={onToggle}
-        />
-      ))}
+    <div className="space-y-4">
+      {[...groups.entries()].map(([fam, roles]) => {
+        const isOpen = !collapsed.has(fam);
+        const activeCount = roles.filter((r) => r.active).length;
+        return (
+          <div key={fam}>
+            <button
+              type="button"
+              onClick={() => toggleCollapse(fam)}
+              className="mb-2 flex w-full items-center gap-2 text-left"
+            >
+              <Icon
+                name="ph:caret-right-bold"
+                width={11}
+                className={`shrink-0 text-muted-foreground transition-transform duration-150 ${isOpen ? "rotate-90" : ""}`}
+              />
+              <span className="text-[11px] font-semibold capitalize tracking-wide text-[var(--text-secondary)]">
+                {fam}
+              </span>
+              <span className="rounded-full bg-[var(--bg-raised)] px-1.5 py-px text-[10px] text-[var(--text-muted)]">
+                {roles.length}
+              </span>
+              {activeCount > 0 && (
+                <span className="rounded-full bg-emerald-500/15 px-1.5 py-px text-[10px] text-emerald-300">
+                  {activeCount} active
+                </span>
+              )}
+            </button>
+            {isOpen && (
+              <div className="space-y-1.5">
+                {roles.map((r) => (
+                  <RoleCard
+                    key={`${r.familiar}:${r.id}`}
+                    role={r}
+                    selected={selectedRole?.id === r.id && selectedRole?.familiar === r.familiar}
+                    onSelect={onSelect}
+                    onToggle={onToggle}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
+
+// Icon map for well-known chip types
+const CHIP_ICON: Record<string, Parameters<typeof Icon>[0]["name"]> = {
+  skills:    "ph:sparkle-bold",
+  workflows: "ph:list-bullets-bold",
+  tools:     "ph:wrench-bold",
+  plugins:   "ph:plug-bold",
+};
 
 function RoleCard({
   role,
@@ -660,11 +725,14 @@ function RoleCard({
   onToggle: (role: RoleEntry) => Promise<void>;
 }) {
   const [toggling, setToggling] = React.useState(false);
-  const chips = [
-    role.skills.length > 0 && `${role.skills.length} skill${role.skills.length !== 1 ? "s" : ""}`,
-    role.workflows.length > 0 && `${role.workflows.length} workflow${role.workflows.length !== 1 ? "s" : ""}`,
-    role.tools.length > 0 && `${role.tools.length} tool${role.tools.length !== 1 ? "s" : ""}`,
-  ].filter(Boolean) as string[];
+
+  type ChipEntry = { key: string; icon: Parameters<typeof Icon>[0]["name"]; label: string };
+  const chips: ChipEntry[] = ([
+    role.skills.length > 0    && { key: "skills",    icon: CHIP_ICON.skills,    label: `${role.skills.length} skill${role.skills.length !== 1 ? "s" : ""}` },
+    role.workflows.length > 0 && { key: "workflows", icon: CHIP_ICON.workflows, label: `${role.workflows.length} workflow${role.workflows.length !== 1 ? "s" : ""}` },
+    role.tools.length > 0     && { key: "tools",     icon: CHIP_ICON.tools,     label: `${role.tools.length} tool${role.tools.length !== 1 ? "s" : ""}` },
+    role.plugins.length > 0   && { key: "plugins",   icon: CHIP_ICON.plugins,   label: `${role.plugins.length} plugin${role.plugins.length !== 1 ? "s" : ""}` },
+  ].filter(Boolean)) as ChipEntry[];
 
   const handleToggle = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -684,52 +752,81 @@ function RoleCard({
           onSelect(role);
         }
       }}
-      className={`group flex min-w-0 cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 transition-colors ${
+      className={[
+        "group flex min-w-0 cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors",
         selected
           ? "border-[var(--accent-presence)] bg-[var(--accent-presence)]/10"
           : role.active
-            ? "border-[var(--accent)] bg-[var(--accent-subtle,var(--bg-card))]"
-            : "border-[var(--border-hairline)] bg-[var(--bg-card)] hover:bg-muted/40"
-      }`}
+            ? "border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10"
+            : "border-[var(--border-hairline)] bg-[var(--bg-card)] hover:bg-[var(--bg-raised)]",
+      ].join(" ")}
     >
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-[var(--bg-raised)] text-[13px] font-semibold text-[var(--text-primary)]">
-        {role.name.slice(0, 2).toUpperCase()}
+      {/* Glyph */}
+      <span className={[
+        "flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[11px] font-bold",
+        selected
+          ? "bg-[var(--accent-presence)]/20 text-[var(--accent-presence)]"
+          : role.active
+            ? "bg-emerald-500/15 text-emerald-300"
+            : "bg-[var(--bg-elevated)] text-[var(--text-secondary)]",
+      ].join(" ")}>
+        {role.emoji ?? role.name.slice(0, 2).toUpperCase()}
       </span>
-      {/* Content */}
+
+      {/* Name + meta */}
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="block truncate text-[13px] font-medium text-[var(--text-primary)]">{role.name}</span>
-          {role.familiar && (
-            <span className="shrink-0 text-[11px] text-[var(--text-muted)]">{role.familiar}</span>
-          )}
+        <div className="flex min-w-0 items-center gap-1.5">
+          <span className="truncate text-[13px] font-medium text-[var(--text-primary)]">{role.name}</span>
           {role.active && (
-            <span className="ml-auto shrink-0 rounded-full bg-[var(--accent)] px-2 py-0.5 text-[10px] font-medium text-white">active</span>
-          )}
-          {selected && !role.active && (
-            <span className="ml-auto shrink-0 rounded-full bg-[var(--bg-raised)] px-2 py-0.5 text-[10px] font-medium text-[var(--text-secondary)]">selected</span>
+            <span className="shrink-0 rounded-full bg-emerald-500/15 px-1.5 py-px text-[9px] font-medium uppercase tracking-wide text-emerald-300">
+              active
+            </span>
           )}
         </div>
-        {role.description && (
-          <p className="mt-0.5 line-clamp-2 text-[12px] text-[var(--text-muted)]">{role.description}</p>
-        )}
-        {chips.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1.5">
+        {role.description ? (
+          <p className="mt-px truncate text-[11px] text-[var(--text-muted)]">{role.description}</p>
+        ) : chips.length > 0 ? (
+          <div className="mt-px flex flex-wrap items-center gap-1">
             {chips.map((c) => (
-              <span key={c} className="rounded-md bg-[var(--bg-raised)] px-2 py-0.5 text-[10px] text-[var(--text-muted)]">{c}</span>
+              <span key={c.key} className="flex items-center gap-0.5 text-[11px] text-[var(--text-muted)]">
+                <Icon name={c.icon} width={10} />
+                {c.label}
+              </span>
             ))}
           </div>
-        )}
+        ) : null}
       </div>
-      {/* Toggle button */}
+
+      {/* Chip badges — only shown when description takes the meta slot */}
+      {role.description && chips.length > 0 && (
+        <div className="hidden shrink-0 items-center gap-1.5 sm:flex">
+          {chips.map((c) => (
+            <span key={c.key} className="flex items-center gap-0.5 rounded-md bg-[var(--bg-elevated)] px-1.5 py-0.5 text-[10px] text-[var(--text-muted)]">
+              <Icon name={c.icon} width={9} />
+              {c.label}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Toggle */}
       <button
         type="button"
         disabled={toggling}
         onClick={handleToggle}
-        className={`shrink-0 rounded-full p-1.5 transition-colors ${role.active ? "text-[var(--accent)] hover:bg-[var(--accent)]/10" : "text-[var(--text-muted)] hover:bg-muted"} disabled:opacity-40`}
-        title={role.active ? "Deactivate role" : "Activate role"}
+        className={[
+          "ml-auto shrink-0 rounded-md p-1.5 transition-colors disabled:opacity-40",
+          role.active
+            ? "text-emerald-400 hover:bg-emerald-500/15"
+            : "text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-secondary)]",
+        ].join(" ")}
+        title={role.active ? "Deactivate" : "Activate"}
         aria-label={role.active ? "Deactivate role" : "Activate role"}
       >
-        <Icon name={toggling ? "ph:arrows-clockwise" : role.active ? "ph:toggle-right-bold" : "ph:toggle-left-bold"} width={20} height={20} />
+        <Icon
+          name={toggling ? "ph:arrows-clockwise" : role.active ? "ph:toggle-right-bold" : "ph:toggle-left-bold"}
+          width={18}
+        />
       </button>
     </div>
   );
@@ -748,18 +845,14 @@ function RoleCapabilityMap({
 }) {
   if (!role) {
     return (
-      <aside className="rounded-xl border border-dashed border-border bg-card/60 px-4 py-5 lg:sticky lg:top-4">
-        <div className="flex items-start gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-            <Icon name="ph:info" width={16} />
-          </span>
-          <div>
-            <p className="text-[13px] font-medium text-foreground">Select a role</p>
-            <p className="mt-1 text-[12px] leading-5 text-muted-foreground">
-              Choose a role to inspect its connected skills, plugins, workflows, and runtime capabilities.
-            </p>
-          </div>
-        </div>
+      <aside className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-card/40 px-4 py-10 text-center lg:sticky lg:top-4">
+        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--bg-elevated)]">
+          <Icon name="ph:cursor-click" width={18} className="text-[var(--text-muted)]" />
+        </span>
+        <p className="text-[12px] font-medium text-[var(--text-secondary)]">Select a role</p>
+        <p className="max-w-[200px] text-[11px] leading-5 text-[var(--text-muted)]">
+          Pick a role to inspect its skills, plugins, workflows, and capabilities.
+        </p>
       </aside>
     );
   }
@@ -814,39 +907,49 @@ function RoleCapabilityMap({
   ];
 
   return (
-    <aside className="rounded-xl border border-border bg-card lg:sticky lg:top-4">
-      <div className="border-b border-border px-4 py-4">
-        <div className="flex items-start gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-muted text-[13px] font-semibold text-foreground">
-            {role.name.slice(0, 2).toUpperCase()}
-          </span>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="truncate text-[14px] font-semibold text-foreground">{role.name}</h3>
-              <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${role.active ? "bg-emerald-400/15 text-emerald-200" : "bg-muted text-muted-foreground"}`}>
-                {role.active ? "active" : "available"}
-              </span>
-            </div>
-            <p className="mt-1 text-[11px] text-muted-foreground">{role.familiar}</p>
+    <aside className="overflow-hidden rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-card)] lg:sticky lg:top-4">
+      {/* Header */}
+      <div className="flex items-center gap-3 border-b border-[var(--border-hairline)] px-4 py-3">
+        <span className={[
+          "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[12px] font-bold",
+          role.active ? "bg-emerald-500/15 text-emerald-300" : "bg-[var(--bg-elevated)] text-[var(--text-secondary)]",
+        ].join(" ")}>
+          {role.emoji ?? role.name.slice(0, 2).toUpperCase()}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <h3 className="truncate text-[13px] font-semibold text-[var(--text-primary)]">{role.name}</h3>
+            <span className={`shrink-0 rounded-full px-1.5 py-px text-[9px] font-medium uppercase tracking-wide ${
+              role.active ? "bg-emerald-500/15 text-emerald-300" : "bg-[var(--bg-elevated)] text-[var(--text-muted)]"
+            }`}>
+              {role.active ? "active" : "available"}
+            </span>
           </div>
+          <p className="text-[11px] capitalize text-[var(--text-muted)]">{role.familiar}</p>
         </div>
-        {role.description ? (
-          <p className="mt-3 text-[12px] leading-5 text-muted-foreground">{role.description}</p>
-        ) : null}
       </div>
 
-      <div className="grid grid-cols-2 divide-x divide-y divide-border text-center text-[11px] sm:grid-cols-4 lg:grid-cols-2">
-        <RoleMetric label="Skills" value={role.skills.length} />
-        <RoleMetric label="Plugins" value={role.plugins.length} />
+      {/* Description */}
+      {role.description && (
+        <p className="border-b border-[var(--border-hairline)] px-4 py-2.5 text-[11px] leading-relaxed text-[var(--text-muted)]">
+          {role.description}
+        </p>
+      )}
+
+      {/* Metric strip */}
+      <div className="grid grid-cols-4 divide-x divide-[var(--border-hairline)] border-b border-[var(--border-hairline)]">
+        <RoleMetric label="Skills"    value={role.skills.length} />
+        <RoleMetric label="Plugins"   value={role.plugins.length} />
         <RoleMetric label="Workflows" value={role.workflows.length} />
-        <RoleMetric label="Capabilities" value={role.tools.length + role.plugins.length} />
+        <RoleMetric label="Tools"     value={role.tools.length} />
       </div>
 
-      <div className="space-y-4 px-4 py-4">
-        <RoleRelationSection title="Connected skills" icon="ph:sparkle" empty="No skills declared by this role." items={connectedSkills} />
-        <RoleRelationSection title="Plugins" icon="ph:plug" empty="No plugins declared by this role." items={connectedPlugins} />
-        <RoleRelationSection title="Workflows" icon="ph:list-bullets" empty="No workflows declared by this role." items={workflowItems} />
-        <RoleRelationSection title="Capabilities" icon="ph:lightning-bold" empty="No tools or runtime capabilities declared yet." items={capabilityItems} />
+      {/* Relation sections */}
+      <div className="space-y-3 px-4 py-3">
+        <RoleRelationSection title="Skills"       icon="ph:sparkle"        empty="No skills declared."       items={connectedSkills} />
+        <RoleRelationSection title="Plugins"      icon="ph:plug"           empty="No plugins declared."      items={connectedPlugins} />
+        <RoleRelationSection title="Workflows"    icon="ph:list-bullets"   empty="No workflows declared."   items={workflowItems} />
+        <RoleRelationSection title="Capabilities" icon="ph:lightning-bold" empty="No capabilities declared." items={capabilityItems} />
       </div>
     </aside>
   );
@@ -854,9 +957,11 @@ function RoleCapabilityMap({
 
 function RoleMetric({ label, value }: { label: string; value: number }) {
   return (
-    <div className="px-3 py-3">
-      <p className="text-[15px] font-semibold tabular-nums text-foreground">{value}</p>
-      <p className="mt-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+    <div className="flex flex-col items-center py-2.5">
+      <p className={`text-[14px] font-semibold tabular-nums ${
+        value > 0 ? "text-[var(--text-primary)]" : "text-[var(--text-muted)]"
+      }`}>{value}</p>
+      <p className="mt-0.5 text-[9px] uppercase tracking-wide text-[var(--text-muted)]">{label}</p>
     </div>
   );
 }
@@ -872,37 +977,33 @@ function RoleRelationSection({
   empty: string;
   items: { id: string; title: string; detail: string; status: string }[];
 }) {
+  if (items.length === 0) return null;
   return (
     <section>
-      <div className="mb-2 flex items-center gap-2">
-        <Icon name={icon} width={13} className="text-muted-foreground" />
-        <h4 className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{title}</h4>
+      <div className="mb-1.5 flex items-center gap-1.5">
+        <Icon name={icon} width={11} className="text-[var(--text-muted)]" />
+        <h4 className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">{title}</h4>
+        <span className="ml-auto text-[10px] text-[var(--text-muted)]">{items.length}</span>
       </div>
-      {items.length === 0 ? (
-        <p className="rounded-lg border border-border bg-background/40 px-3 py-2 text-[11px] text-muted-foreground">
-          {empty}
-        </p>
-      ) : (
-        <ul className="space-y-1.5">
-          {items.map((item) => (
-            <li key={item.id} className="rounded-lg border border-border bg-background/40 px-3 py-2">
-              <div className="flex min-w-0 items-center gap-2">
-                <p className="min-w-0 flex-1 truncate text-[12px] font-medium text-foreground">{item.title}</p>
-                <span className={`shrink-0 rounded-full px-1.5 py-px text-[9px] uppercase tracking-wide ${
-                  item.status === "connected" || item.status === "local" || item.status === "daemon"
-                    ? "bg-emerald-400/15 text-emerald-200"
-                    : item.status === "disabled"
-                      ? "bg-amber-400/15 text-amber-200"
-                      : "bg-muted text-muted-foreground"
-                }`}>
-                  {item.status}
-                </span>
-              </div>
-              <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">{item.detail}</p>
-            </li>
-          ))}
-        </ul>
-      )}
+      <ul className="space-y-1">
+        {items.map((item) => (
+          <li key={item.id} className="flex min-w-0 items-center gap-2 rounded-md bg-[var(--bg-elevated)]/60 px-2.5 py-1.5">
+            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+              item.status === "connected" || item.status === "local" || item.status === "daemon"
+                ? "bg-emerald-400"
+                : item.status === "disabled"
+                  ? "bg-amber-400"
+                  : "bg-[var(--text-muted)]/40"
+            }`} />
+            <p className="min-w-0 flex-1 truncate text-[11px] font-medium text-[var(--text-primary)]">{item.title}</p>
+            {item.detail && item.detail !== "Declared by this role" && item.detail !== "Role workflow" && item.detail !== "Tool or command capability" && (
+              <span className="shrink-0 max-w-[120px] truncate text-[10px] text-[var(--text-muted)]" title={item.detail}>
+                {item.detail}
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }
