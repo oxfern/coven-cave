@@ -805,21 +805,20 @@ export function CalendarView({ items, familiars, onOpenItem }: Props) {
             aria-label="Next"
             className="grid h-7 w-7 place-items-center rounded-md text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-raised)] hover:text-[var(--text-primary)]"
           >
-            <Icon name="ph:arrow-right-bold" />
+            <Icon name="ph:arrow-right-bold" width={12} />
           </button>
         </div>
 
-        <div className="min-w-[180px] flex-1">
-          {/* Heading */}
+        {/* Heading + pending pill */}
+        <div className="min-w-[120px] flex flex-1 items-center gap-2 min-w-0">
           <h2 className="truncate text-sm font-semibold text-[var(--text-primary)]">
             {headingLabel()}
           </h2>
-          <div className="flex items-center gap-2 text-[11px] text-[var(--text-muted)]">
-            <span>{items.filter((i) => i.status === "pending").length} pending</span>
-            <span className="hidden md:inline">
-              ← → navigate · T today · D W M A views
+          {items.filter((i) => i.status === "pending").length > 0 && (
+            <span className="shrink-0 rounded-full bg-[var(--bg-raised)] border border-[var(--border-hairline)] px-2 py-0.5 text-[10px] text-[var(--text-muted)] font-medium tabular-nums">
+              {items.filter((i) => i.status === "pending").length} pending
             </span>
-          </div>
+          )}
         </div>
 
         {/* View mode toggle */}
