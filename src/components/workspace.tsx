@@ -24,12 +24,18 @@ import { ComuxView } from "@/components/comux-view";
 import { GitHubView } from "@/components/github-view";
 import { HomeComposer } from "@/components/home-composer";
 import { nativeNotify } from "@/lib/native-notify";
+import { SessionsView } from "@/components/sessions-view";
 import type { InboxItem } from "@/lib/cave-inbox";
 import type { InboxPrefs } from "@/lib/cave-inbox-prefs";
 import type { Familiar, SessionRow } from "@/lib/types";
 import { DEMO_MODE, DEMO_FAMILIARS } from "@/lib/demo-seed";
 
-type Mode = Parameters<typeof DaemonBar>[0]["mode"];
+type WorkspaceMode = Parameters<typeof DaemonBar>[0]["mode"] | "sessions";
+
+// Narrow helper for DaemonBar (which doesn't know about "sessions")
+function isDaemonMode(m: WorkspaceMode): m is Parameters<typeof DaemonBar>[0]["mode"] {
+  return m !== "sessions";
+}
 
 export function Workspace() {
   const routerRef = useRef<ChatRouterHandle | null>(null);
@@ -41,7 +47,7 @@ export function Workspace() {
   const [daemonRunning, setDaemonRunning] = useState<boolean>(false);
   const [responseNeeded, setResponseNeeded] = useState<Set<string>>(new Set());
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [mode, setMode] = useState<Mode>("home");
+  const [mode, setMode] = useState<WorkspaceMode>("home");
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [inboxItems, setInboxItems] = useState<InboxItem[]>([]);
   const [escalationsUnresolved, setEscalationsUnresolved] = useState(0);
@@ -576,7 +582,10 @@ export function Workspace() {
       inboxBadgeCount={inboxBadgeCount}
       familiars={familiars}
       activeId={activeId}
-      onFamiliarSelect={setActiveId}
+      onFamiliarSelect={(id) => {
+        setActiveId(id);
+        setMode("sessions");
+      }}
       onNewChat={() => {
         setMode("chats");
         setTimeout(() => routerRef.current?.newChat(), 0);
@@ -587,7 +596,7 @@ export function Workspace() {
           setMode("browser");
           return;
         }
-        setMode(m as Mode);
+        setMode(m as WorkspaceMode);
       }}
       onOpenSession={(id) => {
         setMode("chats");
@@ -614,6 +623,23 @@ export function Workspace() {
         onNavigateToBoard={() => setMode("board")}
         onNavigateToInbox={() => setMode("inbox")}
         onToast={pushToast}
+      />
+    ) : mode === "sessions" ? (
+      <SessionsView
+        familiars={familiars}
+        sessions={sessions}
+        activeFamiliarId={activeId}
+        activeSessionId={routerRef.current?.currentSessionId() ?? null}
+        onOpenSession={(id, familiarId) => {
+          if (familiarId) setActiveId(familiarId);
+          setMode("chats");
+          setTimeout(() => routerRef.current?.openSession(id), 0);
+        }}
+        onNewChat={(familiarId) => {
+          if (familiarId) setActiveId(familiarId);
+          setMode("chats");
+          setTimeout(() => routerRef.current?.newChat(), 0);
+        }}
       />
     ) : mode === "chats" ? (
       <ChatRouter
@@ -705,7 +731,7 @@ export function Workspace() {
         ref={shellRef}
         topBar={
           <DaemonBar
-            mode={mode}
+            mode={isDaemonMode(mode) ? mode : "home"}
             onModeChange={setMode}
             inboxBadgeCount={inboxBadgeCount}
             onRunningChange={setDaemonRunning}
