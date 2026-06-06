@@ -23,7 +23,7 @@ Download the matching asset from [Releases](https://github.com/OpenCoven/coven-c
 - **Linux:** download the `.AppImage`, run `chmod +x CovenCave_*.AppImage`, then launch it from your file manager or terminal.
 - **macOS:** download the `.dmg`, open it, and drag CovenCave to Applications.
 
-You'll also need the local [`coven`](https://github.com/OpenCoven/coven) CLI/daemon. On first launch, Cave opens a full-width setup screen that checks for the CLI, creates your local `~/.coven` folder, helps you add your first familiar, and starts the daemon.
+You'll also need the local [`coven`](https://github.com/OpenCoven/coven) CLI/daemon. On first launch, Cave opens a full-width setup screen that checks for the CLI, creates your local `~/.coven` folder, lets you connect one of your local OpenClaw agents as a familiar, and starts the daemon.
 
 ### Demo mode for testers
 

@@ -6,6 +6,7 @@ export type OnboardingFamiliarDraft = {
   glyph: string;
   harness: string;
   model: string;
+  openclawAgentId?: string;
 };
 
 export type OnboardingFamiliarInput = {
@@ -16,18 +17,8 @@ export type OnboardingFamiliarInput = {
   glyph?: string | null;
   harness?: string | null;
   model?: string | null;
+  openclawAgentId?: string | null;
 };
-
-export const RESERVED_STARTER_FAMILIAR_IDS = [
-  "main",
-  "kitty",
-  "cody",
-  "sage",
-  "charm",
-  "astra",
-  "echo",
-  "nova",
-];
 
 function cleanText(value: string | null | undefined): string {
   return (value ?? "").trim();
@@ -51,12 +42,10 @@ export function normalizeFamiliarDraft(input: OnboardingFamiliarInput): Onboardi
 
   const id = slugify(cleanText(input.id) || displayName);
   if (!id) throw new Error("Familiar id is required.");
-  if (RESERVED_STARTER_FAMILIAR_IDS.includes(id)) {
-    throw new Error(`"${id}" is reserved. Pick a name that belongs to this Coven.`);
-  }
 
-  const harness = cleanText(input.harness) || "codex";
-  const model = cleanText(input.model) || (harness === "claude" ? "anthropic/claude-sonnet-4-6" : "openai/gpt-5");
+  const openclawAgentId = slugify(cleanText(input.openclawAgentId));
+  const harness = cleanText(input.harness) || (openclawAgentId ? "openclaw" : "openclaw");
+  const model = cleanText(input.model) || openclawAgentId || id;
 
   return {
     id,
@@ -66,6 +55,7 @@ export function normalizeFamiliarDraft(input: OnboardingFamiliarInput): Onboardi
     glyph: cleanText(input.glyph) || "ph:sparkle-fill",
     harness,
     model,
+    openclawAgentId: openclawAgentId || undefined,
   };
 }
 
@@ -86,6 +76,7 @@ export function buildFamiliarsToml(draft: OnboardingFamiliarDraft | null): strin
   if (draft.description) lines.push(`description = ${tomlString(draft.description)}`);
   lines.push(`harness = ${tomlString(draft.harness)}`);
   lines.push(`model = ${tomlString(draft.model)}`);
+  if (draft.openclawAgentId) lines.push(`openclaw_agent = ${tomlString(draft.openclawAgentId)}`);
 
   return `${lines.join("\n")}\n`;
 }

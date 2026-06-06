@@ -3,12 +3,7 @@ import assert from "node:assert/strict";
 import {
   buildFamiliarsToml,
   normalizeFamiliarDraft,
-  RESERVED_STARTER_FAMILIAR_IDS,
 } from "./onboarding-familiars.ts";
-
-const reserved = ["main", "kitty", "cody", "sage", "charm", "astra", "echo", "nova"];
-
-assert.deepEqual(RESERVED_STARTER_FAMILIAR_IDS, reserved);
 
 assert.equal(buildFamiliarsToml(null), "# User familiars for this Coven.\n");
 
@@ -17,8 +12,7 @@ const draft = normalizeFamiliarDraft({
   role: "Research",
   description: "Finds evidence and summarizes it.",
   glyph: "ph:leaf-fill",
-  harness: "codex",
-  model: "openai/gpt-5",
+  openclawAgentId: "riley",
 });
 
 assert.deepEqual(draft, {
@@ -27,21 +21,16 @@ assert.deepEqual(draft, {
   role: "Research",
   description: "Finds evidence and summarizes it.",
   glyph: "ph:leaf-fill",
-  harness: "codex",
-  model: "openai/gpt-5",
+  harness: "openclaw",
+  model: "riley",
+  openclawAgentId: "riley",
 });
 
 const toml = buildFamiliarsToml(draft);
 assert.match(toml, /id = "riley-research"/);
 assert.match(toml, /display_name = "Riley Research"/);
-assert.match(toml, /harness = "codex"/);
-assert.match(toml, /model = "openai\/gpt-5"/);
+assert.match(toml, /harness = "openclaw"/);
+assert.match(toml, /model = "riley"/);
+assert.match(toml, /openclaw_agent = "riley"/);
 
-for (const id of reserved) {
-  assert.doesNotMatch(toml, new RegExp(`id = "${id}"`));
-}
-
-assert.throws(
-  () => normalizeFamiliarDraft({ displayName: "Cody", harness: "codex", model: "openai/gpt-5" }),
-  /reserved/i,
-);
+assert.equal(normalizeFamiliarDraft({ displayName: "Cody", openclawAgentId: "cody" }).id, "cody");

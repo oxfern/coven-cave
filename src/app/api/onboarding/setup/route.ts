@@ -46,8 +46,8 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
-  const harness = (draft?.harness ?? body.harness ?? "codex").trim() || "codex";
-  const model = (draft?.model ?? body.model ?? "openai/gpt-5").trim() || "openai/gpt-5";
+  const harness = (draft?.harness ?? body.harness ?? "openclaw").trim() || "openclaw";
+  const model = (draft?.model ?? body.model ?? "openclaw").trim() || "openclaw";
 
   const home = homedir();
   const covenDir = path.join(home, ".coven");
@@ -75,8 +75,8 @@ export async function POST(req: Request) {
     }
   }
 
-  // Always update cave-config.json defaults so the user's chosen
-  // harness/model takes effect even if they re-run with a different pick.
+  // Always update cave-config.json defaults so the user's chosen OpenClaw
+  // agent binding takes effect even if they re-run setup.
   const existing = await loadConfig();
   const nextConfig = {
     version: existing.version || 1,

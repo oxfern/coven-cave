@@ -56,7 +56,7 @@ async function checkFamiliars(): Promise<{ step: Step; count: number }> {
   return {
     step: {
       ok: false,
-      hint: res.ok ? "Create your first familiar in Cave, or add one to ~/.coven/familiars.toml." : "daemon offline",
+      hint: res.ok ? "Connect an OpenClaw agent as a familiar, or add one to ~/.coven/familiars.toml." : "daemon offline",
     },
     count,
   };
@@ -66,7 +66,7 @@ async function checkBinding(familiarsAvailable: boolean): Promise<Step> {
   const config = await loadConfig();
   const hasDefaults = !!config.defaults.harness && !!config.defaults.model;
   if (!hasDefaults) {
-    return { ok: false, hint: "Pick a default harness + model for your familiars." };
+    return { ok: false, hint: "Connect an OpenClaw agent so Cave can create a familiar binding." };
   }
   if (!familiarsAvailable) {
     return { ok: false, hint: "Bindings set but no familiars to bind." };

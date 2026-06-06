@@ -19,30 +19,12 @@ type OnboardingStatus = {
   };
 };
 
-type HarnessPreset = {
-  id: "codex" | "claude";
-  label: string;
-  model: string;
-  detail: string;
-  commandHint: string;
+type OpenClawAgent = {
+  id: string;
+  displayName: string;
+  role: string;
+  workspacePath: string | null;
 };
-
-const HARNESS_PRESETS: HarnessPreset[] = [
-  {
-    id: "codex",
-    label: "Codex",
-    model: "openai/gpt-5",
-    detail: "Best default for code-heavy work. Requires Codex/OpenAI auth on this machine.",
-    commandHint: "coven daemon start",
-  },
-  {
-    id: "claude",
-    label: "Claude",
-    model: "anthropic/claude-sonnet-4-6",
-    detail: "Strong reasoning path. Requires Anthropic/Claude auth on this machine.",
-    commandHint: "coven daemon start",
-  },
-];
 
 const PLATFORM_COPY: Record<PlatformId, {
   label: string;
@@ -139,7 +121,10 @@ export function OnboardingOverlay({ open, onDismiss }: Props) {
   const [familiarRole, setFamiliarRole] = useState("Familiar");
   const [familiarDescription, setFamiliarDescription] = useState("");
   const [familiarGlyph, setFamiliarGlyph] = useState("ph:sparkle-fill");
-  const [selectedHarness, setSelectedHarness] = useState<HarnessPreset>(HARNESS_PRESETS[0]);
+  const [openclawAgents, setOpenclawAgents] = useState<OpenClawAgent[]>([]);
+  const [agentsLoading, setAgentsLoading] = useState(false);
+  const [agentsError, setAgentsError] = useState<string | null>(null);
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [prune, setPrune] = useState<PruneState>({ idle: true });
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -156,15 +141,39 @@ export function OnboardingOverlay({ open, onDismiss }: Props) {
 
   useEffect(() => setPlatform(detectPlatform()), []);
 
+  const loadOpenClawAgents = useCallback(async () => {
+    setAgentsLoading(true);
+    setAgentsError(null);
+    try {
+      const res = await fetch("/api/openclaw-agents", { cache: "no-store" });
+      const json = await res.json() as { ok?: boolean; agents?: OpenClawAgent[]; error?: string };
+      if (!res.ok || json.ok === false) throw new Error(json.error ?? "failed to load OpenClaw agents");
+      const agents = json.agents ?? [];
+      setOpenclawAgents(agents);
+      setSelectedAgentId((current) => {
+        if (current || !agents[0]) return current;
+        setFamiliarName(agents[0].displayName);
+        setFamiliarRole(agents[0].role);
+        setFamiliarDescription(`Connected to OpenClaw agent "${agents[0].id}".`);
+        return agents[0].id;
+      });
+    } catch (err) {
+      setAgentsError(err instanceof Error ? err.message : "failed to load OpenClaw agents");
+    } finally {
+      setAgentsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!open) return;
     void refresh();
+    void loadOpenClawAgents();
     pollRef.current = setInterval(refresh, 2000);
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
       pollRef.current = null;
     };
-  }, [open, refresh]);
+  }, [open, refresh, loadOpenClawAgents]);
 
   useEffect(() => {
     if (!open || !status?.complete) return;
@@ -198,6 +207,11 @@ export function OnboardingOverlay({ open, onDismiss }: Props) {
   };
 
   const createFamiliar = async () => {
+    const selectedAgent = openclawAgents.find((agent) => agent.id === selectedAgentId) ?? null;
+    if (!selectedAgent) {
+      setSetupError("Pick an OpenClaw agent to connect first.");
+      return;
+    }
     setPicking("familiar");
     setSetupError(null);
     try {
@@ -206,12 +220,12 @@ export function OnboardingOverlay({ open, onDismiss }: Props) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           familiar: {
+            id: selectedAgent.id,
             displayName: familiarName,
             role: familiarRole,
             description: familiarDescription,
             glyph: familiarGlyph,
-            harness: selectedHarness.id,
-            model: selectedHarness.model,
+            openclawAgentId: selectedAgent.id,
           },
         }),
       });
@@ -259,7 +273,7 @@ export function OnboardingOverlay({ open, onDismiss }: Props) {
       },
       {
         key: "binding",
-        title: "Create first familiar",
+        title: "Connect OpenClaw agent",
         ok: !!s?.binding.ok,
         detail: s?.binding.detail ?? s?.binding.hint ?? "checking...",
         icon: "ph:sparkle",
@@ -405,9 +419,9 @@ export function OnboardingOverlay({ open, onDismiss }: Props) {
             <div className="rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-raised)]/35 p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 className="text-[14px] font-semibold text-[var(--text-primary)]">Create your first familiar</h2>
+                  <h2 className="text-[14px] font-semibold text-[var(--text-primary)]">Connect an OpenClaw agent</h2>
                   <p className="mt-1 text-[12px] leading-5 text-[var(--text-secondary)]">
-                    Pick a name and runtime. Cave writes only this familiar to your local `~/.coven/familiars.toml`.
+                    Choose one of your local OpenClaw agents. Cave writes only the selected agent as a familiar in `~/.coven/familiars.toml`.
                   </p>
                 </div>
                 <button
@@ -417,6 +431,59 @@ export function OnboardingOverlay({ open, onDismiss }: Props) {
                 >
                   {picking === "scaffold" ? "Creating..." : "Create folder only"}
                 </button>
+              </div>
+
+              <div className="mt-4 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-base)]/45 p-3">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <div className="text-[11px] font-medium uppercase tracking-wider text-[var(--text-muted)]">
+                    Local OpenClaw agents
+                  </div>
+                  <button
+                    onClick={() => void loadOpenClawAgents()}
+                    disabled={agentsLoading}
+                    className="rounded border border-[var(--border-hairline)] px-2 py-1 text-[11px] text-[var(--text-secondary)] hover:bg-[var(--bg-raised)] disabled:opacity-50"
+                  >
+                    {agentsLoading ? "Loading..." : "Refresh"}
+                  </button>
+                </div>
+                {agentsError ? (
+                  <div className="rounded border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[12px] text-rose-200">
+                    {agentsError}
+                  </div>
+                ) : openclawAgents.length === 0 ? (
+                  <div className="rounded border border-dashed border-[var(--border-hairline)] px-3 py-5 text-center text-[12px] text-[var(--text-muted)]">
+                    No OpenClaw agents found under ~/.openclaw/agents yet.
+                  </div>
+                ) : (
+                  <div className="grid max-h-56 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
+                    {openclawAgents.map((agent) => {
+                      const active = selectedAgentId === agent.id;
+                      return (
+                        <button
+                          key={agent.id}
+                          onClick={() => {
+                            setSelectedAgentId(agent.id);
+                            setFamiliarName(agent.displayName);
+                            setFamiliarRole(agent.role);
+                            setFamiliarDescription(`Connected to OpenClaw agent "${agent.id}".`);
+                          }}
+                          className={`rounded-lg border p-3 text-left ${
+                            active
+                              ? "border-purple-500/55 bg-purple-500/12 text-[var(--text-primary)]"
+                              : "border-[var(--border-hairline)] bg-[var(--bg-raised)]/35 text-[var(--text-secondary)] hover:border-[var(--border-strong)]"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="truncate text-[13px] font-medium">{agent.displayName}</span>
+                            {active ? <Icon name="ph:check-bold" className="text-purple-200" /> : null}
+                          </div>
+                          <div className="mt-1 truncate font-mono text-[11px]">{agent.id}</div>
+                          <div className="mt-1 line-clamp-2 text-[11px] leading-4 text-[var(--text-muted)]">{agent.role}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -458,44 +525,20 @@ export function OnboardingOverlay({ open, onDismiss }: Props) {
                 </label>
               </div>
 
-              <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                {HARNESS_PRESETS.map((preset) => {
-                  const active = selectedHarness.id === preset.id;
-                  return (
-                    <button
-                      key={preset.id}
-                      onClick={() => setSelectedHarness(preset)}
-                      className={`rounded-lg border p-3 text-left ${
-                        active
-                          ? "border-purple-500/55 bg-purple-500/12 text-[var(--text-primary)]"
-                          : "border-[var(--border-hairline)] bg-[var(--bg-base)]/60 text-[var(--text-secondary)] hover:border-[var(--border-strong)]"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-[13px] font-medium">{preset.label}</span>
-                        {active ? <Icon name="ph:check-bold" className="text-purple-200" /> : null}
-                      </div>
-                      <div className="mt-1 font-mono text-[11px]">{preset.model}</div>
-                      <div className="mt-1 text-[11px] leading-4 text-[var(--text-muted)]">{preset.detail}</div>
-                    </button>
-                  );
-                })}
-              </div>
-
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                 <button
                   onClick={createFamiliar}
-                  disabled={picking !== null || familiarName.trim().length === 0}
+                  disabled={picking !== null || !selectedAgentId || familiarName.trim().length === 0}
                   className="inline-flex items-center gap-2 rounded-md bg-purple-600 px-4 py-2 text-[13px] font-medium text-white hover:bg-purple-500 disabled:opacity-50"
                 >
                   <Icon name="ph:sparkle" />
-                  {picking === "familiar" ? "Creating..." : "Create familiar"}
+                  {picking === "familiar" ? "Connecting..." : "Connect as familiar"}
                 </button>
                 <button
                   onClick={startDaemon}
                   disabled={startingDaemon || !status?.steps.covenCli.ok}
                   className="inline-flex items-center gap-2 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-base)] px-4 py-2 text-[13px] text-[var(--text-primary)] hover:border-[var(--border-strong)] disabled:opacity-50"
-                  title={!status?.steps.covenCli.ok ? "Install coven CLI first" : selectedHarness.commandHint}
+                  title={!status?.steps.covenCli.ok ? "Install coven CLI first" : "coven daemon start"}
                 >
                   <Icon name="ph:rocket-launch-bold" />
                   {startingDaemon ? "Starting..." : "Start daemon"}
