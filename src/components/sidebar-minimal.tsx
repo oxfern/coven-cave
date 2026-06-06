@@ -10,7 +10,7 @@
  *   4. Settings gear (pinned bottom)
  */
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Icon } from "@/lib/icon";
 import { FamiliarGlyph } from "@/components/familiar-glyph";
 import { resolveFamiliarGlyph } from "@/lib/familiar-glyph";
@@ -141,102 +141,37 @@ function FolderRow({
 }
 
 // ---------------------------------------------------------------------------
-// Session row (inside familiar section)
+// Familiar row (flat nav item — click to show sessions in center)
 // ---------------------------------------------------------------------------
 
-function SessionItem({
-  session,
-  active,
-  onClick,
-}: {
-  session: SessionRow;
-  active: boolean;
-  onClick: () => void;
-}) {
-  const ts = shortRelTime(session.updated_at || session.created_at);
-  const title = session.title || "Untitled";
-  return (
-    <button
-      type="button"
-      title={relTime(session.updated_at || session.created_at) || title}
-      className={`sidebar-session-row${active ? " sidebar-session-row--active" : ""}`}
-      onClick={onClick}
-    >
-      <span className="sidebar-session-title">{title}</span>
-      {ts && <span className="sidebar-session-ts">{ts}</span>}
-    </button>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Familiar section: header + collapsible session list
-// ---------------------------------------------------------------------------
-
-function FamiliarSection({
+function FamiliarRow({
   familiar,
-  sessions,
-  activeSessionId,
-  onOpenSession,
-  onModeChange,
-  defaultOpen,
+  sessionCount,
+  active,
+  onSelect,
 }: {
   familiar: Familiar;
-  sessions: SessionRow[];
-  activeSessionId?: string | null;
-  onOpenSession: (id: string) => void;
-  onModeChange: (mode: string) => void;
-  defaultOpen: boolean;
+  sessionCount: number;
+  active: boolean;
+  onSelect: () => void;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
   const overrides = useGlyphOverrides();
   const glyph = resolveFamiliarGlyph(familiar, overrides);
 
   return (
-    <div className="sidebar-familiar-section">
-      {/* Section header — click to toggle */}
-      <button
-        type="button"
-        className="sidebar-familiar-header"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-      >
-        <span className="sidebar-familiar-header-glyph">
-          <FamiliarGlyph glyph={glyph} size="sm" />
-        </span>
-        <span className="sidebar-familiar-header-name">{familiar.display_name}</span>
-        <span className="sidebar-familiar-header-meta">
-          {sessions.length > 0 && (
-            <span className="sidebar-familiar-header-count">{sessions.length}</span>
-          )}
-          <Icon
-            name={open ? "ph:caret-down" : "ph:caret-right"}
-            width={10}
-            className="sidebar-familiar-header-chevron"
-          />
-        </span>
-      </button>
-
-      {/* Session list */}
-      {open && (
-        <div className="sidebar-familiar-sessions">
-          {sessions.length === 0 ? (
-            <div className="sidebar-familiar-sessions-empty">No sessions</div>
-          ) : (
-            sessions.map((s) => (
-              <SessionItem
-                key={s.id}
-                session={s}
-                active={s.id === activeSessionId}
-                onClick={() => {
-                  onModeChange("chats");
-                  onOpenSession(s.id);
-                }}
-              />
-            ))
-          )}
-        </div>
+    <button
+      type="button"
+      className={`sidebar-familiar-row${active ? " sidebar-familiar-row--active" : ""}`}
+      onClick={onSelect}
+    >
+      <span className="sidebar-familiar-row-glyph">
+        <FamiliarGlyph glyph={glyph} size="sm" />
+      </span>
+      <span className="sidebar-familiar-row-name">{familiar.display_name}</span>
+      {sessionCount > 0 && (
+        <span className="sidebar-familiar-row-count">{sessionCount}</span>
       )}
-    </div>
+    </button>
   );
 }
 
@@ -259,7 +194,7 @@ export function SidebarMinimal(props: SidebarMinimalProps) {
     onOpenSettings,
   } = props;
 
-  // Chat sessions newest-first
+  // Chat sessions newest-first (used for session count badges)
   const chatSessions = useMemo(
     () =>
       sessions
@@ -272,33 +207,7 @@ export function SidebarMinimal(props: SidebarMinimalProps) {
     [sessions],
   );
 
-  // Map: familiarId → sorted sessions for that familiar (max 20 shown)
-  const sessionsByFamiliar = useMemo(() => {
-    const map: Record<string, SessionRow[]> = {};
-    for (const f of familiars) map[f.id] = [];
-    for (const s of chatSessions) {
-      if (s.familiarId && map[s.familiarId]) {
-        map[s.familiarId].push(s);
-      }
-    }
-    // Each familiar's list is already sorted (chatSessions is sorted)
-    for (const id of Object.keys(map)) map[id] = map[id].slice(0, 20);
-    return map;
-  }, [chatSessions, familiars]);
-
-  // Sessions with no familiar → "Unassigned" bucket
-  // Exclude sessions already shown under a familiar to avoid double-counting
-  const unassignedSessions = useMemo(
-    () => chatSessions.filter((s) => !s.familiarId || !sessionsByFamiliar[s.familiarId]).slice(0, 20),
-    [chatSessions, sessionsByFamiliar],
-  );
-
-  // Which familiar section should start open (the one owning the active session)
-  const defaultOpenId = useMemo(() => {
-    if (!activeSessionId) return null;
-    const active = chatSessions.find((s) => s.id === activeSessionId);
-    return active?.familiarId ?? null;
-  }, [chatSessions, activeSessionId]);
+  void chatSessions; // used in FamiliarRow count via sessions.filter below
 
   return (
     <nav className="sidebar-minimal">
@@ -347,42 +256,23 @@ export function SidebarMinimal(props: SidebarMinimalProps) {
         ))}
       </div>
 
-      {/* ── Familiar sections ─────────────────────────────────── */}
+      {/* ── Familiar rows ──────────────────────────────────────── */}
       <div className="sidebar-familiar-list">
-        {familiars.map((f) => (
-          <FamiliarSection
-            key={f.id}
-            familiar={f}
-            sessions={sessionsByFamiliar[f.id] ?? []}
-            activeSessionId={activeSessionId}
-            onOpenSession={onOpenSession}
-            onModeChange={onModeChange}
-            defaultOpen={f.id === defaultOpenId}
-          />
-        ))}
-
-        {/* Unassigned sessions */}
-        {unassignedSessions.length > 0 && (
-          <div className="sidebar-familiar-section sidebar-familiar-section--unassigned">
-            <div className="sidebar-familiar-header sidebar-familiar-header--plain">
-              <span className="sidebar-familiar-header-name">Other</span>
-              <span className="sidebar-familiar-header-count">{unassignedSessions.length}</span>
-            </div>
-            <div className="sidebar-familiar-sessions">
-              {unassignedSessions.map((s) => (
-                <SessionItem
-                  key={s.id}
-                  session={s}
-                  active={s.id === activeSessionId}
-                  onClick={() => {
-                    onModeChange("chats");
-                    onOpenSession(s.id);
-                  }}
-                />
-              ))}
-            </div>
-          </div>
-        )}
+        {familiars.map((f) => {
+          const count = sessions.filter((s) => s.familiarId === f.id).length;
+          return (
+            <FamiliarRow
+              key={f.id}
+              familiar={f}
+              sessionCount={count}
+              active={f.id === activeId}
+              onSelect={() => {
+                onFamiliarSelect?.(f.id);
+                onModeChange("sessions");
+              }}
+            />
+          );
+        })}
       </div>
 
       {/* ── Settings gear (pinned bottom) ─────────────────────── */}
