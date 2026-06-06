@@ -20,7 +20,7 @@ assert.match(
 
 assert.match(
   agentsView,
-  /New chat/,
+  /Chat/,
   "AgentsView should expose the primary chat launch action without a separate composer block",
 );
 
@@ -74,7 +74,7 @@ assert.match(
 
 assert.match(
   agentsView,
-  /Live traces/,
+  /Traces/,
   "AgentsView should collapse live trace status into the quiet command row",
 );
 

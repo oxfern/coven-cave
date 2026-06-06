@@ -377,7 +377,7 @@ export function AgentsView({
               const labels: Record<string, string> = {
                 sessions: "Agents",
                 floor: "Floor",
-                delegations: "Live traces",
+                delegations: "Traces",
               };
               const icons: Record<string, string> = {
                 sessions: "ph:users",
@@ -440,7 +440,7 @@ export function AgentsView({
               className="inline-flex h-7 items-center gap-1 rounded-md bg-[var(--accent-presence)] px-2.5 text-[11px] font-medium text-white hover:opacity-90"
             >
               <Icon name="ph:plus-bold" width={11} />
-              New chat
+              Chat
             </button>
             <button type="button" title="Configure plugins" onClick={() => onOpenMode("plugins")} className={softButton()}>
               <Icon name="ph:plug" width={12} />
