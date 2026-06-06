@@ -14,20 +14,32 @@ assert.match(
 
 assert.match(
   agentsView,
-  /Created by me/,
-  "AgentsView should include a GitHub Sessions-style ownership scope",
+  /Search sessions\.\.\./,
+  "AgentsView should keep session search in the primary command row",
 );
 
 assert.match(
   agentsView,
-  /Give an agent a background task to work on/,
-  "AgentsView should include an agent task composer",
+  /New chat/,
+  "AgentsView should expose the primary chat launch action without a separate composer block",
 );
 
 assert.match(
   agentsView,
-  /Get started with agents/,
-  "AgentsView should include quick-start cards",
+  /fetch\("\/api\/daemon\/start", \{ method: "POST" \}\)/,
+  "AgentsView should make the offline daemon state actionable from the main Agents surface",
+);
+
+assert.match(
+  agentsView,
+  /Start daemon/,
+  "AgentsView should show a clear start button when the daemon is offline",
+);
+
+assert.doesNotMatch(
+  agentsView,
+  /Get started with agents|Give an agent a background task to work on/,
+  "AgentsView should not reintroduce the busy GitHub-style hero/composer cards",
 );
 
 assert.match(
@@ -62,8 +74,14 @@ assert.match(
 
 assert.match(
   agentsView,
-  /Live trace events/,
-  "AgentsView should show live delegation trace events on the sessions surface",
+  /Live traces/,
+  "AgentsView should collapse live trace status into the quiet command row",
+);
+
+assert.doesNotMatch(
+  agentsView,
+  /Left nav|w-\[44px\]/,
+  "AgentsView should not render a second persistent left navigation rail inside the app shell",
 );
 
 assert.match(
