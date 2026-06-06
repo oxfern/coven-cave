@@ -439,3 +439,20 @@ fn augmented_path() -> String {
         out
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pty_diagnose_spawns_shell_and_reads_output() {
+        let report = pty_diagnose().expect("pty diagnostic should run");
+
+        assert!(
+            report.output.contains("coven-cave-pty-ok"),
+            "expected diagnostic marker in PTY output, got {:?}",
+            report.output,
+        );
+        assert!(report.bytes > 0, "diagnostic PTY should produce output bytes");
+    }
+}
