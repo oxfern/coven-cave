@@ -1,0 +1,184 @@
+/**
+ * Cave Vault — resolves env vars from 1Password secret references
+ *
+ * vault.yaml maps ENV_VAR_NAME → { ref: "op://Vault/Item/field", ... }
+ *
+ * Resolution priority:
+ *   1. Already in process.env (e.g. set by .env.local or OS env) → use as-is
+ *   2. vault.yaml has a ref for this key → resolve via `op read`
+ *   3. undefined
+ *
+ * Resolved values are cached in process.env for the lifetime of the process
+ * so subsequent calls are instant. The raw secret value is NEVER written to
+ * any file — it lives only in process memory.
+ */
+
+import { execSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { parse as parseYaml } from "yaml";
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+export type VaultEntry = {
+  ref: string;
+  description?: string;
+  required?: boolean;
+};
+
+export type VaultMap = Record<string, VaultEntry>;
+
+export type VaultStatus = "resolved" | "env-only" | "unresolved" | "error" | "no-ref";
+
+export type VaultMappingStatus = {
+  key: string;
+  ref: string | null;
+  description: string | null;
+  required: boolean;
+  status: VaultStatus;
+  hasValue: boolean;  // true if currently resolvable — never exposes the value
+  error?: string;
+};
+
+// ── Paths ─────────────────────────────────────────────────────────────────────
+
+const VAULT_YAML = join(process.cwd(), "vault.yaml");
+
+// ── Vault loader ──────────────────────────────────────────────────────────────
+
+let _vaultMap: VaultMap | null = null;
+
+export function loadVaultMap(force = false): VaultMap {
+  if (_vaultMap && !force) return _vaultMap;
+  if (!existsSync(VAULT_YAML)) { _vaultMap = {}; return {}; }
+  try {
+    const raw = readFileSync(VAULT_YAML, "utf8");
+    const parsed = parseYaml(raw) as VaultMap | null;
+    _vaultMap = parsed ?? {};
+    return _vaultMap;
+  } catch {
+    _vaultMap = {};
+    return {};
+  }
+}
+
+export function saveVaultMap(map: VaultMap): void {
+  // Serialise back to YAML manually (keeps comments stripped but structure clean)
+  const lines = [
+    "# Cave Vault — env var → 1Password secret reference map",
+    "#",
+    "# Format:",
+    '#   ENV_VAR_NAME:',
+    '#     ref: "op://VaultName/ItemTitle/field"',
+    '#     description: "human-readable note"',
+    "#     required: false",
+    "#",
+    "# Secrets are NEVER stored here — only the op:// reference.",
+    "# Safe to commit; contains no credentials.",
+    "",
+  ];
+  for (const [key, entry] of Object.entries(map)) {
+    lines.push(`${key}:`);
+    lines.push(`  ref: "${entry.ref}"`);
+    if (entry.description) lines.push(`  description: "${entry.description.replace(/"/g, "'")}"`);
+    if (entry.required) lines.push(`  required: true`);
+    lines.push("");
+  }
+  const { writeFileSync } = require("node:fs") as typeof import("node:fs");
+  writeFileSync(VAULT_YAML, lines.join("\n"), "utf8");
+  _vaultMap = map; // bust cache
+}
+
+// ── op resolver ───────────────────────────────────────────────────────────────
+
+/** Call `op read` to fetch a secret reference. Returns null on failure. */
+function opRead(ref: string): string | null {
+  try {
+    const value = execSync(`op read "${ref}"`, {
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
+      timeout: 8000,
+    }).trim();
+    return value || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Resolve an env var by key.
+ * Checks process.env first, then vault.yaml → `op read`.
+ * Caches in process.env on success.
+ * Never logs or persists the value to disk.
+ */
+export function resolveSecret(key: string): string | undefined {
+  // Already in env (set via OS, .env.local, or prior resolve)
+  if (process.env[key]?.trim()) return process.env[key]!.trim();
+
+  // Try vault
+  const map = loadVaultMap();
+  const entry = map[key];
+  if (!entry?.ref) return undefined;
+
+  const value = opRead(entry.ref);
+  if (value) {
+    process.env[key] = value; // cache for process lifetime
+    return value;
+  }
+  return undefined;
+}
+
+/** Check if a key is resolvable without returning the value. */
+export function canResolve(key: string): boolean {
+  return !!resolveSecret(key);
+}
+
+// ── Status reporter (for /api/vault UI) ──────────────────────────────────────
+
+export function getVaultStatuses(): VaultMappingStatus[] {
+  const map = loadVaultMap(true); // always fresh for status checks
+  return Object.entries(map).map(([key, entry]) => {
+    const inEnv = !!(process.env[key]?.trim());
+
+    if (inEnv) {
+      return {
+        key, ref: entry.ref, description: entry.description ?? null,
+        required: entry.required ?? false,
+        status: "env-only" as VaultStatus, hasValue: true,
+      };
+    }
+
+    if (!entry.ref) {
+      return {
+        key, ref: null, description: entry.description ?? null,
+        required: entry.required ?? false,
+        status: "no-ref" as VaultStatus, hasValue: false,
+      };
+    }
+
+    try {
+      const value = opRead(entry.ref);
+      if (value) {
+        process.env[key] = value; // cache
+        return {
+          key, ref: entry.ref, description: entry.description ?? null,
+          required: entry.required ?? false,
+          status: "resolved" as VaultStatus, hasValue: true,
+        };
+      }
+      return {
+        key, ref: entry.ref, description: entry.description ?? null,
+        required: entry.required ?? false,
+        status: "unresolved" as VaultStatus, hasValue: false,
+        error: "op read returned empty — check ref or 1Password auth",
+      };
+    } catch (e) {
+      return {
+        key, ref: entry.ref, description: entry.description ?? null,
+        required: entry.required ?? false,
+        status: "error" as VaultStatus, hasValue: false,
+        error: e instanceof Error ? e.message : "unknown error",
+      };
+    }
+  });
+}

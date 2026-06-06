@@ -63,6 +63,7 @@ export const ICON_NAMES = [
   "ph:plus-bold",
   "ph:arrows-clockwise",
   "ph:share-network",
+  "ph:vault",
   "ph:check-circle",
   "ph:key",
   "ph:issue-opened",

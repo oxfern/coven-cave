@@ -7,9 +7,10 @@ import type { InboxItem } from "@/lib/cave-inbox";
 import { SyntaxBlock, MarkdownBlock } from "@/components/message-bubble";
 import { EvalLoopPanel } from "@/components/eval-loop-panel";
 import { MemoryInspectorPanel } from "@/components/memory-inspector-panel";
+import { VaultPanel } from "@/components/vault-panel";
 import { Icon } from "@/lib/icon";
 
-type Tab = "memory" | "capabilities" | "inbox";
+type Tab = "memory" | "capabilities" | "inbox" | "vault";
 
 type Harness = {
   id: string;
@@ -63,6 +64,7 @@ const TAB_LABEL: Record<Tab, string> = {
   memory: "Memory",
   capabilities: "Capabilities",
   inbox: "Inbox",
+  vault: "Vault",
 };
 
 function age(iso: string): string {
@@ -99,7 +101,7 @@ export function InspectorPane({ familiar, inboxItems = [], onOpenInbox }: Props)
   return (
     <aside className="flex h-full flex-col border-l border-[var(--border-hairline)] bg-[var(--bg-raised)]/40">
       <nav className="flex border-b border-[var(--border-hairline)] text-[11px]">
-        {(["memory", "capabilities", "inbox"] as const).map((t) => (
+        {(["memory", "capabilities", "inbox", "vault"] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -129,6 +131,7 @@ export function InspectorPane({ familiar, inboxItems = [], onOpenInbox }: Props)
             onOpenInbox={onOpenInbox}
           />
         ) : null}
+        {tab === "vault" ? <VaultPanel /> : null}
       </div>
     </aside>
   );

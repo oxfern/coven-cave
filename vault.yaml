@@ -1,0 +1,21 @@
+# Cave Vault — env var → 1Password secret reference map
+#
+# Format:
+#   ENV_VAR_NAME:
+#     ref: "op://VaultName/ItemTitle/field"   # 1Password secret reference
+#     description: "human-readable note"
+#     required: false   # whether app will warn if unresolved
+#
+# Secrets are NEVER stored here — only the op:// reference.
+# Cave resolves them at runtime via `op read` (requires 1Password desktop + CLI authed).
+# This file is safe to commit; it contains no credentials.
+
+GITHUB_PAT:
+  ref: "op://Personal/GitHub PAT/credential"
+  description: "GitHub Personal Access Token (read:user, repo, notifications)"
+  required: false
+
+GITHUB_USERNAME:
+  ref: "op://Personal/GitHub PAT/username"
+  description: "GitHub username associated with the PAT"
+  required: false

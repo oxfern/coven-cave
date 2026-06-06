@@ -16,6 +16,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { resolveSecret } from "@/lib/vault";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -58,8 +59,8 @@ async function ghFetch(path: string, token: string | null) {
 
 export async function GET() {
   // PAT is strictly local — read from env, never echoed back
-  const token = process.env.GITHUB_PAT?.trim() || null;
-  const envLogin = process.env.GITHUB_USERNAME?.trim() || null;
+  const token = resolveSecret("GITHUB_PAT") ?? null;
+  const envLogin = resolveSecret("GITHUB_USERNAME") ?? null;
 
   // ── Resolve login ────────────────────────────────────────────────────────
   let login: string | null = envLogin;

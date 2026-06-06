@@ -16,6 +16,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { join } from "path";
+import { resolveSecret } from "@/lib/vault";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -65,9 +66,15 @@ async function validatePat(pat: string): Promise<{ valid: boolean; login: string
 
 // GET — just reports presence, never exposes the value
 export async function GET() {
-  const hasPat = !!(process.env.GITHUB_PAT?.trim());
-  const login = process.env.GITHUB_USERNAME?.trim() || null;
-  return NextResponse.json({ hasPat, login });
+  // Resolve from vault first (1Password), then fall back to .env.local
+  const patFromVault = resolveSecret("GITHUB_PAT");
+  const loginFromVault = resolveSecret("GITHUB_USERNAME");
+
+  const hasPat = !!(patFromVault ?? process.env.GITHUB_PAT?.trim());
+  const login  = loginFromVault ?? process.env.GITHUB_USERNAME?.trim() ?? null;
+  const source: "vault" | "env" | "none" = patFromVault ? "vault" : hasPat ? "env" : "none";
+
+  return NextResponse.json({ hasPat, login, source });
 }
 
 // POST — validate + save
