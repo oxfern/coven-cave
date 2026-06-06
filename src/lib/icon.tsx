@@ -107,6 +107,7 @@ export const ICON_NAMES = [
   "ph:calendar-blank",
   "ph:caret-down-bold",
   "ph:puzzle-piece-bold",
+  "ph:puzzle-piece",
   "ph:sparkle-bold",
   "ph:bell-bold",
   "ph:phone",

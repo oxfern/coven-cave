@@ -22,6 +22,11 @@ export type FolderMode =
   | "github"
   | "library";
 
+export type AddonsConfig = {
+  github?: boolean;
+  library?: boolean;
+};
+
 export type SidebarMinimalProps = {
   mode: string;
   sessions: SessionRow[];
@@ -30,6 +35,7 @@ export type SidebarMinimalProps = {
   onOpenSearch: () => void;
   onModeChange: (mode: string) => void;
   onOpenSession: (id: string) => void;
+  addons?: AddonsConfig;
 };
 
 const FOLDER_MODES: Array<{
@@ -115,7 +121,14 @@ function FolderRow({
 }
 
 export function SidebarMinimal(props: SidebarMinimalProps) {
-  const { mode, onNewChat, onModeChange } = props;
+  const { mode, onNewChat, onModeChange, addons } = props;
+
+  // Filter out disabled add-on items. Default to hiding when addons is undefined.
+  const visibleFolderModes = FOLDER_MODES.filter((fm) => {
+    if (fm.id === "github") return addons?.github === true;
+    if (fm.id === "library") return addons?.library === true;
+    return true;
+  });
 
   return (
     <nav className="sidebar-minimal">
@@ -130,7 +143,7 @@ export function SidebarMinimal(props: SidebarMinimalProps) {
 
       {/* Folder mode rows */}
       <div className="sidebar-folders">
-        {FOLDER_MODES.map((fm) => (
+        {visibleFolderModes.map((fm) => (
           <React.Fragment key={fm.id}>
             {fm.dividerBefore && <div className="sidebar-divider" />}
             <FolderRow

@@ -14,12 +14,13 @@ type DaemonStatus = {
   daemon?: { pid: number; startedAt: string; socket: string };
 };
 
-type Section = "general" | "daemon" | "familiars" | "appearance" | "about";
+type Section = "general" | "daemon" | "familiars" | "addons" | "appearance" | "about";
 
 const SECTIONS: { id: Section; label: string; icon: string }[] = [
   { id: "general",    label: "General",    icon: "ph:sliders-horizontal" },
   { id: "daemon",     label: "Daemon",     icon: "ph:terminal-window" },
   { id: "familiars",  label: "Familiars",  icon: "ph:users-three" },
+  { id: "addons",     label: "Add-ons",    icon: "ph:puzzle-piece" },
   { id: "appearance", label: "Appearance", icon: "ph:paint-brush" },
   { id: "about",      label: "About",      icon: "ph:info" },
 ];
@@ -79,6 +80,7 @@ export function SettingsShell() {
           {section === "general" && <GeneralSection />}
           {section === "daemon"   && <DaemonSection />}
           {section === "familiars" && <FamiliarsSection />}
+          {section === "addons"   && <AddonsSection />}
           {section === "appearance" && <AppearanceSection />}
           {section === "about"    && <AboutSection />}
         </main>
@@ -207,6 +209,112 @@ function DaemonSection() {
           <SettingsKV label="Workspace"     value={status.workspacePath ?? "—"} mono />
         </SettingsGroup>
       )}
+    </SettingsPage>
+  );
+}
+
+// ─── Section: Add-ons ─────────────────────────────────────────────────────────────
+
+type AddonKey = "github" | "library";
+
+const ADDON_ROWS: Array<{
+  key: AddonKey;
+  label: string;
+  icon: string;
+  description: string;
+}> = [
+  {
+    key: "github",
+    label: "GitHub",
+    icon: "ph:github-logo",
+    description: "Browse open issues and pull requests, attach them to tasks, and hand off to a familiar.",
+  },
+  {
+    key: "library",
+    label: "Library",
+    icon: "ph:books",
+    description: "Save links, notes, and references for your familiars to draw from.",
+  },
+];
+
+function AddonsSection() {
+  const [addons, setAddons] = useState<Record<AddonKey, boolean>>({
+    github: false,
+    library: false,
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/config", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((j: { ok?: boolean; config?: { addons?: { github?: boolean; library?: boolean } } }) => {
+        if (j.ok && j.config?.addons) {
+          setAddons({
+            github: j.config.addons.github ?? false,
+            library: j.config.addons.library ?? false,
+          });
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const toggle = async (key: AddonKey) => {
+    const newValue = !addons[key];
+    // Optimistic update
+    setAddons((prev) => ({ ...prev, [key]: newValue }));
+    try {
+      await fetch("/api/config", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ addons: { [key]: newValue } }),
+      });
+    } catch {
+      // Revert on failure
+      setAddons((prev) => ({ ...prev, [key]: !newValue }));
+    }
+  };
+
+  return (
+    <SettingsPage title="Add-ons" description="Optional integrations. Disabled add-ons are hidden from the sidebar.">
+      <SettingsGroup label="Integrations">
+        {loading ? (
+          <div className="px-4 py-3 text-[12px] text-[var(--text-muted)]">Loading…</div>
+        ) : (
+          ADDON_ROWS.map((row) => (
+            <div key={row.key} className="flex items-center justify-between gap-4 px-4 py-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <Icon
+                  name={row.icon as Parameters<typeof Icon>[0]["name"]}
+                  width={18}
+                  className="shrink-0 text-[var(--text-muted)]"
+                />
+                <div className="min-w-0">
+                  <p className="text-[13px] text-[var(--text-primary)]">{row.label}</p>
+                  <p className="text-[11px] text-[var(--text-muted)]">{row.description}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={addons[row.key]}
+                onClick={() => void toggle(row.key)}
+                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors duration-150 focus:outline-none ${
+                  addons[row.key]
+                    ? "bg-[var(--accent-presence)]"
+                    : "bg-[var(--bg-elevated)]"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform duration-150 ${
+                    addons[row.key] ? "translate-x-4" : "translate-x-0.5"
+                  } mt-0.5`}
+                />
+              </button>
+            </div>
+          ))
+        )}
+      </SettingsGroup>
     </SettingsPage>
   );
 }

@@ -10,6 +10,7 @@ const DEFAULT_CONFIG: CaveConfig = {
   defaults: { harness: "codex", model: "openai/gpt-5.5" },
   familiars: {},
   roles: [],
+  addons: { github: false, library: false },
 };
 
 const DEFAULT_STATE: CaveState = {
@@ -37,6 +38,10 @@ export type CaveConfig = {
   defaults: FamiliarBinding;
   familiars: Record<string, Partial<FamiliarBinding>>;
   roles: RoleConfigEntry[];
+  addons?: {
+    github?: boolean;
+    library?: boolean;
+  };
 };
 
 export type CaveState = {
@@ -59,10 +64,41 @@ export async function loadConfig(): Promise<CaveConfig> {
       defaults: { ...DEFAULT_CONFIG.defaults, ...(parsed.defaults ?? {}) },
       familiars: parsed.familiars ?? {},
       roles: parsed.roles ?? [],
+      addons: {
+        github: parsed.addons?.github ?? false,
+        library: parsed.addons?.library ?? false,
+      },
     };
   } catch {
-    return DEFAULT_CONFIG;
+    return { ...DEFAULT_CONFIG };
   }
+}
+
+export async function saveConfig(patch: Partial<CaveConfig>): Promise<CaveConfig> {
+  const current = await loadConfig();
+  const updated: CaveConfig = {
+    ...current,
+    ...patch,
+    // Deep-merge addons
+    addons: {
+      ...current.addons,
+      ...(patch.addons ?? {}),
+    },
+    // Deep-merge defaults
+    defaults: {
+      ...current.defaults,
+      ...(patch.defaults ?? {}),
+    },
+    // Shallow-merge familiars
+    familiars: patch.familiars !== undefined
+      ? { ...current.familiars, ...patch.familiars }
+      : current.familiars,
+    // Replace roles if provided
+    roles: patch.roles !== undefined ? patch.roles : current.roles,
+  };
+  await mkdir(path.dirname(CONFIG_PATH), { recursive: true });
+  await writeFile(CONFIG_PATH, JSON.stringify(updated, null, 2), "utf8");
+  return updated;
 }
 
 export function bindingFor(config: CaveConfig, familiarId: string): FamiliarBinding {

@@ -110,8 +110,18 @@ export function Workspace() {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [glyphPickerFor, setGlyphPickerFor] = useState<Familiar | null>(null);
   const [addChooserOpen, setAddChooserOpen] = useState(false);
+  const [addons, setAddons] = useState<{ github?: boolean; library?: boolean }>({});
   const responseNeededRef = useRef(responseNeeded);
   responseNeededRef.current = responseNeeded;
+
+  useEffect(() => {
+    fetch("/api/config", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((j: { ok?: boolean; config?: { addons?: { github?: boolean; library?: boolean } } }) => {
+        if (j.ok && j.config?.addons) setAddons(j.config.addons);
+      })
+      .catch(() => {/* keep defaults */});
+  }, []);
 
   const loadFamiliars = useCallback(async () => {
     try {
@@ -655,6 +665,7 @@ export function Workspace() {
       mode={mode}
       sessions={sessions}
       activeSessionId={routerRef.current?.currentSessionId() ?? null}
+      addons={addons}
       onNewChat={() => {
         startAgentChat(activeId);
       }}
