@@ -200,6 +200,7 @@ export function AgentsView({
   const [scope, setScope] = useState<AgentsScope>("sessions");
   const [query, setQuery] = useState("");
   const [showClosed, setShowClosed] = useState(false);
+  const [groupBy, setGroupBy] = useState<"familiar" | "status" | "date" | "none">("familiar");
   const [startingDaemon, setStartingDaemon] = useState(false);
   const [daemonStartError, setDaemonStartError] = useState<string | null>(null);
 
@@ -297,6 +298,33 @@ export function AgentsView({
       .sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1));
   }, [famById, query, sessions, showClosed]);
 
+  // Group filteredSessions based on groupBy
+  const groupedSessions = useMemo(() => {
+    if (groupBy === "none") return [{ label: null, sessions: filteredSessions }];
+    const map = new Map<string, typeof filteredSessions>();
+    for (const s of filteredSessions) {
+      let key: string;
+      if (groupBy === "familiar") {
+        const f = s.familiarId ? famById.get(s.familiarId) : null;
+        key = f ? `${f.emoji ?? "🤖"} ${f.display_name}` : "Unknown";
+      } else if (groupBy === "status") {
+        key = s.status ?? "unknown";
+      } else {
+        // date grouping: today / yesterday / this week / older
+        const d = new Date(s.updated_at);
+        const now = new Date();
+        const diffDays = Math.floor((now.getTime() - d.getTime()) / 86_400_000);
+        if (diffDays < 1) key = "Today";
+        else if (diffDays < 2) key = "Yesterday";
+        else if (diffDays < 7) key = "This week";
+        else key = "Older";
+      }
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(s);
+    }
+    return [...map.entries()].map(([label, sessions]) => ({ label, sessions }));
+  }, [filteredSessions, groupBy, famById]);
+
   function startConversation(familiarId?: string | null) {
     if (familiarId) onSetActiveFamiliar(familiarId);
     setScope("conversation");
@@ -393,6 +421,21 @@ export function AgentsView({
                 <button type="button" onClick={() => setShowClosed(true)} className={softButton(showClosed)}>
                   Closed <span className="opacity-60">{closedCount}</span>
                 </button>
+              </div>
+            )}
+            {(scope === "sessions" || scope === "conversation") && (
+              <div className="inline-flex rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/30 p-0.5" title="Group by">
+                {(["familiar", "status", "date", "none"] as const).map((g) => (
+                  <button
+                    key={g}
+                    type="button"
+                    onClick={() => setGroupBy(g)}
+                    className={softButton(groupBy === g)}
+                    title={`Group by ${g}`}
+                  >
+                    {g === "familiar" ? "Familiar" : g === "status" ? "Status" : g === "date" ? "Date" : "None"}
+                  </button>
+                ))}
               </div>
             )}
             <button
@@ -517,105 +560,120 @@ export function AgentsView({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--border-hairline)]">
-                    {filteredSessions.map((session) => {
-                      const familiar = session.familiarId ? famById.get(session.familiarId) : undefined;
-                      const isActive = session.id === activeSessionId;
-                      const originIcon = (session.origin && ORIGIN_ICONS[session.origin]) ?? "ph:question";
-                      return (
-                        <tr
-                          key={session.id}
-                          className={[
-                            "group cursor-pointer transition-colors hover:bg-[var(--bg-raised)]",
-                            isActive ? "relative bg-[var(--bg-raised)] border-l-2 border-[var(--accent-presence)]" : "",
-                          ].join(" ")}
-                          onClick={() => openConversation(session)}
-                        >
-                          {/* Familiar */}
-                          <td className="px-3 py-2 w-[120px] max-w-[120px]">
-                            <div className="flex items-center gap-1.5 truncate">
-                              {familiar?.emoji
-                                ? <span className="text-[14px] leading-none">{familiar.emoji}</span>
-                                : <Icon name="ph:robot" width={14} className="shrink-0 text-[var(--text-muted)]" />
-                              }
-                              <span className="truncate text-[var(--text-secondary)]">
-                                {familiar?.display_name ?? session.familiarId ?? "—"}
-                              </span>
-                            </div>
-                          </td>
-                          {/* Title */}
-                          <td className="px-3 py-2">
-                            <span className="truncate font-medium text-[var(--text-primary)]">
-                              {session.title || "Untitled"}
-                            </span>
-                          </td>
-                          {/* Status */}
-                          <td className="px-3 py-2 w-[80px]">
-                            <span className={`inline-block rounded-full border px-1.5 py-0.5 text-[10px] capitalize ${statusTone(session)}`}>
-                              {session.status}
-                            </span>
-                          </td>
-                          {/* Harness */}
-                          <td className="px-3 py-2 w-[80px] truncate text-[var(--text-muted)]">
-                            {session.harness}
-                          </td>
-                          {/* Origin */}
-                          <td className="px-3 py-2 w-[36px]">
-                            <Icon
-                              name={originIcon as IconName}
-                              width={13}
-                              className="text-[var(--text-muted)]"
-                              title={session.origin ?? "unknown"}
-                            />
-                          </td>
-                          {/* Started */}
-                          <td className="px-3 py-2 w-20 text-right text-[var(--text-muted)]">
-                            {relTime(session.created_at)}
-                          </td>
-                          {/* Actions */}
-                          <td className="px-3 py-2 w-[72px]">
-                            <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                              <button
-                                type="button"
-                                title="Open conversation"
-                                onClick={(e) => { e.stopPropagation(); openConversation(session); }}
-                                className="rounded p-0.5 hover:bg-[var(--bg-elevated)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                              >
-                                <Icon name="ph:arrow-square-out" width={13} />
-                              </button>
-                              <button
-                                type="button"
-                                title="Archive"
-                                onClick={async (e) => {
-                                  e.stopPropagation();
-                                  await fetch(`/api/sessions/${session.id}`, {
-                                    method: "PATCH",
-                                    headers: { "content-type": "application/json" },
-                                    body: JSON.stringify({ archived: true }),
-                                  });
-                                  onSessionStarted();
-                                }}
-                                className="rounded p-0.5 hover:bg-[var(--bg-elevated)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                              >
-                                <Icon name="ph:archive" width={13} />
-                              </button>
-                              <button
-                                type="button"
-                                title="Sacrifice (delete)"
-                                onClick={async (e) => {
-                                  e.stopPropagation();
-                                  if (!window.confirm("Sacrifice this session? This cannot be undone.")) return;
-                                  await fetch(`/api/sessions/${session.id}`, { method: "DELETE" });
-                                  onSessionStarted();
-                                }}
-                                className="rounded p-0.5 hover:bg-[var(--bg-elevated)] text-[var(--text-muted)] hover:text-rose-400"
-                              >
-                                <Icon name="ph:trash" width={13} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    {groupedSessions.map(({ label, sessions: groupSessions }) => (
+                      <>
+                        {label !== null && (
+                          <tr key={`group-${label}`} className="bg-[var(--bg-canvas)]">
+                            <td
+                              colSpan={7}
+                              className="px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] border-b border-[var(--border-hairline)]"
+                            >
+                              {label}
+                              <span className="ml-1.5 font-normal opacity-50">{groupSessions.length}</span>
+                            </td>
+                          </tr>
+                        )}
+                        {groupSessions.map((session) => {
+                          const familiar = session.familiarId ? famById.get(session.familiarId) : undefined;
+                          const isActive = session.id === activeSessionId;
+                          const originIcon = (session.origin && ORIGIN_ICONS[session.origin]) ?? "ph:question";
+                          return (
+                            <tr
+                              key={session.id}
+                              className={[
+                                "group cursor-pointer transition-colors hover:bg-[var(--bg-raised)]",
+                                isActive ? "relative bg-[var(--bg-raised)] border-l-2 border-[var(--accent-presence)]" : "",
+                              ].join(" ")}
+                              onClick={() => openConversation(session)}
+                            >
+                              {/* Familiar */}
+                              <td className="px-3 py-2 w-[120px] max-w-[120px]">
+                                <div className="flex items-center gap-1.5 truncate">
+                                  {familiar?.emoji
+                                    ? <span className="text-[14px] leading-none">{familiar.emoji}</span>
+                                    : <Icon name="ph:robot" width={14} className="shrink-0 text-[var(--text-muted)]" />
+                                  }
+                                  <span className="truncate text-[var(--text-secondary)]">
+                                    {familiar?.display_name ?? session.familiarId ?? "—"}
+                                  </span>
+                                </div>
+                              </td>
+                              {/* Title */}
+                              <td className="px-3 py-2">
+                                <span className="truncate font-medium text-[var(--text-primary)]">
+                                  {session.title || "Untitled"}
+                                </span>
+                              </td>
+                              {/* Status */}
+                              <td className="px-3 py-2 w-[80px]">
+                                <span className={`inline-block rounded-full border px-1.5 py-0.5 text-[10px] capitalize ${statusTone(session)}`}>
+                                  {session.status}
+                                </span>
+                              </td>
+                              {/* Harness */}
+                              <td className="px-3 py-2 w-[80px] truncate text-[var(--text-muted)]">
+                                {session.harness}
+                              </td>
+                              {/* Origin */}
+                              <td className="px-3 py-2 w-[36px]">
+                                <Icon
+                                  name={originIcon as IconName}
+                                  width={13}
+                                  className="text-[var(--text-muted)]"
+                                  title={session.origin ?? "unknown"}
+                                />
+                              </td>
+                              {/* Started */}
+                              <td className="px-3 py-2 w-20 text-right text-[var(--text-muted)]">
+                                {relTime(session.created_at)}
+                              </td>
+                              {/* Actions */}
+                              <td className="px-3 py-2 w-[72px]">
+                                <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                                  <button
+                                    type="button"
+                                    title="Open conversation"
+                                    onClick={(e) => { e.stopPropagation(); openConversation(session); }}
+                                    className="rounded p-0.5 hover:bg-[var(--bg-elevated)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                                  >
+                                    <Icon name="ph:arrow-square-out" width={13} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    title="Archive"
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      await fetch(`/api/sessions/${session.id}`, {
+                                        method: "PATCH",
+                                        headers: { "content-type": "application/json" },
+                                        body: JSON.stringify({ archived: true }),
+                                      });
+                                      onSessionStarted();
+                                    }}
+                                    className="rounded p-0.5 hover:bg-[var(--bg-elevated)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                                  >
+                                    <Icon name="ph:archive" width={13} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    title="Sacrifice (delete)"
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      if (!window.confirm("Sacrifice this session? This cannot be undone.")) return;
+                                      await fetch(`/api/sessions/${session.id}`, { method: "DELETE" });
+                                      onSessionStarted();
+                                    }}
+                                    className="rounded p-0.5 hover:bg-[var(--bg-elevated)] text-[var(--text-muted)] hover:text-rose-400"
+                                  >
+                                    <Icon name="ph:trash" width={13} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </>
+                    ))}
                   </tbody>
                 </table>
               )}
