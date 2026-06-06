@@ -27,7 +27,17 @@ function fmtDate(iso?: string): string {
   try { return dateFmt.format(new Date(iso)); } catch { return iso; }
 }
 
-function openUrl(url: string) {
+async function openUrl(url: string) {
+  // Use Tauri shell_open when running as desktop app
+  if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) {
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      await invoke("shell_open", { url });
+      return;
+    } catch {
+      // fall through to window.open
+    }
+  }
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
@@ -48,7 +58,7 @@ function CopyButton({ text, label }: { text: string; label: string }) {
 
 function OpenBtn({ url, label }: { url: string; label?: string }) {
   return (
-    <button type="button" className="library-preview-action-btn" onClick={() => openUrl(url)}>
+    <button type="button" className="library-preview-action-btn" onClick={() => { void openUrl(url); }}>
       <Icon name="ph:arrow-square-out" width={13} />
       <span>{label ?? "Open"}</span>
     </button>
@@ -136,7 +146,7 @@ function BookmarkDetail({ item }: { item: LibraryBookmark }) {
         )}
         <FieldRow label="URL">
           <a href={item.url} target="_blank" rel="noopener noreferrer" className="library-preview-link"
-            onClick={(e) => { e.preventDefault(); openUrl(item.url); }}>{item.url}</a>
+            onClick={(e) => { e.preventDefault(); void openUrl(item.url); }}>{item.url}</a>
         </FieldRow>
       </div>
     </div>
@@ -267,6 +277,21 @@ function DocDetail({ doc }: { doc: LibraryDocBody }) {
             ))}
           </div>
         )}
+      </div>
+      {/* Action bar */}
+      <div className="library-preview-actions library-preview-actions--bar">
+        <button
+          type="button"
+          className="library-preview-action-btn"
+          title="Open in VS Code"
+          onClick={() => {
+            if (doc.absolutePath) void openUrl(`vscode://file${doc.absolutePath}`);
+          }}
+        >
+          <Icon name="ph:code" width={13} />
+          <span>Open in editor</span>
+        </button>
+        <CopyButton text={`~/.openclaw/workspace/sage/${doc.id}`} label="Copy path" />
       </div>
       <div className="library-preview-body">
         <RenderedMarkdown text={doc.body} />

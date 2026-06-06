@@ -348,6 +348,15 @@
   margin-top: 2px;
 }
 
+.library-preview-actions--bar {
+  align-items: center;
+  padding: 10px 20px;
+  margin-top: 0;
+  border-bottom: 1px solid var(--border-hairline);
+  background: var(--bg-raised);
+  flex-shrink: 0;
+}
+
 .library-preview-action-btn {
   display: inline-flex;
   align-items: center;

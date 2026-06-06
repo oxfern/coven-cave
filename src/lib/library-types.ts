@@ -20,6 +20,7 @@ export type LibraryDoc = {
 export type LibraryDocBody = LibraryDoc & {
   body: string;
   frontmatter: Record<string, string>;
+  absolutePath?: string;
 };
 
 // ── Bookmark ─────────────────────────────────────────────────────

@@ -117,6 +117,7 @@ export async function GET(req: NextRequest) {
     excerpt,
     body,
     frontmatter,
+    absolutePath: resolved,  // full absolute path, already security-validated
   };
 
   return NextResponse.json({ ok: true, doc });
