@@ -363,7 +363,7 @@ function AboutSection() {
   return (
     <SettingsPage title="About" description="Version and build information.">
       <SettingsGroup label="CovenCave">
-        <SettingsKV label="App version" value="0.0.41" />
+        <SettingsKV label="App version" value="0.0.46" />
         <SettingsKV label="Daemon version" value={version ?? "—"} />
         <SettingsKV label="Built with" value="Next.js · React · Tauri · Tailwind" />
       </SettingsGroup>
