@@ -672,7 +672,6 @@ export function Workspace() {
       onOpenSession={(id) => {
         openAgentSession(id);
       }}
-      onCollapse={() => shellRef.current?.toggleNav()}
     />
   );
 

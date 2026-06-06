@@ -4,7 +4,7 @@
  * SidebarMinimal -- the redesigned Cave sidebar.
  *
  * Layout (top to bottom):
- *   1. Collapse toggle + New chat CTA
+ *   1. New chat CTA
  *   2. App destinations (Agents / Inbox / Tasks -- Terminal / Browser -- GitHub)
  *   3. Utility actions footer (Plugins / Automations / Calendar)
  */
@@ -32,7 +32,6 @@ export type SidebarMinimalProps = {
   onOpenSearch: () => void;
   onModeChange: (mode: string) => void;
   onOpenSession: (id: string) => void;
-  onCollapse?: () => void;
 };
 
 const FOLDER_MODES: Array<{
@@ -120,25 +119,12 @@ function FolderRow({
 }
 
 export function SidebarMinimal(props: SidebarMinimalProps) {
-  const { mode, onNewChat, onModeChange, onCollapse } = props;
+  const { mode, onNewChat, onModeChange } = props;
 
   return (
     <nav className="sidebar-minimal">
-      {/* Header row: collapse btn + new chat */}
+      {/* Header action */}
       <div className="sidebar-actions">
-        {onCollapse && (
-          <button
-            type="button"
-            className="sidebar-action-row sidebar-collapse-btn"
-            title="Collapse sidebar (Cmd+B)"
-            aria-label="Collapse sidebar"
-            onClick={onCollapse}
-          >
-            <span className="sidebar-action-icon">
-              <Icon name="ph:sidebar-simple-fill" width={14} />
-            </span>
-          </button>
-        )}
         <ActionRow
           icon={<Icon name="ph:note-pencil" width={14} />}
           label="New chat"

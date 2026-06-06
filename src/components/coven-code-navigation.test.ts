@@ -43,6 +43,12 @@ assert.doesNotMatch(
   "Sidebar should not render familiar/agent rows",
 );
 
+assert.doesNotMatch(
+  sidebar,
+  /Collapse sidebar|sidebar-collapse-btn|onCollapse/,
+  "Sidebar should not render its own collapse row; the shell nav tab is the single sidebar toggle",
+);
+
 assert.match(
   daemonBar,
   /terminal: "Terminal"/,
