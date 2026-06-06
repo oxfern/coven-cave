@@ -1,0 +1,54 @@
+// @ts-nocheck
+import assert from "node:assert/strict";
+import { mkdtemp, readFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+
+const previousHome = process.env.HOME;
+const tempHome = await mkdtemp(path.join(os.tmpdir(), "cave-config-"));
+process.env.HOME = tempHome;
+
+const config = await import("./cave-config.ts");
+
+try {
+  assert.deepEqual(await config.loadState(), {
+    sessionFamiliar: {},
+    sessionTitles: {},
+    sessionArchived: {},
+    sessionSacrificed: {},
+  });
+
+  await config.recordSessionFamiliar("session-1", "cody");
+  assert.equal(await config.setSessionTitle("session-1", "  Renamed session  "), "Renamed session");
+
+  const archivedAt = await config.archiveSessionLocal("session-1");
+  assert.ok(Number.isFinite(Date.parse(archivedAt)));
+
+  let state = await config.loadState();
+  assert.deepEqual(state.sessionFamiliar, { "session-1": "cody" });
+  assert.deepEqual(state.sessionTitles, { "session-1": "Renamed session" });
+  assert.equal(state.sessionArchived["session-1"], archivedAt);
+  assert.deepEqual(state.sessionSacrificed, {});
+
+  await config.summonSessionLocal("session-1");
+  state = await config.loadState();
+  assert.deepEqual(state.sessionArchived, {});
+
+  assert.equal(await config.setSessionTitle("session-1", "  "), null);
+  state = await config.loadState();
+  assert.deepEqual(state.sessionTitles, {});
+
+  const sacrificedAt = await config.sacrificeSessionLocal("session-1");
+  assert.ok(Number.isFinite(Date.parse(sacrificedAt)));
+
+  const raw = await readFile(path.join(tempHome, ".coven", "cave-state.json"), "utf8");
+  assert.deepEqual(JSON.parse(raw), {
+    sessionFamiliar: { "session-1": "cody" },
+    sessionTitles: {},
+    sessionArchived: {},
+    sessionSacrificed: { "session-1": sacrificedAt },
+  });
+} finally {
+  if (previousHome === undefined) delete process.env.HOME;
+  else process.env.HOME = previousHome;
+}
