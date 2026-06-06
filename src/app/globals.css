@@ -54,8 +54,13 @@
      Semantic names called out in the spec. Resolve to the same
      palette as above so either vocabulary works. */
   --bg-base: var(--background);
+  --bg-panel: oklch(0.17 0.006 285.885);    /* slightly darker than --card */
   --bg-raised: var(--card);
+  --bg-elevated: oklch(0.24 0.008 285.885); /* lighter than --card, for dropdowns/popovers */
+  --bg-hover: oklch(0.27 0.008 285.885);    /* hover state */
   --border-hairline: var(--border);
+  --fg-base: var(--text-primary);
+  --fg-muted: var(--text-secondary);
   --text-primary: var(--foreground);
   --text-secondary: var(--muted-foreground);
   --text-muted: oklch(0.985 0 0 / 40%);
