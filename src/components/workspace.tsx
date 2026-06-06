@@ -802,7 +802,6 @@ export function Workspace() {
         onOpenChat={() => {
           startAgentChat(activeId);
         }}
-        onCreateReminder={() => openReminderModal()}
         onCreateSkill={() => {
           startAgentChat(activeId);
         }}
