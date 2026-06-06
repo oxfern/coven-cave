@@ -86,10 +86,12 @@ export function BottomTerminal({
     let cleanup: (() => void) | null = null;
 
     void (async () => {
-      log("mount: loading tauri bridge");
+      // Skip all logs in browser dev — only log when Tauri is actually present
+      const inTauri = typeof window !== "undefined" && !!(window as unknown as Record<string, unknown>).__TAURI_INTERNALS__;
+      if (inTauri) log("mount: loading tauri bridge");
       const bridge = await loadTauri();
       if (!bridge) {
-        log("mount: no tauri bridge — running outside Cave; rendering placeholder");
+        // Running outside Tauri (browser dev) — skip logging, just show placeholder
         if (!disposed) setUnavailable(true);
         return;
       }
