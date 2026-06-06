@@ -10,6 +10,8 @@ import type { Familiar, SessionRow, SessionOrigin } from "@/lib/types";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
+type SessionsLayoutMode = "cards" | "rows";
+
 function shortRelTime(iso: string | undefined): string {
   if (!iso) return "";
   try {
@@ -42,6 +44,45 @@ function originLabel(origin: SessionOrigin | undefined): string {
     call: "call",
   };
   return map[origin] ?? origin;
+}
+
+// ── ViewSwitcher ──────────────────────────────────────────────────────────────
+
+function ViewSwitcher({
+  value,
+  onChange,
+}: {
+  value: SessionsLayoutMode;
+  onChange: (value: SessionsLayoutMode) => void;
+}) {
+  return (
+    <div className="sessions-view-switcher" role="group" aria-label="Session layout">
+      <button
+        type="button"
+        className={`sessions-view-switcher-btn${
+          value === "cards" ? " sessions-view-switcher-btn--active" : ""
+        }`}
+        onClick={() => onChange("cards")}
+        aria-pressed={value === "cards"}
+        aria-label="Show sessions as cards"
+        title="Cards"
+      >
+        <Icon name="ph:squares-four" width={13} />
+      </button>
+      <button
+        type="button"
+        className={`sessions-view-switcher-btn${
+          value === "rows" ? " sessions-view-switcher-btn--active" : ""
+        }`}
+        onClick={() => onChange("rows")}
+        aria-pressed={value === "rows"}
+        aria-label="Show sessions as rows"
+        title="Rows"
+      >
+        <Icon name="ph:list-bullets" width={13} />
+      </button>
+    </div>
+  );
 }
 
 // ── SessionCard ───────────────────────────────────────────────────────────────
@@ -91,6 +132,54 @@ function SessionCard({
   );
 }
 
+// ── SessionRowItem ────────────────────────────────────────────────────────────
+
+function SessionRowItem({
+  session,
+  familiar,
+  active,
+  onClick,
+}: {
+  session: SessionRow;
+  familiar: Familiar | undefined;
+  active: boolean;
+  onClick: () => void;
+}) {
+  const overrides = useGlyphOverrides();
+  const glyph = familiar ? resolveFamiliarGlyph(familiar, overrides) : null;
+  const ts = shortRelTime(session.updated_at || session.created_at);
+  const title = session.title || "Untitled session";
+  const label = originLabel(session.origin);
+
+  return (
+    <button
+      type="button"
+      className={`session-row${active ? " session-row--active" : ""}`}
+      onClick={onClick}
+      title={title}
+    >
+      <div className="session-row-familiar-chip">
+        {glyph ? (
+          <FamiliarGlyph glyph={glyph} size="sm" />
+        ) : (
+          <Icon name="ph:user" width={11} />
+        )}
+      </div>
+      <div className="session-row-main">
+        <div className="session-row-title">{title}</div>
+        <div className="session-row-status-line">
+          <span className={statusDotClass(session.status)} />
+          <span className="session-row-status-label">{session.status}</span>
+        </div>
+      </div>
+      <div className="session-row-meta">
+        {label && <span className="session-card-origin">{label}</span>}
+        {ts && <span className="session-card-ts">{ts}</span>}
+      </div>
+    </button>
+  );
+}
+
 // ── NewChatCard ───────────────────────────────────────────────────────────────
 
 function NewChatCard({ onClick }: { onClick: () => void }) {
@@ -98,6 +187,17 @@ function NewChatCard({ onClick }: { onClick: () => void }) {
     <button type="button" className="session-card session-card--new" onClick={onClick}>
       <Icon name="ph:plus" width={14} />
       <span>New chat</span>
+    </button>
+  );
+}
+
+function NewChatRow({ onClick }: { onClick: () => void }) {
+  return (
+    <button type="button" className="session-row session-row--new" onClick={onClick}>
+      <span className="session-row-new-icon">
+        <Icon name="ph:plus" width={13} />
+      </span>
+      <span className="session-row-title">New chat</span>
     </button>
   );
 }
@@ -113,6 +213,7 @@ function SessionGroup({
   onOpenSession,
   onNewChat,
   showNewChat,
+  layoutMode,
 }: {
   familiar: Familiar | undefined;
   sessions: SessionRow[];
@@ -120,6 +221,7 @@ function SessionGroup({
   onOpenSession: (id: string) => void;
   onNewChat: () => void;
   showNewChat: boolean;
+  layoutMode: SessionsLayoutMode;
 }) {
   const [limit, setLimit] = useState(PAGE_SIZE);
   const visible = sessions.slice(0, limit);
@@ -133,18 +235,33 @@ function SessionGroup({
           <span className="sessions-group-count">{sessions.length}</span>
         </div>
       )}
-      <div className="sessions-grid">
-        {showNewChat && <NewChatCard onClick={onNewChat} />}
-        {visible.map((s) => (
-          <SessionCard
-            key={s.id}
-            session={s}
-            familiar={familiar}
-            active={s.id === activeSessionId}
-            onClick={() => onOpenSession(s.id)}
-          />
-        ))}
-      </div>
+      {layoutMode === "cards" ? (
+        <div className="sessions-grid">
+          {showNewChat && <NewChatCard onClick={onNewChat} />}
+          {visible.map((s) => (
+            <SessionCard
+              key={s.id}
+              session={s}
+              familiar={familiar}
+              active={s.id === activeSessionId}
+              onClick={() => onOpenSession(s.id)}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="sessions-list">
+          {showNewChat && <NewChatRow onClick={onNewChat} />}
+          {visible.map((s) => (
+            <SessionRowItem
+              key={s.id}
+              session={s}
+              familiar={familiar}
+              active={s.id === activeSessionId}
+              onClick={() => onOpenSession(s.id)}
+            />
+          ))}
+        </div>
+      )}
       {remaining > 0 && (
         <button
           type="button"
@@ -178,6 +295,7 @@ export function SessionsView({
   onNewChat,
 }: SessionsViewProps) {
   const overrides = useGlyphOverrides();
+  const [layoutMode, setLayoutMode] = useState<SessionsLayoutMode>("cards");
   const activeFamiliar = familiars.find((f) => f.id === activeFamiliarId) ?? null;
 
   // Sort sessions newest-first
@@ -216,14 +334,17 @@ export function SessionsView({
       {/* Header */}
       <div className="sessions-view-header">
         <span className="sessions-view-title">{title}</span>
-        <button
-          type="button"
-          className="sessions-view-new-btn"
-          onClick={() => onNewChat(activeFamiliarId ?? undefined)}
-        >
-          <Icon name="ph:plus" width={12} />
-          New chat
-        </button>
+        <div className="sessions-view-actions">
+          <ViewSwitcher value={layoutMode} onChange={setLayoutMode} />
+          <button
+            type="button"
+            className="sessions-view-new-btn"
+            onClick={() => onNewChat(activeFamiliarId ?? undefined)}
+          >
+            <Icon name="ph:plus" width={12} />
+            New chat
+          </button>
+        </div>
       </div>
 
       {/* Content */}
@@ -268,6 +389,7 @@ export function SessionsView({
             onOpenSession={onOpenSession}
             onNewChat={() => onNewChat(activeFamiliarId)}
             showNewChat
+            layoutMode={layoutMode}
           />
         ) : (
           /* All-familiars grouped */
@@ -283,6 +405,7 @@ export function SessionsView({
                   onOpenSession={(id) => onOpenSession(id, f.id)}
                   onNewChat={() => onNewChat(f.id)}
                   showNewChat={false}
+                  layoutMode={layoutMode}
                 />
               ))}
             {/* Unassigned */}
@@ -294,6 +417,7 @@ export function SessionsView({
                 onOpenSession={onOpenSession}
                 onNewChat={() => onNewChat(undefined)}
                 showNewChat={false}
+                layoutMode={layoutMode}
               />
             )}
           </>
