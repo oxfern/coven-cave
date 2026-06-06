@@ -803,7 +803,15 @@ export function Workspace() {
         }}
       />
     ) : mode === "calls" ? (
-      <CallsView familiars={familiars} />
+      <CallsView
+        familiars={familiars}
+        sessions={sessions}
+        onOpenSession={(sessionId, familiarId) => {
+          if (familiarId) setActiveId(familiarId);
+          setMode("chats");
+          setTimeout(() => routerRef.current?.openSession(sessionId), 0);
+        }}
+      />
     ) : mode === "browser" ? (
       <BrowserPane label="main" />
     ) : mode === "terminal" ? (
