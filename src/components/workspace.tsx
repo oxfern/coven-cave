@@ -24,6 +24,7 @@ import { AutomationsView } from "@/components/automations-view";
 import { CallsView } from "@/components/calls-view";
 import { ComuxView } from "@/components/comux-view";
 import { GitHubView } from "@/components/github-view";
+import { LibraryView } from "@/components/library-view";
 import { HomeComposer } from "@/components/home-composer";
 import { nativeNotify } from "@/lib/native-notify";
 import { SessionsView } from "@/components/sessions-view";
@@ -510,6 +511,9 @@ export function Workspace() {
         case "/projects":
           setMode("projects");
           return;
+        case "/library":
+          setMode("library");
+          return;
         case "/toggle-agent":
           toggleAgentPanel();
           return;
@@ -764,6 +768,8 @@ export function Workspace() {
           </button>
         )}
       </div>
+    ) : mode === "library" ? (
+      <LibraryView />
     ) : mode === "board" ? (
       <BoardView
         familiars={familiars}

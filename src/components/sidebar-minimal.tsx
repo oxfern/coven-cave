@@ -21,7 +21,8 @@ export type FolderMode =
   | "projects"
   | "browser"
   | "calls"
-  | "github";
+  | "github"
+  | "library";
 
 export type SidebarMinimalProps = {
   mode: string;
@@ -53,6 +54,8 @@ const FOLDER_MODES: Array<{
   // Integrations
   { id: "calls",  label: "Coven Calls",  iconName: "ph:graph",       dividerBefore: true },
   { id: "github", label: "GitHub",       iconName: "ph:github-logo" },
+  // Knowledge
+  { id: "library", label: "Library",      iconName: "ph:books",            dividerBefore: true },
 ];
 
 const UTILITY_MODES: Array<{

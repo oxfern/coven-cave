@@ -1,0 +1,118 @@
+"use client";
+
+import { Icon } from "@/lib/icon";
+import type { LibraryDoc } from "@/lib/library-types";
+
+type Props = {
+  docs: LibraryDoc[];
+  selectedId: string | null;
+  searchQuery: string;
+  onSearchChange: (q: string) => void;
+  onSelect: (doc: LibraryDoc) => void;
+  loading: boolean;
+};
+
+const relDateFmt = new Intl.RelativeTimeFormat([], { numeric: "auto" });
+
+function relDate(iso: string): string {
+  try {
+    const diff = new Date(iso).getTime() - Date.now();
+    const absDiff = Math.abs(diff);
+    if (absDiff < 60_000) return "just now";
+    if (absDiff < 3_600_000) return relDateFmt.format(Math.round(diff / 60_000), "minutes");
+    if (absDiff < 86_400_000) return relDateFmt.format(Math.round(diff / 3_600_000), "hours");
+    if (absDiff < 86_400_000 * 30) return relDateFmt.format(Math.round(diff / 86_400_000), "days");
+    return new Date(iso).toLocaleDateString([], { month: "short", day: "numeric" });
+  } catch {
+    return "";
+  }
+}
+
+function filterDocs(docs: LibraryDoc[], query: string): LibraryDoc[] {
+  if (!query.trim()) return docs;
+  const q = query.toLowerCase();
+  return docs.filter(
+    (d) =>
+      d.title.toLowerCase().includes(q) ||
+      d.excerpt.toLowerCase().includes(q) ||
+      d.tags.some((t) => t.toLowerCase().includes(q)),
+  );
+}
+
+export function LibraryDocList({
+  docs,
+  selectedId,
+  searchQuery,
+  onSearchChange,
+  onSelect,
+  loading,
+}: Props) {
+  const filtered = filterDocs(docs, searchQuery);
+
+  return (
+    <div className="library-doclist">
+      {/* Search bar */}
+      <div className="library-doclist-search">
+        <Icon name="ph:magnifying-glass" width={13} className="library-doclist-search-icon" />
+        <input
+          type="text"
+          className="library-doclist-search-input"
+          placeholder="Search documents…"
+          value={searchQuery}
+          onChange={(e) => onSearchChange(e.target.value)}
+          spellCheck={false}
+        />
+        {searchQuery && (
+          <button
+            type="button"
+            className="library-doclist-search-clear"
+            onClick={() => onSearchChange("")}
+            aria-label="Clear search"
+          >
+            <Icon name="ph:x" width={11} />
+          </button>
+        )}
+      </div>
+
+      {/* List */}
+      <div className="library-doclist-items">
+        {loading ? (
+          <div className="library-doclist-empty">Loading…</div>
+        ) : filtered.length === 0 ? (
+          <div className="library-doclist-empty">
+            {searchQuery ? "No documents match your search." : "No documents found."}
+          </div>
+        ) : (
+          filtered.map((doc) => (
+            <button
+              key={doc.id}
+              type="button"
+              className={`library-doclist-item${doc.id === selectedId ? " library-doclist-item--active" : ""}`}
+              onClick={() => onSelect(doc)}
+            >
+              <div className="library-doclist-item-header">
+                <span className="library-doclist-item-title">{doc.title}</span>
+                <span className="library-doclist-item-date">{relDate(doc.modifiedAt)}</span>
+              </div>
+              <div className="library-doclist-item-meta">
+                <span className="library-doclist-item-familiar">🌿</span>
+                {doc.excerpt && (
+                  <span className="library-doclist-item-excerpt">{doc.excerpt}</span>
+                )}
+              </div>
+              {doc.tags.length > 0 && (
+                <div className="library-doclist-item-tags">
+                  {doc.tags.slice(0, 4).map((tag) => (
+                    <span key={tag} className="library-doclist-tag">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </button>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}

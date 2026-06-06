@@ -128,6 +128,8 @@ export const ICON_NAMES = [
   "ph:sun",
   "ph:bell",
   "ph:book-open-bold",
+  "ph:book-open",
+  "ph:books",
   "ph:pencil-line-bold",
   "ph:brain-bold",
   "ph:user",

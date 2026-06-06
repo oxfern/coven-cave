@@ -20,7 +20,8 @@ export type Mode =
   | "projects"
   | "home"
   | "github"
-  | "calendar";
+  | "calendar"
+  | "library";
 
 type Props = {
   mode: Mode;
@@ -49,6 +50,7 @@ const MODE_LABEL: Record<Mode, string> = {
   projects: "Projects",
   github: "GitHub",
   calendar: "Calendar",
+  library: "Library",
 };
 
 export function DaemonBar({
