@@ -32,9 +32,13 @@ require_tool xcrun
 require_tool hdiutil
 require_tool spctl
 require_tool shasum
+require_tool openssl
 require_file "$NOTARY_KEY_FILE"
 require_value "$NOTARY_KEY_ID" "NOTARY_KEY_ID / APPLE_API_KEY"
 require_value "$NOTARY_ISSUER" "NOTARY_ISSUER / APPLE_API_ISSUER"
+
+echo "==> Validating App Store Connect API key"
+openssl pkey -in "$NOTARY_KEY_FILE" -noout -check >/dev/null
 
 echo "==> Building CovenCave v${VERSION}"
 rm -rf "$DMG_DIR"
