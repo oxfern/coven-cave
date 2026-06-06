@@ -13,3 +13,9 @@ assert.doesNotMatch(
   /border-top\s*:/,
   "Add-ins should rely on the primary sidebar-folders bottom border instead of adding a second divider",
 );
+
+assert.doesNotMatch(
+  addinsRule,
+  /margin-top\s*:\s*auto/,
+  "Add-ins should sit directly below the main side-panel options instead of being pushed to the footer",
+);

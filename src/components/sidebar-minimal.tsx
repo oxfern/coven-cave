@@ -160,7 +160,7 @@ export function SidebarMinimal(props: SidebarMinimalProps) {
           ))}
       </div>
 
-      {/* Add-ins section: GitHub · Library */}
+      {/* Add-ins section: GitHub · Library, directly under primary side-panel rows */}
       <div className="sidebar-folders sidebar-addins">
         <div className="sidebar-section-label">Add-ins</div>
         {visibleFolderModes

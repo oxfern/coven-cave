@@ -60,6 +60,10 @@ export const COMPATIBILITY_ADAPTERS: CompatibilityAdapter[] = [
   },
 ];
 
+export function covenHelpSupportsAdapterList(helpText: string): boolean {
+  return /^\s+adapters?\s+.*\badapters?\b/im.test(helpText);
+}
+
 export function mergeAdapterReports(
   localReports: Array<Partial<AdapterReport> & { id: string; label: string; binary: string; installed: boolean; path: string | null; version: string | null }>,
   covenReports: CovenAdapterSummary[],

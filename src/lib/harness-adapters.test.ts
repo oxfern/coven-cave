@@ -4,6 +4,7 @@ import {
   COMPATIBILITY_ADAPTERS,
   mergeAdapterReports,
   adapterSetupState,
+  covenHelpSupportsAdapterList,
 } from "./harness-adapters.ts";
 
 assert.deepEqual(
@@ -51,3 +52,28 @@ assert.deepEqual(adapterSetupState(merged.filter((adapter) => !adapter.installed
   ok: false,
   hint: "Install Codex or Claude Code, then re-check. External adapters can also be added with Coven adapter manifests.",
 });
+
+assert.equal(
+  covenHelpSupportsAdapterList(`Coven runs Codex, Claude Code, and future harnesses inside a local, project-scoped session ledger.
+
+Usage: coven [PROMPT]... [COMMAND]
+
+Commands:
+  chat       Interactive chat with Coven agents
+  daemon     Manage the local Coven daemon
+  run        Launch a project-scoped harness session
+  sessions   List or search recent Coven sessions
+`),
+  false,
+  "Older Coven help without the adapter command should not trigger `coven adapter list --json` probes",
+);
+
+assert.equal(
+  covenHelpSupportsAdapterList(`Commands:
+  chat       Interactive chat with Coven agents
+  adapter    List and diagnose harness adapters
+  daemon     Manage the local Coven daemon
+`),
+  true,
+  "Coven help with the adapter command should allow the adapter-list probe",
+);

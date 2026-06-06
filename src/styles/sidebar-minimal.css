@@ -82,7 +82,7 @@
 }
 
 .sidebar-addins {
-  margin-top: auto; /* push to bottom of folder area */
+  padding-top: 4px;
 }
 
 .sidebar-section-label {

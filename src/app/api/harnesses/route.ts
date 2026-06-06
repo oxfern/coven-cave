@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { spawn } from "node:child_process";
-import { COMPATIBILITY_ADAPTERS, mergeAdapterReports, type AdapterReport, type CovenAdapterSummary } from "@/lib/harness-adapters";
+import { COMPATIBILITY_ADAPTERS, covenHelpSupportsAdapterList, mergeAdapterReports, type AdapterReport, type CovenAdapterSummary } from "@/lib/harness-adapters";
 import { covenBin, covenSpawnEnv } from "@/lib/coven-bin";
 
 export const dynamic = "force-dynamic";
@@ -56,6 +56,27 @@ function probeVersion(binary: string, args: string[]): Promise<string | null> {
   });
 }
 
+function covenSupportsAdapterList(): Promise<boolean> {
+  return new Promise((resolve) => {
+    const child = spawn(covenBin(), ["--help"], { env: covenSpawnEnv(), stdio: ["ignore", "pipe", "pipe"] });
+    let out = "";
+    child.stdout.on("data", (d) => (out += d.toString()));
+    child.stderr.on("data", (d) => (out += d.toString()));
+    const t = setTimeout(() => {
+      child.kill("SIGTERM");
+      resolve(false);
+    }, 1500);
+    child.on("close", (code) => {
+      clearTimeout(t);
+      resolve(code === 0 && covenHelpSupportsAdapterList(out));
+    });
+    child.on("error", () => {
+      clearTimeout(t);
+      resolve(false);
+    });
+  });
+}
+
 function loadCovenAdapterSummaries(): Promise<CovenAdapterSummary[]> {
   return new Promise((resolve) => {
     const child = spawn(covenBin(), ["adapter", "list", "--json"], { env: covenSpawnEnv(), stdio: ["ignore", "pipe", "ignore"] });
@@ -93,7 +114,7 @@ export async function GET() {
       return { ...h, installed: true, path, version };
     }),
   );
-  const covenReports = await loadCovenAdapterSummaries();
+  const covenReports = (await covenSupportsAdapterList()) ? await loadCovenAdapterSummaries() : [];
   const harnesses: AdapterReport[] = mergeAdapterReports(reports, covenReports);
   return NextResponse.json({ ok: true, harnesses });
 }
