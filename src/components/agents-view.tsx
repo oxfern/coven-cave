@@ -338,7 +338,7 @@ export function AgentsView({
           <div className="flex items-end gap-0">
             {(["sessions", "delegations"] as const).map((s) => {
               const labels: Record<string, string> = {
-                sessions: "Chats in the Coven",
+                sessions: "Chats",
                 delegations: "Traces",
               };
               const icons: Record<string, string> = {
