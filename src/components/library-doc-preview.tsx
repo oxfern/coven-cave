@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Icon } from "@/lib/icon";
 import type {
   LibraryDocBody,
@@ -262,51 +263,121 @@ function GitHubDetail({ item }: { item: LibraryGitHubItem }) {
 }
 
 function DocDetail({ doc }: { doc: LibraryDocBody }) {
-  return (
-    <div className="library-preview">
-      <div className="library-preview-header">
-        <div className="library-preview-title">{doc.title}</div>
-        <div className="library-preview-meta">
-          <span className="library-preview-familiar">🌿 Sage</span>
-          <span className="library-preview-sep">·</span>
-          <span className="library-preview-date">{fmtDate(doc.modifiedAt)}</span>
-          {doc.tags.length > 0 && (
-            <><span className="library-preview-sep">·</span>
-            <div className="library-preview-tags">
-              {doc.tags.map((t: string) => <span key={t} className="library-doclist-tag">{t}</span>)}
-            </div></>
-          )}
-        </div>
-        {Object.keys(doc.frontmatter).filter((k) => !["tags","tag"].includes(k)).length > 0 && (
-          <div className="library-preview-frontmatter">
-            {Object.entries(doc.frontmatter).filter(([k]) => !["tags","tag"].includes(k)).map(([k, v]) => (
-              <span key={k} className="library-preview-fm-entry">
-                <span className="library-preview-fm-key">{k}:</span>{" "}
-                <span className="library-preview-fm-val">{v}</span>
-              </span>
-            ))}
-          </div>
+  const [readerOpen, setReaderOpen] = useState(false);
+
+  // Close on Esc
+  useEffect(() => {
+    if (!readerOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") setReaderOpen(false); };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [readerOpen]);
+
+  const header = (
+    <div className="library-preview-header">
+      <div className="library-preview-title">{doc.title}</div>
+      <div className="library-preview-meta">
+        <span className="library-preview-familiar">🌿 Sage</span>
+        <span className="library-preview-sep">·</span>
+        <span className="library-preview-date">{fmtDate(doc.modifiedAt)}</span>
+        {doc.tags.length > 0 && (
+          <><span className="library-preview-sep">·</span>
+          <div className="library-preview-tags">
+            {doc.tags.map((t: string) => <span key={t} className="library-doclist-tag">{t}</span>)}
+          </div></>
         )}
       </div>
-      {/* Action bar */}
-      <div className="library-preview-actions library-preview-actions--bar">
-        <button
-          type="button"
-          className="library-preview-action-btn"
-          title="Open in VS Code"
-          onClick={() => {
-            if (doc.absolutePath) void openUrl(`vscode://file${doc.absolutePath}`);
-          }}
-        >
-          <Icon name="ph:code" width={13} />
-          <span>Open in editor</span>
-        </button>
-        <CopyButton text={`~/.openclaw/workspace/sage/${doc.id}`} label="Copy path" />
-      </div>
-      <div className="library-preview-body">
-        <RenderedMarkdown text={doc.body} />
-      </div>
+      {Object.keys(doc.frontmatter).filter((k) => !["tags","tag"].includes(k)).length > 0 && (
+        <div className="library-preview-frontmatter">
+          {Object.entries(doc.frontmatter).filter(([k]) => !["tags","tag"].includes(k)).map(([k, v]) => (
+            <span key={k} className="library-preview-fm-entry">
+              <span className="library-preview-fm-key">{k}:</span>{" "}
+              <span className="library-preview-fm-val">{v}</span>
+            </span>
+          ))}
+        </div>
+      )}
     </div>
+  );
+
+  const actionBar = (inReader = false) => (
+    <div className="library-preview-actions library-preview-actions--bar">
+      <button
+        type="button"
+        className="library-preview-action-btn"
+        title="Open in VS Code"
+        onClick={() => { if (doc.absolutePath) void openUrl(`vscode://file${doc.absolutePath}`); }}
+      >
+        <Icon name="ph:code" width={13} />
+        <span>Open in editor</span>
+      </button>
+      <CopyButton text={`~/.openclaw/workspace/sage/${doc.id}`} label="Copy path" />
+      <button
+        type="button"
+        className="library-preview-action-btn library-reader-btn"
+        title={inReader ? "Exit reader mode" : "Reader mode"}
+        onClick={() => setReaderOpen((v) => !v)}
+      >
+        <Icon name={inReader ? "ph:arrows-in-simple" : "ph:book-open"} width={13} />
+        <span>{inReader ? "Exit reader" : "Reader mode"}</span>
+      </button>
+    </div>
+  );
+
+  return (
+    <>
+      <div className="library-preview">
+        {header}
+        {actionBar(false)}
+        <div className="library-preview-body">
+          <RenderedMarkdown text={doc.body} />
+        </div>
+      </div>
+
+      {readerOpen && typeof document !== "undefined" && createPortal(
+        <div
+          className="library-reader-backdrop"
+          onClick={(e) => { if (e.target === e.currentTarget) setReaderOpen(false); }}
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Reader: ${doc.title}`}
+        >
+          <div className="library-reader-modal">
+            {/* Reader header */}
+            <div className="library-reader-header">
+              <div className="library-reader-title">{doc.title}</div>
+              <div className="library-reader-meta">
+                <span className="library-preview-familiar">🌿 Sage</span>
+                <span className="library-preview-sep">·</span>
+                <span className="library-preview-date">{fmtDate(doc.modifiedAt)}</span>
+                {doc.tags.length > 0 && (
+                  <><span className="library-preview-sep">·</span>
+                  {doc.tags.map((t: string) => <span key={t} className="library-doclist-tag">{t}</span>)}
+                  </>
+                )}
+              </div>
+              <button
+                type="button"
+                className="library-reader-close"
+                onClick={() => setReaderOpen(false)}
+                title="Close reader (Esc)"
+              >
+                <Icon name="ph:x" width={15} />
+              </button>
+            </div>
+            {/* Reader body */}
+            <div className="library-reader-body">
+              <RenderedMarkdown text={doc.body} />
+            </div>
+            {/* Reader footer actions */}
+            <div className="library-reader-footer">
+              {actionBar(true)}
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
+    </>
   );
 }
 
