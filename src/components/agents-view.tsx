@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState, type RefObject } from "react";
 import { ChatRouter, type ChatRouterHandle } from "@/components/chat-router";
 import { CallsView } from "@/components/calls-view";
-import { CovenFloor } from "@/components/coven-floor";
 import { InspectorPane } from "@/components/inspector-pane";
 import { AgentPanel } from "@/components/agent-panel";
 import type { Card } from "@/lib/cave-board-types";
@@ -21,7 +20,7 @@ import type { Familiar, SessionRow } from "@/lib/types";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type AgentsScope = "sessions" | "conversation" | "floor" | "delegations";
+type AgentsScope = "sessions" | "conversation" | "delegations";
 
 type Props = {
   familiars: Familiar[];
@@ -337,15 +336,13 @@ export function AgentsView({
         <div className="flex shrink-0 items-center justify-between border-b border-[var(--border-hairline)] px-4">
           {/* Tabs flush left */}
           <div className="flex items-end gap-0">
-            {(["sessions", "floor", "delegations"] as const).map((s) => {
+            {(["sessions", "delegations"] as const).map((s) => {
               const labels: Record<string, string> = {
-                sessions: "Sessions",
-                floor: "Floor",
+                sessions: "Chats in the Coven",
                 delegations: "Traces",
               };
               const icons: Record<string, string> = {
-                sessions: "ph:users",
-                floor: "ph:users-three",
+                sessions: "ph:chats-circle",
                 delegations: "ph:graph",
               };
               const isActive = scope === s || (s === "sessions" && scope === "conversation");
@@ -415,9 +412,7 @@ export function AgentsView({
           </div>
         </div>
 
-        {scope === "floor" ? (
-          <CovenFloor />
-        ) : scope === "delegations" ? (
+        {scope === "delegations" ? (
           <CallsView
             familiars={familiars}
             sessions={sessions}

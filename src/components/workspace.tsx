@@ -92,6 +92,8 @@ export function Workspace() {
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [rightPanel, setRightPanel] = useState<"inspector" | "chat" | null>(null);
   const [shellAgentPane, setShellAgentPane] = useState<"browser" | "chat">("browser");
+  // "browser" = top locks to browser; "chat" = top locks to chat
+  const [stripLock, setStripLock] = useState<"browser" | "chat">("browser");
   const [pendingProjectChatRoot, setPendingProjectChatRoot] = useState<string | null>(null);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [inboxItems, setInboxItems] = useState<InboxItem[]>([]);
@@ -872,26 +874,53 @@ export function Workspace() {
             <BrowserPane label="default" />
           )
         }
-        agentLabel="Browser"
-        agentIcon="ph:globe"
+        agentLabel={stripLock === "chat" ? "Chat" : "Browser"}
+        agentIcon={stripLock === "chat" ? "ph:chats" : "ph:globe"}
         agentExtra={
-          <button
-            type="button"
-            className={`shell-agent-strip-btn shell-agent-strip-btn--bottom${shellAgentPane === "chat" ? " shell-agent-strip-btn--active" : ""}`}
-            title="Chat"
-            aria-label={shellAgentPane === "chat" ? "Close chat panel" : "Open chat panel"}
-            onClick={() => {
-              if (shellAgentPane === "chat") {
-                shellRef.current?.closeAgent();
-                setShellAgentPane("browser");
-                return;
-              }
-              setShellAgentPane("chat");
-              shellRef.current?.openAgent();
-            }}
-          >
-            <Icon name="ph:chats" width={15} />
-          </button>
+          <>
+            {/* Drag-handle between buttons: drag up → lock browser, drag down → lock chat */}
+            <div
+              className="shell-agent-strip-drag"
+              title={stripLock === "browser" ? "Drag ↓ to lock Chat" : "Drag ↑ to lock Browser"}
+              onPointerDown={(e) => {
+                const startY = e.clientY;
+                (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
+                let committed = false;
+                const onMove = (ev: PointerEvent) => {
+                  if (committed) return;
+                  const dy = ev.clientY - startY;
+                  if (dy < -14) { setStripLock("browser"); committed = true; }
+                  else if (dy > 14) { setStripLock("chat"); committed = true; }
+                };
+                const onUp = () => {
+                  window.removeEventListener("pointermove", onMove);
+                  window.removeEventListener("pointerup", onUp);
+                };
+                window.addEventListener("pointermove", onMove);
+                window.addEventListener("pointerup", onUp);
+              }}
+            >
+              <span className={`shell-agent-strip-lock-dot${stripLock === "chat" ? " shell-agent-strip-lock-dot--down" : " shell-agent-strip-lock-dot--up"}`} />
+            </div>
+            {/* Bottom chat button */}
+            <button
+              type="button"
+              className={`shell-agent-strip-btn shell-agent-strip-btn--bottom${shellAgentPane === "chat" ? " shell-agent-strip-btn--active" : ""}`}
+              title={stripLock === "chat" ? "Toggle Chat (locked)" : "Open Chat"}
+              aria-label={shellAgentPane === "chat" ? "Close chat panel" : "Open chat panel"}
+              onClick={() => {
+                if (shellAgentPane === "chat") {
+                  shellRef.current?.closeAgent();
+                  setShellAgentPane("browser");
+                } else {
+                  setShellAgentPane("chat");
+                  shellRef.current?.openAgent();
+                }
+              }}
+            >
+              <Icon name="ph:chats" width={15} />
+            </button>
+          </>
         }
         bottom={<BottomTerminal threadId="cave.bottom.main" />}
       />

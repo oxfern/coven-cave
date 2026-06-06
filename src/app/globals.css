@@ -229,6 +229,48 @@ body {
   border-top: 1px solid var(--border-hairline);
 }
 
+/* Drag handle between browser/chat strip buttons */
+.shell-agent-strip-drag {
+  width: 100%;
+  height: 20px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: ns-resize;
+  -webkit-app-region: no-drag;
+  position: relative;
+}
+.shell-agent-strip-drag:hover {
+  background: var(--bg-hover);
+}
+.shell-agent-strip-drag::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  height: 1px;
+  background: var(--border-hairline);
+}
+/* Lock indicator dot */
+.shell-agent-strip-lock-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  position: relative;
+  z-index: 1;
+  transition: background 0.15s, transform 0.15s;
+}
+.shell-agent-strip-lock-dot--up {
+  background: color-mix(in oklch, var(--accent-presence) 60%, transparent);
+  transform: translateY(-2px);
+}
+.shell-agent-strip-lock-dot--down {
+  background: color-mix(in oklch, var(--accent-presence) 60%, transparent);
+  transform: translateY(2px);
+}
+
 /* Hairline divider between strip buttons */
 .shell-agent-strip-divider {
   width: 18px;
