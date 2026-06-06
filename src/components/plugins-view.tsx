@@ -49,12 +49,14 @@ type RoleEntry = {
   id: string;
   name: string;
   description?: string;
+  version?: string;
   emoji?: string;
   familiar: string;
   skills: string[];
   tools: string[];
   plugins: string[];
   workflows: string[];
+  path: string;
   active: boolean;
   activatedAt?: string;
 };
@@ -485,6 +487,7 @@ export function PluginsView({ onOpenChat, onCreateSkill, onCreatePlugin, familia
                 skillsById={skillsById}
                 capabilitiesByPlugin={capabilitiesByPlugin}
                 capabilitiesLoaded={capabilitiesLoaded}
+                onOpenChat={onOpenChat}
               />
             ) : null}
           </section>
@@ -605,6 +608,7 @@ function RoleGrid({
   skillsById,
   capabilitiesByPlugin,
   capabilitiesLoaded,
+  onOpenChat,
 }: {
   items: RoleEntry[];
   loaded: boolean;
@@ -615,6 +619,7 @@ function RoleGrid({
   skillsById: Map<string, SkillEntry>;
   capabilitiesByPlugin: Map<string, { harness: string; plugin: HarnessCapabilityManifest["plugins"][number] }[]>;
   capabilitiesLoaded: boolean;
+  onOpenChat: () => void;
 }) {
   const [collapsed, setCollapsed] = React.useState<Set<string>>(new Set());
 
@@ -698,10 +703,11 @@ function RoleGrid({
                       {isSelected && (
                         <div className="ml-4 overflow-hidden rounded-b-lg border border-t-0 border-[var(--accent-presence)]/30 bg-[var(--accent-presence)]/5 px-4 pb-4 pt-3">
                           <RoleCapabilityMap
-                            role={selectedRole}
+                            role={r}
                             skillsById={skillsById}
                             capabilitiesByPlugin={capabilitiesByPlugin}
                             capabilitiesLoaded={capabilitiesLoaded}
+                            onOpenChat={onOpenChat}
                           />
                         </div>
                       )}
@@ -724,6 +730,60 @@ const CHIP_ICON: Record<string, Parameters<typeof Icon>[0]["name"]> = {
   tools:     "ph:wrench-bold",
   plugins:   "ph:plug-bold",
 };
+
+type CapCategory = "search" | "web" | "filesystem" | "memory" | "execution" | "plugins" | "other";
+type RelationItem = { id: string; title: string; detail: string; status: string };
+
+const CAP_CATEGORY_ORDER: CapCategory[] = [
+  "search", "web", "filesystem", "memory", "execution", "plugins", "other",
+];
+
+const CAP_CATEGORY_META: Record<CapCategory, { label: string; icon: IconName }> = {
+  search:     { label: "Search",     icon: "ph:magnifying-glass-bold" },
+  web:        { label: "Web",        icon: "ph:globe-bold" },
+  filesystem: { label: "Filesystem", icon: "ph:folder" },
+  memory:     { label: "Memory",     icon: "ph:brain-bold" },
+  execution:  { label: "Execution",  icon: "ph:terminal-bold" },
+  plugins:    { label: "Plugins",    icon: "ph:plug-bold" },
+  other:      { label: "Other",      icon: "ph:lightning-bold" },
+};
+
+function categorizeCapability(name: string): CapCategory {
+  const n = name.toLowerCase();
+  if (n.includes("memory")) return "memory";
+  if (n.includes("search")) return "search";
+  if (n.startsWith("web_") || n.startsWith("http") || n.includes("fetch")) return "web";
+  if (n.startsWith("file") || n.startsWith("fs_") || n.includes("read") || n.includes("write")) return "filesystem";
+  if (n === "exec" || n.startsWith("shell") || n.startsWith("bash") || n === "run") return "execution";
+  return "other";
+}
+
+function toFileUrl(p: string): string | null {
+  if (!p.startsWith("/")) return null;
+  try {
+    return new URL(`file://${p}`).href;
+  } catch {
+    return null;
+  }
+}
+
+async function openRoleFile(p: string) {
+  const url = toFileUrl(p);
+  if (!url) return;
+  if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) {
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      await invoke("shell_open", { url });
+      return;
+    } catch {
+      /* fall through */
+    }
+  }
+  if (typeof window !== "undefined") {
+    const write = navigator.clipboard?.writeText(p);
+    void write?.catch(() => undefined);
+  }
+}
 
 function RoleCard({
   role,
@@ -849,26 +909,14 @@ function RoleCapabilityMap({
   skillsById,
   capabilitiesByPlugin,
   capabilitiesLoaded,
+  onOpenChat,
 }: {
-  role: RoleEntry | null;
+  role: RoleEntry;
   skillsById: Map<string, SkillEntry>;
   capabilitiesByPlugin: Map<string, { harness: string; plugin: HarnessCapabilityManifest["plugins"][number] }[]>;
   capabilitiesLoaded: boolean;
+  onOpenChat: () => void;
 }) {
-  if (!role) {
-    return (
-      <aside className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-card/40 px-4 py-10 text-center lg:sticky lg:top-4">
-        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--bg-elevated)]">
-          <Icon name="ph:cursor-click" width={18} className="text-[var(--text-muted)]" />
-        </span>
-        <p className="text-[12px] font-medium text-[var(--text-secondary)]">Select a role</p>
-        <p className="max-w-[200px] text-[11px] leading-5 text-[var(--text-muted)]">
-          Pick a role to inspect its skills, plugins, workflows, and capabilities.
-        </p>
-      </aside>
-    );
-  }
-
   const connectedSkills = role.skills.map((id) => {
     const skill = skillsById.get(id.toLowerCase());
     return {
@@ -900,80 +948,153 @@ function RoleCapabilityMap({
     status: "declared",
   }));
 
-  const capabilityItems = [
-    ...role.tools.map((id) => ({
+  const capabilityGroups = new Map<CapCategory, RelationItem[]>();
+  const pushCap = (cat: CapCategory, item: RelationItem) => {
+    const arr = capabilityGroups.get(cat);
+    if (arr) arr.push(item);
+    else capabilityGroups.set(cat, [item]);
+  };
+
+  for (const id of role.tools) {
+    pushCap(categorizeCapability(id), {
       id,
       title: id,
       detail: "Tool or command capability",
       status: "declared",
-    })),
-    ...role.plugins.flatMap((id) => {
-      const matches = capabilitiesByPlugin.get(id.toLowerCase()) ?? [];
-      return matches.map((match) => ({
+    });
+  }
+  for (const id of role.plugins) {
+    const matches = capabilitiesByPlugin.get(id.toLowerCase()) ?? [];
+    for (const match of matches) {
+      pushCap("plugins", {
         id: `${id}:${match.harness}`,
         title: match.plugin.name,
         detail: `${match.harness} plugin · ${match.plugin.kind}${match.plugin.command ? ` · ${match.plugin.command}` : ""}`,
         status: match.plugin.enabled ? "connected" : "disabled",
-      }));
-    }),
-  ];
+      });
+    }
+  }
+  const capabilityCount = [...capabilityGroups.values()].reduce((sum, items) => sum + items.length, 0);
 
   return (
-    <aside className="overflow-hidden rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-card)] lg:sticky lg:top-4">
-      {/* Header */}
-      <div className="flex items-center gap-3 border-b border-[var(--border-hairline)] px-4 py-3">
-        <span className={[
-          "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[12px] font-bold",
-          role.active ? "bg-emerald-500/15 text-emerald-300" : "bg-[var(--bg-elevated)] text-[var(--text-secondary)]",
-        ].join(" ")}>
-          <Icon name="ph:sparkle" width={14} />
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 items-center gap-1.5">
-            <h3 className="truncate text-[13px] font-semibold text-[var(--text-primary)]">{role.name}</h3>
-            <span className={`shrink-0 rounded-full px-1.5 py-px text-[9px] font-medium uppercase tracking-wide ${
-              role.active ? "bg-emerald-500/15 text-emerald-300" : "bg-[var(--bg-elevated)] text-[var(--text-muted)]"
-            }`}>
-              {role.active ? "active" : "available"}
-            </span>
-          </div>
-          <p className="text-[11px] capitalize text-[var(--text-muted)]">{role.familiar}</p>
-        </div>
+    <div className="space-y-4">
+      <RoleOverview
+        role={role}
+        skillCount={connectedSkills.length}
+        pluginCount={connectedPlugins.length}
+        workflowCount={workflowItems.length}
+        capabilityCount={capabilityCount}
+      />
+      <RoleActionsRow role={role} onOpenChat={onOpenChat} />
+      <div className="grid gap-3 xl:grid-cols-2">
+        <RoleRelationSection title="Skills"    icon="ph:sparkle"      empty="No skills declared."    items={connectedSkills} />
+        <RoleRelationSection title="Plugins"   icon="ph:plug"         empty="No plugins declared."   items={connectedPlugins} />
+        <RoleRelationSection title="Workflows" icon="ph:list-bullets" empty="No workflows declared." items={workflowItems} />
+        <RoleCapabilitySection groups={capabilityGroups} loaded={capabilitiesLoaded} />
       </div>
-
-      {/* Description */}
-      {role.description && (
-        <p className="border-b border-[var(--border-hairline)] px-4 py-2.5 text-[11px] leading-relaxed text-[var(--text-muted)]">
-          {role.description}
-        </p>
-      )}
-
-      {/* Metric strip */}
-      <div className="grid grid-cols-4 divide-x divide-[var(--border-hairline)] border-b border-[var(--border-hairline)]">
-        <RoleMetric label="Skills"    value={role.skills.length} />
-        <RoleMetric label="Plugins"   value={role.plugins.length} />
-        <RoleMetric label="Workflows" value={role.workflows.length} />
-        <RoleMetric label="Tools"     value={role.tools.length} />
-      </div>
-
-      {/* Relation sections */}
-      <div className="space-y-3 px-4 py-3">
-        <RoleRelationSection title="Skills"       icon="ph:sparkle"        empty="No skills declared."       items={connectedSkills} />
-        <RoleRelationSection title="Plugins"      icon="ph:plug"           empty="No plugins declared."      items={connectedPlugins} />
-        <RoleRelationSection title="Workflows"    icon="ph:list-bullets"   empty="No workflows declared."   items={workflowItems} />
-        <RoleRelationSection title="Capabilities" icon="ph:lightning-bold" empty="No capabilities declared." items={capabilityItems} />
-      </div>
-    </aside>
+    </div>
   );
 }
 
-function RoleMetric({ label, value }: { label: string; value: number }) {
+function RoleOverview({
+  role,
+  skillCount,
+  pluginCount,
+  workflowCount,
+  capabilityCount,
+}: {
+  role: RoleEntry;
+  skillCount: number;
+  pluginCount: number;
+  workflowCount: number;
+  capabilityCount: number;
+}) {
+  const metrics = [
+    { label: "Skills", value: skillCount, icon: "ph:sparkle" as IconName },
+    { label: "Plugins", value: pluginCount, icon: "ph:plug" as IconName },
+    { label: "Workflows", value: workflowCount, icon: "ph:list-bullets" as IconName },
+    { label: "Capabilities", value: capabilityCount, icon: "ph:lightning-bold" as IconName },
+  ];
+
   return (
-    <div className="flex flex-col items-center py-2.5">
-      <p className={`text-[14px] font-semibold tabular-nums ${
-        value > 0 ? "text-[var(--text-primary)]" : "text-[var(--text-muted)]"
-      }`}>{value}</p>
-      <p className="mt-0.5 text-[9px] uppercase tracking-wide text-[var(--text-muted)]">{label}</p>
+    <div className="grid gap-3 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-card)]/70 p-3 md:grid-cols-[minmax(0,1fr)_minmax(280px,0.75fr)]">
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="min-w-0 truncate text-[14px] font-semibold text-[var(--text-primary)]">{role.name}</h3>
+          <span className={[
+            "rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide",
+            role.active ? "bg-emerald-500/15 text-emerald-300" : "bg-[var(--bg-elevated)] text-[var(--text-muted)]",
+          ].join(" ")}>
+            {role.active ? "active" : "available"}
+          </span>
+          {role.version && (
+            <span className="rounded-full bg-[var(--bg-elevated)] px-2 py-0.5 text-[10px] text-[var(--text-muted)]">
+              v{role.version}
+            </span>
+          )}
+        </div>
+        {role.description ? (
+          <p className="mt-1.5 max-w-3xl text-[12px] leading-5 text-[var(--text-muted)]">{role.description}</p>
+        ) : (
+          <p className="mt-1.5 text-[12px] text-[var(--text-muted)]">Role metadata loaded from {role.familiar}.</p>
+        )}
+        <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2 text-[11px] text-[var(--text-muted)]">
+          <span className="inline-flex items-center gap-1">
+            <Icon name="ph:user" width={12} />
+            {role.familiar}
+          </span>
+          <span className="inline-flex min-w-0 items-center gap-1">
+            <Icon name="ph:file-text" width={12} />
+            <span className="truncate">{role.path}</span>
+          </span>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {metrics.map((metric) => (
+          <div key={metric.label} className="rounded-md border border-[var(--border-hairline)] bg-[var(--bg-elevated)]/45 px-2.5 py-2">
+            <div className="flex items-center justify-between gap-2">
+              <Icon name={metric.icon} width={12} className="text-[var(--text-muted)]" />
+              <span className="text-[15px] font-semibold tabular-nums text-[var(--text-primary)]">{metric.value}</span>
+            </div>
+            <p className="mt-1 text-[10px] uppercase tracking-widest text-[var(--text-muted)]">{metric.label}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RoleActionsRow({ role, onOpenChat }: { role: RoleEntry; onOpenChat: () => void }) {
+  const [copied, setCopied] = useState(false);
+  const canOpenRole = toFileUrl(role.path) !== null;
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(role.id);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const btnClass =
+    "inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-elevated)] hover:text-[var(--text-secondary)]";
+
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      <button type="button" className={btnClass} disabled={!canOpenRole} onClick={() => void openRoleFile(role.path)}>
+        <Icon name="ph:file-text" width={12} />
+        <span>Open ROLE.md</span>
+      </button>
+      <button type="button" className={btnClass} onClick={() => void handleCopy()}>
+        <Icon name={copied ? "ph:check" : "ph:copy"} width={12} />
+        <span>{copied ? "Copied" : "Copy id"}</span>
+      </button>
+      <button type="button" className={btnClass} onClick={onOpenChat}>
+        <Icon name="ph:chats-circle" width={12} />
+        <span>Chat with role</span>
+      </button>
     </div>
   );
 }
@@ -1034,19 +1155,70 @@ function RoleRelationSection({
   empty: string;
   items: { id: string; title: string; detail: string; status: string }[];
 }) {
-  if (items.length === 0) return null;
   return (
-    <section>
+    <section className="min-w-0 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-card)]/50 p-3">
       <div className="mb-1.5 flex items-center gap-1.5">
         <Icon name={icon} width={11} className="text-[var(--text-muted)]" />
         <h4 className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">{title}</h4>
         <span className="ml-auto text-[10px] text-[var(--text-muted)]">{items.length}</span>
       </div>
-      <ul className="space-y-1">
-        {items.map((item) => (
-          <RoleRelationItem key={item.id} item={item} />
-        ))}
-      </ul>
+      {items.length > 0 ? (
+        <ul className="space-y-1">
+          {items.map((item) => (
+            <RoleRelationItem key={item.id} item={item} />
+          ))}
+        </ul>
+      ) : (
+        <p className="rounded-md border border-dashed border-[var(--border-hairline)] px-2.5 py-2 text-[11px] text-[var(--text-muted)]">
+          {empty}
+        </p>
+      )}
+    </section>
+  );
+}
+
+function RoleCapabilitySection({
+  groups,
+  loaded,
+}: {
+  groups: Map<CapCategory, RelationItem[]>;
+  loaded: boolean;
+}) {
+  const total = [...groups.values()].reduce((sum, items) => sum + items.length, 0);
+  return (
+    <section className="min-w-0 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-card)]/50 p-3">
+      <div className="mb-1.5 flex items-center gap-1.5">
+        <Icon name="ph:lightning-bold" width={11} className="text-[var(--text-muted)]" />
+        <h4 className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Capabilities</h4>
+        <span className="ml-auto text-[10px] text-[var(--text-muted)]">{total}</span>
+      </div>
+      {total === 0 ? (
+        <p className="rounded-md border border-dashed border-[var(--border-hairline)] px-2.5 py-2 text-[11px] text-[var(--text-muted)]">
+          {loaded ? "No tools or plugin capabilities connected yet." : "Scanning connected plugin capabilities..."}
+        </p>
+      ) : (
+        <div className="grid gap-2 sm:grid-cols-2">
+          {CAP_CATEGORY_ORDER.map((cat) => {
+            const items = groups.get(cat);
+            if (!items || items.length === 0) return null;
+            const meta = CAP_CATEGORY_META[cat];
+            return (
+              <div key={cat} className="min-w-0 rounded-md bg-[var(--bg-elevated)]/40 p-2">
+                <div className="mb-1.5 flex items-center gap-1.5">
+                  <Icon name={meta.icon} width={11} className="text-[var(--text-muted)]" />
+                  <p className="truncate text-[11px] font-medium text-[var(--text-secondary)]">{meta.label}</p>
+                  <span className="ml-auto text-[10px] text-[var(--text-muted)]">{items.length}</span>
+                </div>
+                <ul className="space-y-1">
+                  {items.map((item) => (
+                    <RoleRelationItem key={item.id} item={item} />
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }
