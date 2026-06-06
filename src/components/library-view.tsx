@@ -4,130 +4,117 @@ import "@/styles/library.css";
 import { useCallback, useEffect, useState } from "react";
 import { LibraryCollectionRail } from "@/components/library-collection-rail";
 import { LibraryDocList } from "@/components/library-doc-list";
-import { LibraryDocPreview } from "@/components/library-doc-preview";
 import { LibraryBookmarksList } from "@/components/library-bookmarks-list";
 import { LibraryReadingList } from "@/components/library-reading-list";
 import { LibraryGitHubList } from "@/components/library-github-list";
+import { LibraryDocPreview, type SelectedItem } from "@/components/library-doc-preview";
 import type {
   LibraryCollection,
   LibraryDoc,
   LibraryDocBody,
+  LibraryBookmark,
+  LibraryReadingItem,
+  LibraryGitHubItem,
   LibrarySectionKind,
 } from "@/lib/library-types";
 
-// Section ids that are research collection ids (from API)
-function isDocSection(id: string): boolean {
-  return !["bookmarks", "reading", "github"].includes(id);
-}
-
 export function LibraryView() {
-  const [activeSection, setActiveSection] = useState<string>("all");
+  const [activeSection, setActiveSection] = useState<LibrarySectionKind>("docs");
+  const [activeCollection, setActiveCollection] = useState("all");
   const [collections, setCollections] = useState<LibraryCollection[]>([]);
   const [docs, setDocs] = useState<LibraryDoc[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedDoc, setSelectedDoc] = useState<LibraryDocBody | null>(null);
   const [loading, setLoading] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
 
   const loadDocs = useCallback(async (collectionId: string) => {
-    if (!isDocSection(collectionId)) return;
     setLoading(true);
-    setSelectedDoc(null);
     try {
-      const res = await fetch(`/api/library?collection=${encodeURIComponent(collectionId)}`, {
-        cache: "no-store",
-      });
-      const json = await res.json();
+      const res = await fetch(`/api/library?collection=${encodeURIComponent(collectionId)}`, { cache: "no-store" });
+      const json = await res.json() as { ok: boolean; docs?: LibraryDoc[]; collections?: LibraryCollection[] };
       if (json.ok) {
         setDocs(json.docs ?? []);
         if (json.collections?.length) setCollections(json.collections);
-      } else {
-        setDocs([]);
-      }
-    } catch {
-      setDocs([]);
-    } finally {
-      setLoading(false);
-    }
+      } else setDocs([]);
+    } catch { setDocs([]); }
+    finally { setLoading(false); }
   }, []);
 
-  // Load collections list once on mount (for the rail)
-  useEffect(() => {
-    void loadDocs("all");
-  }, [loadDocs]);
-
-  useEffect(() => {
-    if (isDocSection(activeSection)) {
-      void loadDocs(activeSection);
-    } else {
-      setDocs([]);
-      setSelectedDoc(null);
-    }
-    setSearchQuery("");
-  }, [activeSection, loadDocs]);
+  useEffect(() => { void loadDocs(activeCollection); }, [activeCollection, loadDocs]);
 
   const handleSelectDoc = useCallback(async (doc: LibraryDoc) => {
     setPreviewLoading(true);
     try {
-      const res = await fetch(
-        `/api/library/doc?id=${encodeURIComponent(doc.id)}`,
-        { cache: "no-store" }
-      );
-      const json = await res.json();
-      if (json.ok) setSelectedDoc(json.doc as LibraryDocBody);
-    } catch {
-      /* no-op */
-    } finally {
-      setPreviewLoading(false);
-    }
+      const res = await fetch(`/api/library/doc?id=${encodeURIComponent(doc.id)}`, { cache: "no-store" });
+      const json = await res.json() as { ok: boolean; doc?: LibraryDocBody };
+      if (json.ok && json.doc) setSelectedItem({ kind: "doc", doc: json.doc });
+    } catch { /* no-op */ }
+    finally { setPreviewLoading(false); }
   }, []);
 
-  const docCounts: Record<string, number> = { all: docs.length };
+  function handleSectionChange(section: LibrarySectionKind) {
+    setActiveSection(section);
+    setSelectedItem(null);
+    setSearchQuery("");
+  }
+
+  function handleCollectionChange(collectionId: string) {
+    setActiveCollection(collectionId);
+    setSelectedItem(null);
+    setSearchQuery("");
+  }
+
+  const docCounts: Record<string, number> = { [activeCollection]: docs.length };
+  const selectedDocId =  selectedItem?.kind === "doc"      ? selectedItem.doc.id  : null;
+  const selectedBmId =   selectedItem?.kind === "bookmark" ? selectedItem.item.id : null;
+  const selectedReadId = selectedItem?.kind === "reading"  ? selectedItem.item.id : null;
+  const selectedGhId =   selectedItem?.kind === "github"   ? selectedItem.item.id : null;
 
   return (
     <div className="library-shell">
       <LibraryCollectionRail
         collections={collections}
-        activeId={activeSection}
+        activeDocCollection={activeCollection}
+        activeSection={activeSection}
         docCounts={docCounts}
-        onSelect={(id) => setActiveSection(id)}
+        onSelectCollection={handleCollectionChange}
+        onSelectSection={handleSectionChange}
       />
-
       <div className="library-divider" />
-
-      {/* Middle pane — dispatch by section */}
-      {activeSection === "bookmarks" ? (
-        <LibraryBookmarksList
-          selectedId={null}
-          onSelect={() => {}}
-        />
-      ) : activeSection === "reading" ? (
-        <LibraryReadingList
-          selectedId={null}
-          onSelect={() => {}}
-        />
-      ) : activeSection === "github" ? (
-        <LibraryGitHubList
-          selectedId={null}
-          onSelect={() => {}}
-        />
-      ) : (
+      {activeSection === "docs" && (
         <LibraryDocList
           docs={docs}
-          selectedId={selectedDoc?.id ?? null}
+          selectedId={selectedDocId}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           onSelect={handleSelectDoc}
           loading={loading}
         />
       )}
-
-      <div className="library-divider" />
-
-      {/* Right pane — only for doc sections; list sections own their own detail */}
-      {isDocSection(activeSection) && (
-        <LibraryDocPreview doc={selectedDoc} loading={previewLoading} />
+      {activeSection === "bookmarks" && (
+        <LibraryBookmarksList
+          selectedId={selectedBmId}
+          onSelect={(item: LibraryBookmark) => setSelectedItem({ kind: "bookmark", item })}
+          onDelete={(id) => { if (selectedBmId === id) setSelectedItem(null); }}
+        />
       )}
+      {activeSection === "reading" && (
+        <LibraryReadingList
+          selectedId={selectedReadId}
+          onSelect={(item: LibraryReadingItem) => setSelectedItem({ kind: "reading", item })}
+          onDelete={(id) => { if (selectedReadId === id) setSelectedItem(null); }}
+        />
+      )}
+      {activeSection === "github" && (
+        <LibraryGitHubList
+          selectedId={selectedGhId}
+          onSelect={(item: LibraryGitHubItem) => setSelectedItem({ kind: "github", item })}
+          onDelete={(id) => { if (selectedGhId === id) setSelectedItem(null); }}
+        />
+      )}
+      <div className="library-divider" />
+      <LibraryDocPreview selected={selectedItem} loading={previewLoading} />
     </div>
   );
 }

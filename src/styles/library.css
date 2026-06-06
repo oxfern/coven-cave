@@ -396,3 +396,202 @@ tr:hover .library-row-delete {
   color: var(--text-primary);
   background: var(--bg-hover);
 }
+
+/* ── rail icon wrap ───────────────────────────────────────────── */
+.library-rail-icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 6px;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+.library-rail-item--active .library-rail-icon-wrap {
+  opacity: 1;
+}
+
+/* ── detail card field rows ────────────────────────────────────── */
+.library-field-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 12px;
+}
+.library-field-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.library-field-val {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ── status badge ──────────────────────────────────────────────── */
+.library-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+/* ── progress bar ──────────────────────────────────────────────── */
+.library-progress-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-hairline);
+  overflow: hidden;
+}
+.library-progress-bar--lg {
+  height: 6px;
+  border-radius: 3px;
+}
+.library-progress-fill {
+  height: 100%;
+  background: oklch(0.65 0.18 280);
+  border-radius: inherit;
+  transition: width 0.3s ease;
+}
+
+/* ── domain cell ───────────────────────────────────────────────── */
+.library-domain-cell {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* ── github state dot ──────────────────────────────────────────── */
+.library-gh-state-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* ── list shell & header ────────────────────────────────────────── */
+.library-list-shell {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+.library-list-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  height: 44px;
+  border-bottom: 1px solid var(--border-hairline);
+  flex-shrink: 0;
+}
+.library-list-header-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  flex: 1;
+}
+.library-list-header-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── add form strip ─────────────────────────────────────────────── */
+.library-list-add-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--bg-raised);
+  border-bottom: 1px solid var(--border-hairline);
+  flex-shrink: 0;
+}
+.library-list-add-input {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-size: 12px;
+  outline: none;
+}
+.library-list-add-input:focus {
+  border-color: oklch(0.65 0.18 280);
+  box-shadow: 0 0 0 2px color-mix(in oklab, oklch(0.65 0.18 280) 18%, transparent);
+}
+
+/* ── list empty state ───────────────────────────────────────────── */
+.library-list-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 40px 0;
+}
+
+/* ── preview link ──────────────────────────────────────────────── */
+.library-preview-link {
+  font-size: 12px;
+  color: oklch(0.65 0.18 280);
+  text-decoration: none;
+  word-break: break-all;
+}
+.library-preview-link:hover {
+  text-decoration: underline;
+}
+
+/* ── row delete btn ─────────────────────────────────────────────── */
+.library-row-delete {
+  opacity: 0;
+  transition: opacity 0.15s;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+tr:hover .library-row-delete,
+.library-row-delete:focus {
+  opacity: 1;
+}
+.library-row-delete:hover {
+  color: #f87171;
+  background: color-mix(in oklab, #f87171 12%, transparent);
+}
+
+/* ── tag chips ──────────────────────────────────────────────────── */
+.library-tag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  align-items: center;
+}
+
+/* ── source type badge ──────────────────────────────────────────── */
+.library-source-type {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--bg-raised);
+  border: 1px solid var(--border-hairline);
+  border-radius: 3px;
+  padding: 1px 5px;
+}

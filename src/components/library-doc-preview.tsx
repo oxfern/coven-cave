@@ -2,57 +2,86 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/lib/icon";
-import type { LibraryDocBody } from "@/lib/library-types";
+import type {
+  LibraryDocBody,
+  LibraryBookmark,
+  LibraryReadingItem,
+  LibraryGitHubItem,
+  ReadingStatus,
+} from "@/lib/library-types";
 
-type Props = {
-  doc: LibraryDocBody | null;
-  loading: boolean;
-};
+// ── Discriminated union ──────────────────────────────────────────
+export type SelectedItem =
+  | { kind: "doc"; doc: LibraryDocBody }
+  | { kind: "bookmark"; item: LibraryBookmark }
+  | { kind: "reading"; item: LibraryReadingItem }
+  | { kind: "github"; item: LibraryGitHubItem }
+  | null;
 
+type Props = { selected: SelectedItem; loading: boolean };
+
+// ── Helpers ──────────────────────────────────────────────────────
 const dateFmt = new Intl.DateTimeFormat([], { year: "numeric", month: "short", day: "numeric" });
-
-function fmtDate(iso: string): string {
+function fmtDate(iso?: string): string {
+  if (!iso) return "—";
   try { return dateFmt.format(new Date(iso)); } catch { return iso; }
 }
 
-// ---------------------------------------------------------------------------
-// Markdown rendering (same pattern as MarkdownBlock in message-bubble.tsx)
-// ---------------------------------------------------------------------------
+function openUrl(url: string) {
+  window.open(url, "_blank", "noopener,noreferrer");
+}
 
-type MdToHtmlFn = (md: string) => Promise<string>;
-let mdToHtmlCached: MdToHtmlFn | null = null;
+function CopyButton({ text, label }: { text: string; label: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button type="button" className="library-preview-action-btn"
+      onClick={() => {
+        navigator.clipboard.writeText(text)
+          .then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); })
+          .catch(() => undefined);
+      }}>
+      <Icon name={copied ? "ph:check" : "ph:copy"} width={13} />
+      <span>{copied ? "Copied!" : label}</span>
+    </button>
+  );
+}
 
-async function getMdToHtml(): Promise<MdToHtmlFn> {
-  if (mdToHtmlCached) return mdToHtmlCached;
+function OpenBtn({ url, label }: { url: string; label?: string }) {
+  return (
+    <button type="button" className="library-preview-action-btn" onClick={() => openUrl(url)}>
+      <Icon name="ph:arrow-square-out" width={13} />
+      <span>{label ?? "Open"}</span>
+    </button>
+  );
+}
+
+// ── Markdown rendering (lazy, same as MarkdownBlock) ──────────────
+type MdFn = (md: string) => Promise<string>;
+let mdFnCached: MdFn | null = null;
+async function getMdFn(): Promise<MdFn> {
+  if (mdFnCached) return mdFnCached;
   const { renderAsync } = await import("@create-markdown/preview");
   const { parse } = await import("@create-markdown/core");
-  mdToHtmlCached = async (markdown: string) => {
-    const blocks = parse(markdown);
-    return renderAsync(blocks);
-  };
-  return mdToHtmlCached;
+  mdFnCached = async (markdown: string) => renderAsync(parse(markdown));
+  return mdFnCached;
 }
 
 function RenderedMarkdown({ text }: { text: string }) {
   const [html, setHtml] = useState<string | null>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-
+  const ref = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (!text) { setHtml(null); return; }
     let cancelled = false;
     void (async () => {
-      const fn = await getMdToHtml();
+      const fn = await getMdFn();
       const raw = await fn(text);
       if (cancelled) return;
-      // Sanitize: strip script/iframe/on* attrs
       const doc = new DOMParser().parseFromString(raw, "text/html");
-      for (const el of Array.from(doc.querySelectorAll("script, iframe, object, embed, link, style"))) el.remove();
+      for (const el of Array.from(doc.querySelectorAll("script,iframe,object,embed,link,style"))) el.remove();
       for (const el of Array.from(doc.querySelectorAll<HTMLElement>("*"))) {
         for (const attr of Array.from(el.attributes)) {
           if (/^on/i.test(attr.name)) el.removeAttribute(attr.name);
-          if ((attr.name === "href" || attr.name === "src") && /^\s*javascript:/i.test(attr.value)) {
-            el.removeAttribute(attr.name);
-          }
+          if ((attr.name === "href" || attr.name === "src") && /^\s*javascript:/i.test(attr.value)) el.removeAttribute(attr.name);
         }
       }
       setHtml(doc.body.innerHTML);
@@ -60,60 +89,161 @@ function RenderedMarkdown({ text }: { text: string }) {
     return () => { cancelled = true; };
   }, [text]);
 
-  if (!html) {
-    return (
-      <pre className="whitespace-pre-wrap break-words font-mono text-[12px] leading-relaxed text-[var(--text-secondary)]">
-        {text}
-      </pre>
-    );
-  }
+  if (!html) return (
+    <pre className="whitespace-pre-wrap break-words font-mono text-[12px] leading-relaxed text-[var(--text-secondary)]">{text}</pre>
+  );
+  return <div ref={ref} className="cave-md library-preview-md" dangerouslySetInnerHTML={{ __html: html }} />;
+}
 
+// ── Detail cards ─────────────────────────────────────────────────
+
+function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div
-      ref={containerRef}
-      className="cave-md library-preview-md"
-      // eslint-disable-next-line react/no-danger
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
+    <div className="library-field-row">
+      <div className="library-field-label">{label}</div>
+      <div className="library-field-val">{children}</div>
+    </div>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Main component
-// ---------------------------------------------------------------------------
-
-export function LibraryDocPreview({ doc, loading }: Props) {
-  const [copied, setCopied] = useState(false);
-
-  function handleCopyPath() {
-    if (!doc) return;
-    const fullPath = `${process.env.HOME ?? "~"}/.openclaw/workspace/sage/${doc.id}`;
-    navigator.clipboard.writeText(fullPath).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }).catch(() => undefined);
-  }
-
-  if (loading) {
-    return (
-      <div className="library-preview library-preview--empty">
-        <span className="library-preview-empty-text">Loading…</span>
-      </div>
-    );
-  }
-
-  if (!doc) {
-    return (
-      <div className="library-preview library-preview--empty">
-        <Icon name="ph:book-open" width={32} className="library-preview-empty-icon" />
-        <span className="library-preview-empty-text">Select a document to preview</span>
-      </div>
-    );
-  }
-
+function BookmarkDetail({ item }: { item: LibraryBookmark }) {
   return (
     <div className="library-preview">
-      {/* Metadata header */}
+      <div className="library-preview-header">
+        <div className="library-preview-title">{item.title}</div>
+        <div className="library-preview-meta">
+          <span className="library-doclist-tag">{item.domain}</span>
+          <span className="library-preview-sep">·</span>
+          <span className="library-preview-date">{fmtDate(item.savedAt)}</span>
+        </div>
+        {item.tags.length > 0 && (
+          <div className="library-preview-tags">
+            {item.tags.map((t: string) => <span key={t} className="library-doclist-tag">{t}</span>)}
+          </div>
+        )}
+        <div className="library-preview-actions">
+          <OpenBtn url={item.url} />
+          <CopyButton text={item.url} label="Copy URL" />
+        </div>
+      </div>
+      <div className="library-preview-body">
+        {item.notes ? (
+          <FieldRow label="Notes">
+            <div style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6 }}>{item.notes}</div>
+          </FieldRow>
+        ) : (
+          <div style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>No notes saved.</div>
+        )}
+        <FieldRow label="URL">
+          <a href={item.url} target="_blank" rel="noopener noreferrer" className="library-preview-link"
+            onClick={(e) => { e.preventDefault(); openUrl(item.url); }}>{item.url}</a>
+        </FieldRow>
+      </div>
+    </div>
+  );
+}
+
+function statusStyle(status: ReadingStatus): React.CSSProperties {
+  switch (status) {
+    case "reading":       return { background: "color-mix(in oklab, oklch(0.65 0.18 280) 14%, var(--bg-raised))", border: "1px solid color-mix(in oklab, oklch(0.65 0.18 280) 30%, transparent)" };
+    case "done":          return { background: "color-mix(in oklab, #34d399 14%, var(--bg-raised))", border: "1px solid color-mix(in oklab, #34d399 30%, transparent)" };
+    case "abandoned":     return { background: "color-mix(in oklab, #f87171 10%, var(--bg-raised))", border: "1px solid color-mix(in oklab, #f87171 25%, transparent)" };
+    case "want-to-read":  return { background: "var(--bg-raised)", border: "1px solid var(--border-strong)" };
+    default:              return {};
+  }
+}
+
+function ReadingDetail({ item }: { item: LibraryReadingItem }) {
+  return (
+    <div className="library-preview">
+      <div className="library-preview-header">
+        <div className="library-preview-title">{item.title}</div>
+        <div className="library-preview-meta">
+          <span className="library-status-badge" style={statusStyle(item.status)}>
+            {item.status.replace(/-/g, " ")}
+          </span>
+          <span className="library-preview-sep">·</span>
+          <span className="library-doclist-tag">{item.sourceType}</span>
+          {item.author && <><span className="library-preview-sep">·</span><span className="library-preview-date">{item.author}</span></>}
+        </div>
+        {item.tags.length > 0 && (
+          <div className="library-preview-tags">
+            {item.tags.map((t: string) => <span key={t} className="library-doclist-tag">{t}</span>)}
+          </div>
+        )}
+        <div className="library-preview-actions">
+          {item.url && <OpenBtn url={item.url} />}
+        </div>
+      </div>
+      <div className="library-preview-body">
+        {item.status === "reading" && item.progress != null && (
+          <FieldRow label="Progress">
+            <div className="library-progress-bar library-progress-bar--lg">
+              <div className="library-progress-fill" style={{ width: `${item.progress}%` }} />
+            </div>
+            <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>{item.progress}%</div>
+          </FieldRow>
+        )}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8 }}>
+          <FieldRow label="Added">
+            <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>{fmtDate(item.addedAt)}</div>
+          </FieldRow>
+          {item.finishedAt && (
+            <FieldRow label="Finished">
+              <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>{fmtDate(item.finishedAt)}</div>
+            </FieldRow>
+          )}
+        </div>
+        {item.notes && (
+          <FieldRow label="Notes">
+            <div style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6 }}>{item.notes}</div>
+          </FieldRow>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function GitHubDetail({ item }: { item: LibraryGitHubItem }) {
+  const stateColor = item.state === "open" ? "#34d399" : item.state === "merged" ? "oklch(0.65 0.18 280)" : item.state === "closed" ? "#f87171" : "var(--text-muted)";
+  return (
+    <div className="library-preview">
+      <div className="library-preview-header">
+        <div className="library-preview-title">{item.title}</div>
+        <div className="library-preview-meta">
+          <span className="library-doclist-tag">{item.repo}</span>
+          <span className="library-preview-sep">·</span>
+          <span className="library-doclist-tag">{item.kind}</span>
+          {item.number != null && <><span className="library-preview-sep">·</span><span className="library-preview-date">#{item.number}</span></>}
+          {item.state && <><span className="library-preview-sep">·</span><span style={{ color: stateColor, fontSize: 12 }}>● {item.state}</span></>}
+        </div>
+        {item.labels.length > 0 && (
+          <div className="library-preview-tags">
+            {item.labels.map((l: string) => <span key={l} className="library-doclist-tag">{l}</span>)}
+          </div>
+        )}
+        <div className="library-preview-actions">
+          <OpenBtn url={item.url} label="Open on GitHub" />
+          <CopyButton text={item.url} label="Copy URL" />
+        </div>
+      </div>
+      <div className="library-preview-body">
+        <FieldRow label="Saved">
+          <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>{fmtDate(item.savedAt)}</div>
+        </FieldRow>
+        {item.notes && (
+          <FieldRow label="Notes">
+            <div style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6 }}>{item.notes}</div>
+          </FieldRow>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function DocDetail({ doc }: { doc: LibraryDocBody }) {
+  return (
+    <div className="library-preview">
       <div className="library-preview-header">
         <div className="library-preview-title">{doc.title}</div>
         <div className="library-preview-meta">
@@ -121,45 +251,50 @@ export function LibraryDocPreview({ doc, loading }: Props) {
           <span className="library-preview-sep">·</span>
           <span className="library-preview-date">{fmtDate(doc.modifiedAt)}</span>
           {doc.tags.length > 0 && (
-            <>
-              <span className="library-preview-sep">·</span>
-              <div className="library-preview-tags">
-                {doc.tags.map((tag) => (
-                  <span key={tag} className="library-doclist-tag">{tag}</span>
-                ))}
-              </div>
-            </>
+            <><span className="library-preview-sep">·</span>
+            <div className="library-preview-tags">
+              {doc.tags.map((t: string) => <span key={t} className="library-doclist-tag">{t}</span>)}
+            </div></>
           )}
         </div>
-        {Object.keys(doc.frontmatter).filter((k) => !["tags", "tag"].includes(k)).length > 0 && (
+        {Object.keys(doc.frontmatter).filter((k) => !["tags","tag"].includes(k)).length > 0 && (
           <div className="library-preview-frontmatter">
-            {Object.entries(doc.frontmatter)
-              .filter(([k]) => !["tags", "tag"].includes(k))
-              .map(([k, v]) => (
-                <span key={k} className="library-preview-fm-entry">
-                  <span className="library-preview-fm-key">{k}:</span>{" "}
-                  <span className="library-preview-fm-val">{v}</span>
-                </span>
-              ))}
+            {Object.entries(doc.frontmatter).filter(([k]) => !["tags","tag"].includes(k)).map(([k, v]) => (
+              <span key={k} className="library-preview-fm-entry">
+                <span className="library-preview-fm-key">{k}:</span>{" "}
+                <span className="library-preview-fm-val">{v}</span>
+              </span>
+            ))}
           </div>
         )}
-        <div className="library-preview-actions">
-          <button
-            type="button"
-            className="library-preview-action-btn"
-            onClick={handleCopyPath}
-            title="Copy full path to clipboard"
-          >
-            <Icon name={copied ? "ph:check" : "ph:copy"} width={13} />
-            <span>{copied ? "Copied!" : "Open in editor"}</span>
-          </button>
-        </div>
       </div>
-
-      {/* Rendered body */}
       <div className="library-preview-body">
         <RenderedMarkdown text={doc.body} />
       </div>
     </div>
   );
+}
+
+// ── Dispatcher ───────────────────────────────────────────────────
+export function LibraryDocPreview({ selected, loading }: Props) {
+  if (loading) {
+    return (
+      <div className="library-preview library-preview--empty">
+        <span className="library-preview-empty-text">Loading…</span>
+      </div>
+    );
+  }
+  if (!selected) {
+    return (
+      <div className="library-preview library-preview--empty">
+        <Icon name="ph:book-open" width={32} className="library-preview-empty-icon" />
+        <span className="library-preview-empty-text">Select a document to preview</span>
+      </div>
+    );
+  }
+  if (selected.kind === "doc")      return <DocDetail doc={selected.doc} />;
+  if (selected.kind === "bookmark") return <BookmarkDetail item={selected.item} />;
+  if (selected.kind === "reading")  return <ReadingDetail item={selected.item} />;
+  if (selected.kind === "github")   return <GitHubDetail item={selected.item} />;
+  return null;
 }
