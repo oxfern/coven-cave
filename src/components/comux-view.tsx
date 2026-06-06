@@ -366,14 +366,14 @@ export function ComuxView({ sessions: daemonSessions, onOpenSession, onNewChat }
                 {projects.length}
               </span>
             </div>
-            <div className="space-y-px">
+            <div className="space-y-px px-1">
               {projects.map((project) => (
                 <button
                   key={project.root}
                   type="button"
                   onClick={() => selectProject(project)}
                   title={project.root}
-                  className={`flex w-full items-center gap-2 px-3 py-[5px] text-left transition-colors ${
+                  className={`flex w-full items-center gap-2 rounded-[5px] px-2 py-[5px] text-left text-[12px] transition-colors ${
                     selectedProject?.root === project.root
                       ? "bg-[var(--accent-presence)] text-white"
                       : "text-[var(--text-primary)] hover:bg-[var(--bg-raised)]"
