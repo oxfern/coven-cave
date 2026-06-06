@@ -27,6 +27,12 @@ name: Release
 #   APPLE_API_KEY              the API key id (e.g. 3822D8Z5XFI0).
 #   APPLE_API_KEY_BASE64       base64-encoded contents of the AuthKey_*.p8
 #                              private key.
+#   APPLE_ID                   Apple Developer account email. Used as the
+#                              preferred notarytool auth path because current
+#                              GitHub macOS runners crash in API-key JWT
+#                              generation.
+#   APPLE_PASSWORD             app-specific password for APPLE_ID.
+#   APPLE_TEAM_ID              Developer Team ID.
 #
 # The macOS leg intentionally uses scripts/release.sh instead of tauri-action
 # because it assembles + notarizes the DMG in a more reliable way for this
@@ -224,6 +230,9 @@ jobs:
           SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
           APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           set -euo pipefail
           bash scripts/release.sh "$RELEASE_VERSION"

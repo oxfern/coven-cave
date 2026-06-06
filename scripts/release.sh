@@ -13,6 +13,9 @@ SIGNING_IDENTITY="${SIGNING_IDENTITY:-EE732DF3F48D7535561AF54D3FFFC4B44DAF3E7F}"
 NOTARY_KEY_FILE="${NOTARY_KEY_FILE:-${APPLE_API_KEY_PATH:-$HOME/.appstoreconnect/private_keys/AuthKey_3822D8Z5XFI0.p8}}"
 NOTARY_KEY_ID="${NOTARY_KEY_ID:-${APPLE_API_KEY:-3822D8Z5XFI0}}"
 NOTARY_ISSUER="${NOTARY_ISSUER:-${APPLE_API_ISSUER:-}}"
+NOTARY_APPLE_ID="${NOTARY_APPLE_ID:-${APPLE_ID:-}}"
+NOTARY_APPLE_PASSWORD="${NOTARY_APPLE_PASSWORD:-${APPLE_PASSWORD:-}}"
+NOTARY_TEAM_ID="${NOTARY_TEAM_ID:-${APPLE_TEAM_ID:-}}"
 
 require_tool() {
   command -v "$1" >/dev/null 2>&1 || { echo "Missing required tool: $1" >&2; exit 1; }
@@ -33,12 +36,23 @@ require_tool hdiutil
 require_tool spctl
 require_tool shasum
 require_tool openssl
-require_file "$NOTARY_KEY_FILE"
-require_value "$NOTARY_KEY_ID" "NOTARY_KEY_ID / APPLE_API_KEY"
-require_value "$NOTARY_ISSUER" "NOTARY_ISSUER / APPLE_API_ISSUER"
 
-echo "==> Validating App Store Connect API key"
-openssl pkey -in "$NOTARY_KEY_FILE" -noout -check >/dev/null
+if [ -n "$NOTARY_APPLE_ID" ] && [ -n "$NOTARY_APPLE_PASSWORD" ] && [ -n "$NOTARY_TEAM_ID" ]; then
+  NOTARY_AUTH_MODE="apple-id"
+elif [ -n "$NOTARY_KEY_FILE" ] && [ -n "$NOTARY_KEY_ID" ] && [ -n "$NOTARY_ISSUER" ]; then
+  NOTARY_AUTH_MODE="api-key"
+else
+  echo "Missing notarization credentials. Provide APPLE_ID, APPLE_PASSWORD, and APPLE_TEAM_ID; or APPLE_API_KEY_PATH, APPLE_API_KEY, and APPLE_API_ISSUER." >&2
+  exit 1
+fi
+
+if [ "$NOTARY_AUTH_MODE" = "api-key" ]; then
+  require_file "$NOTARY_KEY_FILE"
+  echo "==> Validating App Store Connect API key"
+  openssl pkey -in "$NOTARY_KEY_FILE" -noout -check >/dev/null
+fi
+
+echo "==> Using notarytool auth mode: $NOTARY_AUTH_MODE"
 echo "==> Using notarytool: $(xcrun --find notarytool)"
 xcrun notarytool --version
 
@@ -57,9 +71,15 @@ env \
   -u APPLE_API_KEY \
   -u APPLE_API_KEY_PATH \
   -u APPLE_API_ISSUER \
+  -u APPLE_ID \
+  -u APPLE_PASSWORD \
+  -u APPLE_TEAM_ID \
   -u NOTARY_KEY_FILE \
   -u NOTARY_KEY_ID \
   -u NOTARY_ISSUER \
+  -u NOTARY_APPLE_ID \
+  -u NOTARY_APPLE_PASSWORD \
+  -u NOTARY_TEAM_ID \
   APPLE_SIGNING_IDENTITY="$SIGNING_IDENTITY" \
   pnpm tauri build --bundles app
 
@@ -107,13 +127,23 @@ ln -s /Applications "$DMG_STAGE/Applications"
 hdiutil create -volname "${APP_NAME}" -srcfolder "$DMG_STAGE" -ov -format UDZO "$DMG_PATH" >/dev/null
 
 echo "==> Submitting DMG for notarization"
-xcrun notarytool submit "$DMG_PATH" \
-  --key "$NOTARY_KEY_FILE" \
-  --key-id "$NOTARY_KEY_ID" \
-  --issuer "$NOTARY_ISSUER" \
-  --no-s3-acceleration \
-  --verbose \
-  --wait
+if [ "$NOTARY_AUTH_MODE" = "apple-id" ]; then
+  xcrun notarytool submit "$DMG_PATH" \
+    --apple-id "$NOTARY_APPLE_ID" \
+    --password "$NOTARY_APPLE_PASSWORD" \
+    --team-id "$NOTARY_TEAM_ID" \
+    --no-s3-acceleration \
+    --verbose \
+    --wait
+else
+  xcrun notarytool submit "$DMG_PATH" \
+    --key "$NOTARY_KEY_FILE" \
+    --key-id "$NOTARY_KEY_ID" \
+    --issuer "$NOTARY_ISSUER" \
+    --no-s3-acceleration \
+    --verbose \
+    --wait
+fi
 
 echo "==> Stapling notarization ticket"
 xcrun stapler staple "$DMG_PATH"
