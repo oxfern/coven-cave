@@ -69,3 +69,6 @@ credentials/
 # Git worktrees
 .worktrees/
 .env.local
+
+# npm lockfile — project uses pnpm
+package-lock.json

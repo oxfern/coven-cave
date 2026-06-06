@@ -38,5 +38,6 @@
     "@types/three": "^0.184.1",
     "tailwindcss": "^4",
     "typescript": "^5"
-  }
+  },
+  "packageManager": "pnpm@10.11.1"
 }
