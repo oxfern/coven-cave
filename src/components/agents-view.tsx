@@ -201,6 +201,7 @@ export function AgentsView({
   const [query, setQuery] = useState("");
   const [showClosed, setShowClosed] = useState(false);
   const [groupBy, setGroupBy] = useState<"familiar" | "status" | "date" | "none">("familiar");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [startingDaemon, setStartingDaemon] = useState(false);
   const [daemonStartError, setDaemonStartError] = useState<string | null>(null);
 
@@ -324,6 +325,48 @@ export function AgentsView({
     }
     return [...map.entries()].map(([label, sessions]) => ({ label, sessions }));
   }, [filteredSessions, groupBy, famById]);
+
+  // Clear selection when filter/group changes
+  useEffect(() => { setSelectedIds(new Set()); }, [groupBy, showClosed, query]);
+
+  const allVisibleIds = useMemo(
+    () => new Set(filteredSessions.map((s) => s.id)),
+    [filteredSessions],
+  );
+  const allSelected = allVisibleIds.size > 0 && [...allVisibleIds].every((id) => selectedIds.has(id));
+  const someSelected = selectedIds.size > 0;
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+  function toggleSelectAll() {
+    if (allSelected) setSelectedIds(new Set());
+    else setSelectedIds(new Set(allVisibleIds));
+  }
+  async function bulkArchive() {
+    await Promise.all(
+      [...selectedIds].map((id) =>
+        fetch(`/api/sessions/${id}`, {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ archived: true }),
+        }),
+      ),
+    );
+    setSelectedIds(new Set());
+    onSessionStarted();
+  }
+  async function bulkDelete() {
+    if (!window.confirm(`Sacrifice ${selectedIds.size} session${selectedIds.size === 1 ? "" : "s"}? This cannot be undone.`)) return;
+    await Promise.all([...selectedIds].map((id) => fetch(`/api/sessions/${id}`, { method: "DELETE" })));
+    setSelectedIds(new Set());
+    onSessionStarted();
+  }
 
   function startConversation(familiarId?: string | null) {
     if (familiarId) onSetActiveFamiliar(familiarId);
@@ -533,6 +576,40 @@ export function AgentsView({
             )}
 
             {/* Sessions table */}
+            {/* Bulk action bar — shown when any rows selected */}
+            {someSelected && (
+              <div className="flex shrink-0 items-center gap-2 border-b border-[var(--border-hairline)] bg-[var(--bg-elevated)] px-4 py-1.5 text-[11px]">
+                <span className="text-[var(--text-secondary)]">
+                  {selectedIds.size} selected
+                </span>
+                <div className="ml-auto flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => void bulkArchive()}
+                    className="inline-flex h-6 items-center gap-1 rounded border border-[var(--border-hairline)] px-2 text-[var(--text-secondary)] hover:bg-[var(--bg-raised)] hover:text-[var(--text-primary)]"
+                  >
+                    <Icon name="ph:archive" width={11} />
+                    Archive
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void bulkDelete()}
+                    className="inline-flex h-6 items-center gap-1 rounded border border-rose-500/30 bg-rose-500/10 px-2 text-rose-300 hover:bg-rose-500/20"
+                  >
+                    <Icon name="ph:trash" width={11} />
+                    Delete
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedIds(new Set())}
+                    className="ml-1 rounded p-0.5 text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
+                    title="Clear selection"
+                  >
+                    <Icon name="ph:x" width={11} />
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="min-h-0 flex-1 overflow-y-auto">
               {filteredSessions.length === 0 ? (
                 <div className="flex h-full min-h-[180px] flex-col items-center justify-center gap-3 text-center">
@@ -550,6 +627,16 @@ export function AgentsView({
                 <table className="w-full text-[11px]">
                   <thead className="sticky top-0 border-b border-[var(--border-hairline)] bg-[var(--bg-canvas)] text-[10px] uppercase tracking-wide text-[var(--text-muted)]">
                     <tr>
+                      <th className="w-8 pl-3 py-1.5">
+                        <input
+                          type="checkbox"
+                          checked={allSelected}
+                          ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected; }}
+                          onChange={toggleSelectAll}
+                          className="h-3.5 w-3.5 cursor-pointer accent-[var(--accent-presence)]"
+                          aria-label="Select all"
+                        />
+                      </th>
                       <th className="px-3 py-1.5 text-left font-medium w-[120px]">Familiar</th>
                       <th className="px-3 py-1.5 text-left font-medium">Title</th>
                       <th className="px-3 py-1.5 text-left font-medium w-[80px]">Status</th>
@@ -565,7 +652,7 @@ export function AgentsView({
                         {label !== null && (
                           <tr key={`group-${label}`} className="bg-[var(--bg-canvas)]">
                             <td
-                              colSpan={7}
+                              colSpan={8}
                               className="px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] border-b border-[var(--border-hairline)]"
                             >
                               {label}
@@ -586,6 +673,20 @@ export function AgentsView({
                               ].join(" ")}
                               onClick={() => openConversation(session)}
                             >
+                              {/* Checkbox */}
+                              <td
+                                className="w-8 pl-3 py-2"
+                                onClick={(e) => { e.stopPropagation(); toggleSelect(session.id); }}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={selectedIds.has(session.id)}
+                                  onChange={() => toggleSelect(session.id)}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="h-3.5 w-3.5 cursor-pointer accent-[var(--accent-presence)]"
+                                  aria-label="Select session"
+                                />
+                              </td>
                               {/* Familiar */}
                               <td className="px-3 py-2 w-[120px] max-w-[120px]">
                                 <div className="flex items-center gap-1.5 truncate">
