@@ -94,6 +94,12 @@ export const ICON_NAMES = [
   "ph:brain-bold",
   "ph:user",
   "ph:plus",
+  "ph:toggle-left-bold",
+  "ph:toggle-right-bold",
+  "ph:rocket-launch-bold",
+  "ph:info-bold",
+  "ph:x-bold",
+  "ph:tag-bold",
 ] as const;
 
 export type IconName = (typeof ICON_NAMES)[number];
