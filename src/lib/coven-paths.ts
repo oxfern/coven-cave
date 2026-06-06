@@ -37,7 +37,7 @@ export function parseFamiliarWorkspaces(raw: string): Map<string, string> {
     const id = readTomlString(block, "id");
     const workspace = readTomlString(block, "workspace");
     if (!id || !workspace) continue;
-    workspaces.set(id, path.resolve(expandHome(workspace)));
+    workspaces.set(id, path.resolve(/* turbopackIgnore: true */ expandHome(workspace)));
   }
   return workspaces;
 }
