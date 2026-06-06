@@ -3,18 +3,12 @@
 /**
  * HomeComposer — universal intent surface; the Cave's cold-start view.
  *
- * Layout:
- *   Headline  "What's the Coven up to?"  (Fredoka 600)
- *   Context chips row: familiar selector · destination selector · workspace chip
- *   Composer textarea with placeholder "Do anything…", ⌘↵ submit, ↑ history
- *   Suggestions row from recent sessions + inbox items (real data; seeds 3 when empty)
- *
- * Destinations:
- *   Chat      — fully wired: POST /api/chat/send, then navigate to chat session
- *   Board     — wired: POST /api/board, then navigate to Board mode
- *   Reminder  — wired: POST /api/inbox (kind=reminder), then navigate to Inbox
- *   Inbox     — navigates to Inbox mode (text becomes an inbox note)
- *   Call      — stub: toast "Call scheduling coming soon"
+ * Design goals:
+ *   - No agent chip grid up top — clean hero → composer flow
+ *   - Familiar selector inside the composer action bar (icon + name, minimal)
+ *   - Destination pills small + integrated, not a separate header row
+ *   - Send button always has a visible arrow icon
+ *   - Suggestions as compact horizontal chips, not full-width rows
  */
 
 import {
@@ -30,11 +24,8 @@ import { FamiliarGlyph } from "@/components/familiar-glyph";
 import { resolveFamiliarGlyph } from "@/lib/familiar-glyph";
 import { useGlyphOverrides } from "@/lib/cave-glyph-overrides";
 import { Icon, type IconName } from "@/lib/icon";
-import { CovenFloorMini } from "@/components/coven-floor-mini";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 export type Destination = "chat" | "board" | "reminder" | "inbox" | "call";
 
@@ -56,19 +47,13 @@ type Props = {
   onToast: (msg: string) => void;
 };
 
-// ---------------------------------------------------------------------------
-// Seed suggestions (used when no real data is available)
-// ---------------------------------------------------------------------------
-
 const SEED_SUGGESTIONS = [
   "Summarise what my active familiar has been working on today",
   "Create a board card for the next app polish pass",
   "Remind me to review PRs tomorrow at 10 AM",
 ];
 
-// ---------------------------------------------------------------------------
-// HomeComposer
-// ---------------------------------------------------------------------------
+// ─── HomeComposer ─────────────────────────────────────────────────────────────
 
 export function HomeComposer({
   familiars,
@@ -87,12 +72,11 @@ export function HomeComposer({
   const [history, setHistory] = useState<string[]>([]);
   const [historyIdx, setHistoryIdx] = useState<number>(-1);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const glyphOverrides = useGlyphOverrides();
 
-  // Sync activeFamiliarId → local when parent changes (e.g. user clicks strip)
+  // Sync activeFamiliarId → local when parent changes
   useEffect(() => {
-    if (activeFamiliarId && !familiarId) {
-      setFamiliarId(activeFamiliarId);
-    }
+    if (activeFamiliarId && !familiarId) setFamiliarId(activeFamiliarId);
   }, [activeFamiliarId, familiarId]);
 
   // Focus on mount
@@ -100,40 +84,27 @@ export function HomeComposer({
     setTimeout(() => textareaRef.current?.focus(), 80);
   }, []);
 
-  // Build suggestions: last 3 session titles + latest pending inbox items (up to 3 total)
+  // Build suggestions from recent sessions + inbox
   useEffect(() => {
     void (async () => {
       const lines: string[] = [];
-
-      // Recent session titles
       const recentTitles = sessions
         .filter((s) => !s.archived_at && s.title)
         .sort((a, b) => (b.updated_at ?? "").localeCompare(a.updated_at ?? ""))
         .slice(0, 2)
         .map((s) => `Continue: ${s.title}`);
       lines.push(...recentTitles);
-
-      // Pending inbox items
       try {
         const res = await fetch("/api/inbox?status=pending", { cache: "no-store" });
         if (res.ok) {
           const json = (await res.json()) as { ok: boolean; items: InboxItem[] };
-          if (json.ok) {
-            const inbox = json.items.slice(0, 3 - lines.length).map((i) => i.title);
-            lines.push(...inbox);
-          }
+          if (json.ok) lines.push(...json.items.slice(0, 3 - lines.length).map((i) => i.title));
         }
-      } catch {
-        // silently skip inbox fetch failures
-      }
-
-      // Fill with seeds if not enough
+      } catch { /* silent */ }
       while (lines.length < 3) {
         const seed = SEED_SUGGESTIONS[lines.length % SEED_SUGGESTIONS.length];
-        if (seed && !lines.includes(seed)) lines.push(seed);
-        else break;
+        if (seed && !lines.includes(seed)) lines.push(seed); else break;
       }
-
       setSuggestions(lines.slice(0, 3));
     })();
   }, [sessions]);
@@ -148,13 +119,11 @@ export function HomeComposer({
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
-      // ⌘↵ or Ctrl+↵ → submit
       if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         void handleSubmit();
         return;
       }
-      // ↑ history navigation (only when at start of input)
       if (e.key === "ArrowUp" && text === "" && history.length > 0) {
         e.preventDefault();
         const idx = historyIdx < history.length - 1 ? historyIdx + 1 : historyIdx;
@@ -162,7 +131,6 @@ export function HomeComposer({
         setText(history[history.length - 1 - idx] ?? "");
         return;
       }
-      // ↓ history navigation
       if (e.key === "ArrowDown" && historyIdx > 0) {
         e.preventDefault();
         const idx = historyIdx - 1;
@@ -183,32 +151,24 @@ export function HomeComposer({
   const handleSubmit = useCallback(async () => {
     const prompt = text.trim();
     if (!prompt || sending) return;
-
     setHistory((prev) => [...prev, prompt]);
     setHistoryIdx(-1);
     setSending(true);
-
     try {
       switch (destination) {
         case "chat": {
           const fid = familiarId ?? familiars[0]?.id;
-          if (!fid) {
-            onToast("No familiar selected — add one in Settings.");
-            break;
-          }
+          if (!fid) { onToast("No familiar selected — add one in Settings."); break; }
           const res = await fetch("/api/chat/send", {
             method: "POST",
             headers: { "content-type": "application/json" },
             body: JSON.stringify({ familiarId: fid, prompt }),
           });
           if (!res.ok) {
-            const err = (await res
-              .json()
-              .catch(() => ({ error: "send failed" }))) as { error?: string };
+            const err = (await res.json().catch(() => ({ error: "send failed" }))) as { error?: string };
             onToast(err.error ?? "Chat send failed.");
             break;
           }
-          // Stream the SSE response to capture the sessionId
           let sessionId: string | null = null;
           if (res.body) {
             const reader = res.body.getReader();
@@ -229,86 +189,51 @@ export function HomeComposer({
                       reader.cancel().catch(() => undefined);
                       break outer;
                     }
-                  } catch { /* malformed SSE chunk */ }
+                  } catch { /* malformed SSE */ }
                 }
               }
             }
           }
-          if (sessionId) {
-            setText("");
-            onNavigateToChat(sessionId, fid);
-          } else {
-            onToast("Chat started but session ID not received — check Chats.");
-            setText("");
-          }
+          if (sessionId) { setText(""); onNavigateToChat(sessionId, fid); }
+          else { onToast("Chat started but session ID not received — check Chats."); setText(""); }
           break;
         }
-
         case "board": {
           const res = await fetch("/api/board", {
             method: "POST",
             headers: { "content-type": "application/json" },
-            body: JSON.stringify({
-              title: prompt,
-              familiarId: familiarId ?? null,
-            }),
+            body: JSON.stringify({ title: prompt, familiarId: familiarId ?? null }),
           });
           const json = (await res.json().catch(() => ({ ok: false }))) as { ok: boolean };
-          if (json.ok) {
-            setText("");
-            onNavigateToBoard();
-          } else {
-            onToast("Board card creation failed.");
-          }
+          if (json.ok) { setText(""); onNavigateToBoard(); }
+          else onToast("Board card creation failed.");
           break;
         }
-
         case "reminder": {
           const res = await fetch("/api/inbox", {
             method: "POST",
             headers: { "content-type": "application/json" },
-            body: JSON.stringify({
-              kind: "reminder",
-              title: prompt,
-              source: "user",
-              familiarId: familiarId ?? null,
-            }),
+            body: JSON.stringify({ kind: "reminder", title: prompt, source: "user", familiarId: familiarId ?? null }),
           });
           const json = (await res.json().catch(() => ({ ok: false }))) as { ok: boolean };
-          if (json.ok) {
-            setText("");
-            onNavigateToInbox();
-          } else {
-            onToast("Reminder creation failed.");
-          }
+          if (json.ok) { setText(""); onNavigateToInbox(); }
+          else onToast("Reminder creation failed.");
           break;
         }
-
         case "inbox": {
           const res = await fetch("/api/inbox", {
             method: "POST",
             headers: { "content-type": "application/json" },
-            body: JSON.stringify({
-              kind: "note",
-              title: prompt,
-              source: "user",
-              familiarId: familiarId ?? null,
-            }),
+            body: JSON.stringify({ kind: "note", title: prompt, source: "user", familiarId: familiarId ?? null }),
           });
           const json = (await res.json().catch(() => ({ ok: false }))) as { ok: boolean };
-          if (json.ok) {
-            setText("");
-            onNavigateToInbox();
-          } else {
-            onToast("Inbox note creation failed.");
-          }
+          if (json.ok) { setText(""); onNavigateToInbox(); }
+          else onToast("Inbox note creation failed.");
           break;
         }
-
-        case "call": {
+        case "call":
           onToast("Call scheduling coming soon.");
           break;
-        }
       }
     } finally {
       setSending(false);
@@ -317,132 +242,102 @@ export function HomeComposer({
   }, [text, destination, familiarId, familiars, sending]);
 
   const active = familiars.find((f) => f.id === familiarId) ?? familiars[0] ?? null;
-  const glyphOverrides = useGlyphOverrides();
 
   return (
     <div className="home-composer-root">
-      {/* Headline */}
-      <h1 className="home-composer-headline">
-        What&apos;s the Coven up to?
-      </h1>
 
-      {/* Coven Floor mini — ambient familiar status */}
-      <CovenFloorMini onSelectFamiliar={(id) => setFamiliarId(id)} />
+      {/* Headline */}
+      <div className="home-composer-hero">
+        <h1 className="home-composer-headline">What can the Coven do?</h1>
+        <p className="home-composer-sub">Choose a familiar, pick a destination, and go.</p>
+      </div>
 
       {/* Composer card */}
       <div className="home-composer-card">
-        {/* Context chips */}
-        <div className="home-composer-chips">
-          {/* Familiar chip */}
-          <div className="hc-chip-group">
-            <label className="hc-chip-label" htmlFor="hc-familiar-select">With</label>
-            {active ? (
-              <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-xs" aria-hidden>
-                <FamiliarGlyph glyph={resolveFamiliarGlyph(active, glyphOverrides)} size="sm" />
-              </span>
-            ) : null}
-            <select
-              id="hc-familiar-select"
-              className="hc-chip-select"
-              value={familiarId ?? ""}
-              onChange={(e) => setFamiliarId(e.target.value || null)}
-            >
-              {familiars.length === 0 && (
-                <option value="">No familiars</option>
-              )}
-              {familiars.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.display_name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Destination chip */}
-          <div className="hc-chip-group">
-            <label className="hc-chip-label">To</label>
-            <div className="hc-destination-pills">
-              {DESTINATIONS.map((d) => (
-                <button
-                  key={d.id}
-                  type="button"
-                  className={`hc-dest-pill${destination === d.id ? " hc-dest-pill--active" : ""}`}
-                  onClick={() => setDestination(d.id)}
-                  title={d.label}
-                >
-                  <Icon name={d.icon} width={13} aria-hidden />
-                  <span>{d.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Workspace chip (informational) */}
-          {active && (
-            <div className="hc-chip-workspace">
-              <span className="hc-chip-label">Active</span>
-              <span className="hc-chip-value">{active.display_name}</span>
-              {active.role && (
-                <span className="hc-chip-role">{active.role}</span>
-              )}
-            </div>
-          )}
-        </div>
 
         {/* Textarea */}
-        <div className="hc-composer-body">
-          <textarea
-            ref={textareaRef}
-            className="hc-textarea"
-            placeholder="Do anything…"
-            rows={2}
-            value={text}
-            onChange={(e) => {
-              setText(e.target.value);
-              autoGrow();
-            }}
-            onKeyDown={handleKeyDown}
-            disabled={sending}
-          />
-          <div className="hc-composer-footer">
-            <span className="hc-hint">⌘↵ send · ↑ history</span>
-            <button
-              type="button"
-              className={`hc-send-btn${sending ? " hc-send-btn--sending" : ""}${!text.trim() ? " hc-send-btn--empty" : ""}`}
-              onClick={() => void handleSubmit()}
-              disabled={!text.trim() || sending}
-              aria-label="Send"
+        <textarea
+          ref={textareaRef}
+          className="hc-textarea"
+          placeholder="Ask anything, start a task, set a reminder…"
+          rows={3}
+          value={text}
+          onChange={(e) => { setText(e.target.value); autoGrow(); }}
+          onKeyDown={handleKeyDown}
+          disabled={sending}
+        />
+
+        {/* Action bar */}
+        <div className="hc-action-bar">
+
+          {/* Left: familiar selector */}
+          <div className="hc-familiar-selector">
+            {active && (
+              <span className="hc-familiar-glyph" aria-hidden>
+                <FamiliarGlyph glyph={resolveFamiliarGlyph(active, glyphOverrides)} size="sm" />
+              </span>
+            )}
+            <select
+              className="hc-familiar-select"
+              value={familiarId ?? ""}
+              onChange={(e) => setFamiliarId(e.target.value || null)}
+              aria-label="Select familiar"
             >
-              {sending ? (
-                <span className="hc-spinner" />
-              ) : (
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                </svg>
-              )}
-            </button>
+              {familiars.length === 0 && <option value="">No familiars</option>}
+              {familiars.map((f) => (
+                <option key={f.id} value={f.id}>{f.display_name}</option>
+              ))}
+            </select>
+            <Icon name="ph:caret-down" width={10} className="hc-select-caret" aria-hidden />
           </div>
+
+          {/* Center: destination pills */}
+          <div className="hc-dest-pills">
+            {DESTINATIONS.map((d) => (
+              <button
+                key={d.id}
+                type="button"
+                className={`hc-dest-pill${destination === d.id ? " active" : ""}`}
+                onClick={() => setDestination(d.id)}
+                title={d.label}
+              >
+                <Icon name={d.icon} width={12} aria-hidden />
+                <span className="hc-dest-label">{d.label}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Right: send */}
+          <button
+            type="button"
+            className={`hc-send-btn${sending ? " sending" : ""}${!text.trim() ? " empty" : ""}`}
+            onClick={() => void handleSubmit()}
+            disabled={!text.trim() || sending}
+            aria-label="Send"
+          >
+            {sending ? (
+              <span className="hc-spinner" />
+            ) : (
+              <Icon name="ph:arrow-up-bold" width={14} aria-hidden />
+            )}
+          </button>
         </div>
       </div>
 
       {/* Suggestions */}
       {suggestions.length > 0 && (
         <div className="home-composer-suggestions">
-          <div className="hc-suggestions-label">Suggestions</div>
-          <div className="hc-suggestions-list">
-            {suggestions.map((s, i) => (
-              <button
-                key={i}
-                type="button"
-                className="hc-suggestion-pill"
-                onClick={() => {
-                  setText(s);
-                  setTimeout(() => textareaRef.current?.focus(), 0);
-                }}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
+          {suggestions.map((s, i) => (
+            <button
+              key={i}
+              type="button"
+              className="hc-suggestion"
+              onClick={() => { setText(s); setTimeout(() => textareaRef.current?.focus(), 0); }}
+            >
+              <Icon name="ph:arrow-bend-up-right" width={11} className="hc-suggestion-icon" aria-hidden />
+              <span>{s}</span>
+            </button>
+          ))}
         </div>
       )}
     </div>

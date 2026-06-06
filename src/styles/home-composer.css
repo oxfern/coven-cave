@@ -1,9 +1,9 @@
-/* home-composer.css — universal intent surface styles.
- * Uses existing --bg-*, --text-*, --border-* custom properties.
- * Mood C accent via oklab color-mix (no new tokens introduced).
+/* home-composer.css — sleek universal intent surface.
+ * One composer card with integrated action bar.
+ * No external chip rows. No uppercase labels in the UI.
  */
 
-/* ── Root layout ─────────────────────────────────────────────────────────── */
+/* ── Root ────────────────────────────────────────────────────────────────── */
 .home-composer-root {
   display: flex;
   flex-direction: column;
@@ -11,141 +11,53 @@
   justify-content: center;
   flex: 1;
   min-height: 0;
-  padding: 32px 32px 48px;
-  gap: 20px;
+  padding: 40px 32px 56px;
+  gap: 16px;
   overflow-y: auto;
 }
 
-/* ── Headline ────────────────────────────────────────────────────────────── */
+/* ── Hero ────────────────────────────────────────────────────────────────── */
+.home-composer-hero {
+  text-align: center;
+  margin-bottom: 8px;
+}
+
 .home-composer-headline {
   font-family: var(--font-fredoka, "Fredoka", system-ui, sans-serif);
   font-weight: 600;
-  font-size: clamp(22px, 3.5vw, 36px);
-  line-height: 1.15;
-  text-align: center;
+  font-size: clamp(24px, 3.5vw, 40px);
+  line-height: 1.1;
   color: var(--text-primary);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
+  margin: 0 0 6px;
+}
+
+.home-composer-sub {
+  font-size: 13px;
+  color: var(--text-muted);
   margin: 0;
+  letter-spacing: -0.01em;
 }
 
 /* ── Composer card ───────────────────────────────────────────────────────── */
 .home-composer-card {
   width: 100%;
-  max-width: 600px;
+  max-width: 620px;
   background: var(--bg-raised);
   border: 1px solid var(--border-strong);
-  border-radius: 14px;
+  border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18), 0 1px 0 rgba(255,255,255,0.04) inset;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
-/* ── Context chips ───────────────────────────────────────────────────────── */
-.home-composer-chips {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 14px 8px;
-  border-bottom: 1px solid var(--border-hairline);
-  flex-wrap: wrap;
-}
-
-.hc-chip-group {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.hc-chip-label {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  user-select: none;
-}
-
-.hc-chip-select {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-primary);
-  background: color-mix(in oklab, oklch(0.65 0.18 280) 10%, var(--bg-base));
-  border: 1px solid color-mix(in oklab, oklch(0.65 0.18 280) 28%, transparent);
-  border-radius: 8px;
-  padding: 3px 8px;
-  cursor: pointer;
-  outline: none;
-  appearance: none;
-  -webkit-appearance: none;
-}
-
-.hc-chip-select:focus {
-  border-color: oklch(0.65 0.18 280);
-}
-
-/* Destination pills */
-.hc-destination-pills {
-  display: flex;
-  gap: 4px;
-}
-
-.hc-dest-pill {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 8px;
-  border: 1px solid var(--border-hairline);
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: background 0.1s ease, border-color 0.1s ease, color 0.1s ease;
-  white-space: nowrap;
-}
-
-.hc-dest-pill:hover {
-  background: var(--bg-raised);
-  color: var(--text-secondary);
-}
-
-.hc-dest-pill--active {
-  background: color-mix(in oklab, oklch(0.65 0.18 280) 15%, transparent);
-  border-color: oklch(0.65 0.18 280 / 60%);
-  color: var(--text-primary);
-  font-weight: 500;
-}
-
-/* Workspace chip */
-.hc-chip-workspace {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: auto;
-}
-
-.hc-chip-value {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.hc-chip-role {
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: oklch(0.65 0.18 280);
-  background: color-mix(in oklab, oklch(0.65 0.18 280) 12%, transparent);
-  border-radius: 4px;
-  padding: 1px 5px;
+.home-composer-card:focus-within {
+  border-color: color-mix(in oklab, oklch(0.65 0.18 280) 50%, var(--border-strong));
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.22),
+              0 0 0 1px color-mix(in oklab, oklch(0.65 0.18 280) 20%, transparent);
 }
 
 /* ── Textarea ────────────────────────────────────────────────────────────── */
-.hc-composer-body {
-  display: flex;
-  flex-direction: column;
-}
-
 .hc-textarea {
   width: 100%;
   resize: none;
@@ -154,76 +66,161 @@
   outline: none;
   color: var(--text-primary);
   font-size: 15px;
-  line-height: 1.55;
-  padding: 14px 14px 8px;
+  line-height: 1.6;
+  padding: 18px 18px 10px;
   font-family: inherit;
-  min-height: 64px;
-  max-height: 200px;
+  min-height: 72px;
+  max-height: 240px;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--border-hairline) transparent;
+  display: block;
 }
 
 .hc-textarea::placeholder {
   color: var(--text-muted);
+  opacity: 0.7;
 }
 
 .hc-textarea:disabled {
   opacity: 0.5;
 }
 
-/* Footer row */
-.hc-composer-footer {
+/* ── Action bar ──────────────────────────────────────────────────────────── */
+.hc-action-bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 4px 10px 10px 14px;
   gap: 8px;
+  padding: 8px 10px 10px 12px;
+  border-top: 1px solid var(--border-hairline);
 }
 
-.hc-hint {
-  font-size: 10px;
+/* ── Familiar selector ───────────────────────────────────────────────────── */
+.hc-familiar-selector {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: color-mix(in oklab, oklch(0.65 0.18 280) 10%, var(--bg-base));
+  border: 1px solid color-mix(in oklab, oklch(0.65 0.18 280) 25%, transparent);
+  border-radius: 8px;
+  padding: 3px 7px 3px 6px;
+  flex-shrink: 0;
+}
+
+.hc-familiar-glyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.hc-familiar-select {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  padding-right: 14px;
+  max-width: 100px;
+}
+
+.hc-select-caret {
+  position: absolute;
+  right: 5px;
+  pointer-events: none;
   color: var(--text-muted);
-  user-select: none;
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  flex-shrink: 0;
 }
 
+/* ── Destination pills ───────────────────────────────────────────────────── */
+.hc-dest-pills {
+  display: flex;
+  gap: 3px;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.hc-dest-pill {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 450;
+  padding: 3px 9px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.12s ease;
+  white-space: nowrap;
+}
+
+.hc-dest-pill:hover {
+  background: var(--bg-base);
+  color: var(--text-secondary);
+  border-color: var(--border-hairline);
+}
+
+.hc-dest-pill.active {
+  background: color-mix(in oklab, oklch(0.65 0.18 280) 14%, var(--bg-base));
+  border-color: color-mix(in oklab, oklch(0.65 0.18 280) 40%, transparent);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* Hide text on very narrow viewports, keep icons */
+@media (max-width: 520px) {
+  .hc-dest-label { display: none; }
+  .hc-dest-pill { padding: 4px 6px; }
+}
+
+/* ── Send button ─────────────────────────────────────────────────────────── */
 .hc-send-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
   border: none;
   background: oklch(0.65 0.18 280);
   color: #fff;
   cursor: pointer;
   flex-shrink: 0;
-  transition: opacity 0.1s ease, background 0.1s ease;
+  margin-left: auto;
+  transition: background 0.15s ease, opacity 0.15s ease, transform 0.1s ease;
 }
 
 .hc-send-btn:hover:not(:disabled) {
   background: oklch(0.7 0.18 280);
+  transform: scale(1.05);
 }
 
-.hc-send-btn--empty,
+.hc-send-btn.empty,
 .hc-send-btn:disabled {
-  opacity: 0.35;
+  opacity: 0.3;
   cursor: default;
+  transform: none;
 }
 
-.hc-send-btn--sending {
-  opacity: 0.7;
+.hc-send-btn.sending {
+  opacity: 0.75;
   cursor: wait;
+  transform: none;
 }
 
 /* Spinner */
 .hc-spinner {
   display: inline-block;
-  width: 12px;
-  height: 12px;
-  border: 2px solid rgba(255,255,255,0.35);
+  width: 13px;
+  height: 13px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
   border-top-color: #fff;
   border-radius: 50%;
   animation: hc-spin 0.6s linear infinite;
@@ -235,47 +232,39 @@
 
 /* ── Suggestions ─────────────────────────────────────────────────────────── */
 .home-composer-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: 620px;
   width: 100%;
-  max-width: 600px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  justify-content: center;
 }
 
-.hc-suggestions-label {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  padding: 0 4px;
-}
-
-.hc-suggestions-list {
-  display: flex;
-  flex-direction: column;
+.hc-suggestion {
+  display: inline-flex;
+  align-items: center;
   gap: 5px;
-}
-
-.hc-suggestion-pill {
-  display: block;
-  text-align: left;
-  width: 100%;
-  padding: 8px 14px;
-  border-radius: 10px;
+  padding: 5px 12px;
+  border-radius: 20px;
   border: 1px solid var(--border-hairline);
   background: var(--bg-raised);
-  color: var(--text-secondary);
-  font-size: 13px;
+  color: var(--text-muted);
+  font-size: 12px;
   cursor: pointer;
-  transition: background 0.1s ease, color 0.1s ease, border-color 0.1s ease;
-  white-space: nowrap;
+  transition: all 0.12s ease;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.hc-suggestion-pill:hover {
+.hc-suggestion:hover {
   background: color-mix(in oklab, oklch(0.65 0.18 280) 8%, var(--bg-raised));
-  border-color: color-mix(in oklab, oklch(0.65 0.18 280) 30%, transparent);
+  border-color: color-mix(in oklab, oklch(0.65 0.18 280) 35%, transparent);
   color: var(--text-primary);
+}
+
+.hc-suggestion-icon {
+  flex-shrink: 0;
+  opacity: 0.5;
 }
