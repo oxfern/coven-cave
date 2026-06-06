@@ -148,6 +148,7 @@ export const ICON_NAMES = [
   "ph:books",
   "ph:pencil-line-bold",
   "ph:brain-bold",
+  "ph:chats",
   "ph:user",
   "ph:plus",
   "ph:plus-bold",

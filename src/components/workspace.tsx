@@ -94,6 +94,7 @@ export function Workspace() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [mode, setMode] = useState<WorkspaceMode>("home");
   const [inspectorOpen, setInspectorOpen] = useState(false);
+  const [rightPanel, setRightPanel] = useState<"inspector" | "chat" | null>(null);
   const [pendingProjectChatRoot, setPendingProjectChatRoot] = useState<string | null>(null);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [inboxItems, setInboxItems] = useState<InboxItem[]>([]);
@@ -714,8 +715,10 @@ export function Workspace() {
         routerRef={routerRef}
         inboxItems={inboxItemsWithEphemeral}
         inspectorOpen={inspectorOpen}
+        rightPanel={rightPanel}
         pendingProjectRoot={pendingProjectChatRoot}
         onSetInspectorOpen={setInspectorOpen}
+        onSetRightPanel={setRightPanel}
         onSetActiveFamiliar={setActiveId}
         onClearPendingProjectRoot={() => setPendingProjectChatRoot(null)}
         onSessionStarted={loadSessions}

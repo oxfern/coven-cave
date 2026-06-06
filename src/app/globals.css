@@ -1214,3 +1214,91 @@ body {
   border-top: 1px solid var(--border-hairline);
   line-height: 1.5;
 }
+
+/* ════════════════════════════════════════════════════════════════
+   Right panel — two-icon closed strip + open tab bar
+   ════════════════════════════════════════════════════════════════ */
+
+/* Closed strip (brain + chat icons, collapsed) */
+.right-panel-strip--closed {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding-top: 10px;
+  width: 36px;
+  flex-shrink: 0;
+  height: 100%;
+  border-left: 1px solid var(--border-hairline);
+  background: var(--bg-raised);
+}
+@media (min-width: 1024px) {
+  .right-panel-strip--closed { display: flex; }
+}
+
+.right-panel-strip-btn {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.12s, background 0.12s;
+}
+.right-panel-strip-btn:hover {
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+}
+
+/* Open tab bar (sits at top of the open aside) */
+.right-panel-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  height: 38px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border-hairline);
+  background: var(--bg-raised);
+  padding: 0 4px;
+}
+
+.right-panel-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 10px;
+  height: 100%;
+  font-size: 11px;
+  font-weight: 500;
+  border: none;
+  border-radius: 0;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.12s, border-color 0.12s;
+  white-space: nowrap;
+}
+.right-panel-tab:hover { color: var(--text-secondary); }
+.right-panel-tab--active {
+  color: var(--text-primary);
+  border-bottom-color: var(--accent-presence);
+}
+
+.right-panel-close {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  margin-left: auto;
+  transition: color 0.1s, background 0.1s;
+}
+.right-panel-close:hover { color: var(--text-primary); background: var(--bg-hover); }

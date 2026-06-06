@@ -5,6 +5,7 @@ import { ChatRouter, type ChatRouterHandle } from "@/components/chat-router";
 import { CallsView } from "@/components/calls-view";
 import { CovenFloor } from "@/components/coven-floor";
 import { InspectorPane } from "@/components/inspector-pane";
+import { AgentPanel } from "@/components/agent-panel";
 import type { Card } from "@/lib/cave-board-types";
 import { Icon } from "@/lib/icon";
 import type { InboxItem } from "@/lib/cave-inbox";
@@ -29,8 +30,10 @@ type Props = {
   routerRef: RefObject<ChatRouterHandle | null>;
   inboxItems: InboxItem[];
   inspectorOpen: boolean;
+  rightPanel?: "inspector" | "chat" | null;
   pendingProjectRoot: string | null;
   onSetInspectorOpen: (open: boolean) => void;
+  onSetRightPanel?: (panel: "inspector" | "chat" | null) => void;
   onSetActiveFamiliar: (id: string) => void;
   onClearPendingProjectRoot: () => void;
   onSessionStarted: () => void;
@@ -202,8 +205,10 @@ export function AgentsView({
   routerRef,
   inboxItems,
   inspectorOpen,
+  rightPanel: rightPanelProp,
   pendingProjectRoot,
   onSetInspectorOpen,
+  onSetRightPanel,
   onSetActiveFamiliar,
   onClearPendingProjectRoot,
   onSessionStarted,
@@ -215,6 +220,21 @@ export function AgentsView({
   const [scope, setScope] = useState<AgentsScope>("created");
   const [query, setQuery] = useState("");
   const [showClosed, setShowClosed] = useState(false);
+
+  // Right-panel: new two-icon strip ("inspector" | "chat" | null)
+  // Falls back to legacy inspectorOpen bool when onSetRightPanel not provided
+  const rightPanel: "inspector" | "chat" | null =
+    rightPanelProp !== undefined
+      ? (rightPanelProp ?? null)
+      : inspectorOpen
+      ? "inspector"
+      : null;
+
+  function setRightPanel(next: "inspector" | "chat" | null) {
+    if (onSetRightPanel) { onSetRightPanel(next); return; }
+    // legacy fallback
+    onSetInspectorOpen(next === "inspector");
+  }
   const [delegationCalls, setDelegationCalls] = useState<CovenCall[]>([]);
   const [delegationCards, setDelegationCards] = useState<Card[]>([]);
   const [delegationError, setDelegationError] = useState<string | null>(null);
@@ -421,29 +441,78 @@ export function AgentsView({
                 pendingProjectRoot={pendingProjectRoot}
               />
             </div>
-            {inspectorOpen ? (
-              <aside className="relative hidden h-full w-[340px] shrink-0 lg:block">
-                <button
-                  type="button"
-                  onClick={() => onSetInspectorOpen(false)}
-                  className="absolute right-2 top-2 z-10 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)] p-1.5 text-[var(--text-muted)] shadow-sm transition-colors hover:text-[var(--text-primary)]"
-                  title="Close inspector"
-                  aria-label="Close inspector"
-                >
-                  <Icon name="ph:x-bold" width={12} />
-                </button>
-                <InspectorPane familiar={activeFamiliar} inboxItems={inboxItems} onOpenInbox={onOpenInbox} />
+            {rightPanel !== null ? (
+              <aside className="relative hidden h-full w-[340px] shrink-0 border-l border-[var(--border-hairline)] lg:flex lg:flex-col">
+                {/* Tab strip */}
+                <div className="right-panel-tabs">
+                  <button
+                    type="button"
+                    className={`right-panel-tab${rightPanel === "chat" ? " right-panel-tab--active" : ""}`}
+                    onClick={() => setRightPanel("chat")}
+                    title="Chat"
+                  >
+                    <Icon name="ph:chats" width={13} />
+                    Chat
+                  </button>
+                  <button
+                    type="button"
+                    className={`right-panel-tab${rightPanel === "inspector" ? " right-panel-tab--active" : ""}`}
+                    onClick={() => setRightPanel("inspector")}
+                    title="Inspector"
+                  >
+                    <Icon name="ph:brain-bold" width={13} />
+                    Inspector
+                  </button>
+                  <button
+                    type="button"
+                    className="right-panel-close"
+                    onClick={() => setRightPanel(null)}
+                    title="Close panel"
+                    aria-label="Close panel"
+                  >
+                    <Icon name="ph:x-bold" width={11} />
+                  </button>
+                </div>
+                {rightPanel === "inspector" && (
+                  <InspectorPane familiar={activeFamiliar} inboxItems={inboxItems} onOpenInbox={onOpenInbox} />
+                )}
+                {rightPanel === "chat" && (
+                  <AgentPanel
+                    ref={null}
+                    familiar={activeFamiliar}
+                    familiars={familiars}
+                    activeId={activeFamiliarId}
+                    sessions={sessions}
+                    daemonRunning={daemonRunning}
+                    onSessionStarted={onSessionStarted}
+                    onSlashFromChat={onSlashFromChat}
+                    onOpenOnboarding={onOpenOnboarding}
+                    onFamiliarSelect={onSetActiveFamiliar}
+                  />
+                )}
               </aside>
             ) : (
-              <button
-                type="button"
-                onClick={() => onSetInspectorOpen(true)}
-                className="hidden h-full w-9 shrink-0 items-start justify-center border-l border-[var(--border-hairline)] bg-[var(--bg-raised)]/40 pt-3 text-[var(--text-muted)] transition-colors hover:text-[var(--text-primary)] lg:flex"
-                title="Open inspector"
-                aria-label="Open inspector"
-              >
-                <Icon name="ph:brain-bold" width={15} />
-              </button>
+              /* Closed strip — two icon buttons */
+              <div className="right-panel-strip right-panel-strip--closed">
+                <button
+                  type="button"
+                  onClick={() => setRightPanel("chat")}
+                  className={`right-panel-strip-btn`}
+                  title="Chat"
+                  aria-label="Open chat panel"
+                >
+                  <Icon name="ph:chats" width={15} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRightPanel("inspector")}
+                  className={`right-panel-strip-btn`}
+                  title="Inspector"
+                  aria-label="Open inspector"
+                >
+                  <Icon name="ph:brain-bold" width={15} />
+                </button>
+              </div>
             )}
           </div>
         ) : (
