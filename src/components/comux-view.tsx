@@ -12,7 +12,7 @@ import {
 } from "@/lib/comux-projects";
 import type { SessionRow } from "@/lib/types";
 
-type ComuxTab = "comux" | "project";
+type ComuxViewMode = "terminal" | "projects";
 
 type TerminalSession = {
   id: string;
@@ -21,19 +21,13 @@ type TerminalSession = {
 };
 
 type Props = {
+  view: ComuxViewMode;
   sessions: SessionRow[];
   onOpenSession: (sessionId: string, familiarId?: string | null) => void;
   onNewChat: (projectRoot: string) => void;
 };
 
-const STORAGE_TAB = "cave:comux:tab";
 const STORAGE_SESSIONS = "cave:comux:sessions";
-
-function readTab(): ComuxTab {
-  if (typeof window === "undefined") return "comux";
-  const v = window.localStorage.getItem(STORAGE_TAB);
-  return v === "project" ? "project" : "comux";
-}
 
 function readSessions(): TerminalSession[] {
   if (typeof window === "undefined") return [];
@@ -80,8 +74,7 @@ function shortProjectTime(iso: string | null): string {
   }
 }
 
-export function ComuxView({ sessions: daemonSessions, onOpenSession, onNewChat }: Props) {
-  const [tab, setTab] = useState<ComuxTab>(readTab);
+export function ComuxView({ view, sessions: daemonSessions, onOpenSession, onNewChat }: Props) {
   const [sessions, setSessions] = useState<TerminalSession[]>(readSessions);
   const [currentIdx, setCurrentIdx] = useState(0);
 
@@ -114,11 +107,6 @@ export function ComuxView({ sessions: daemonSessions, onOpenSession, onNewChat }
       }
     })();
   }, []);
-
-  // Persist tab choice
-  useEffect(() => {
-    window.localStorage.setItem(STORAGE_TAB, tab);
-  }, [tab]);
 
   // Persist sessions
   useEffect(() => {
@@ -162,7 +150,6 @@ export function ComuxView({ sessions: daemonSessions, onOpenSession, onNewChat }
       setCurrentIdx(next.length - 1);
       return next;
     });
-    setTab("comux");
   }, [daemonProjectRoot, selectedProjectRoot]);
 
   const removeSession = useCallback(
@@ -225,7 +212,6 @@ export function ComuxView({ sessions: daemonSessions, onOpenSession, onNewChat }
     setSelectedProjectRoot(project.root);
     setPreviewPath(null);
     setPreviewContent(null);
-    setTab("project");
   }, []);
 
   const recentProjectSessions = useMemo(() => {
@@ -240,36 +226,7 @@ export function ComuxView({ sessions: daemonSessions, onOpenSession, onNewChat }
 
   return (
     <div className="flex h-full flex-col">
-      {/* Tab bar */}
-      <div className="flex items-center gap-1 border-b border-[var(--border-hairline)] px-3 py-2">
-        <button
-          type="button"
-          onClick={() => setTab("comux")}
-          className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[12px] font-medium transition-colors ${
-            tab === "comux"
-              ? "bg-[var(--bg-raised)] text-[var(--text-primary)]"
-              : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
-          }`}
-        >
-          <Icon name="ph:terminal-window" width={13} />
-          Terminal
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab("project")}
-          className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[12px] font-medium transition-colors ${
-            tab === "project"
-              ? "bg-[var(--bg-raised)] text-[var(--text-primary)]"
-              : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
-          }`}
-        >
-          <Icon name="ph:folder-open" width={13} />
-          Project
-        </button>
-      </div>
-
-      {/* Tab content */}
-      {tab === "comux" ? (
+      {view === "terminal" ? (
         <div className="flex flex-1 flex-col min-h-0">
           {/* Session tab strip */}
           <div className="flex items-center gap-0.5 border-b border-[var(--border-hairline)] bg-[var(--bg-raised)]/20 px-2 py-1 text-[11px]">

@@ -1,5 +1,6 @@
+// @ts-nocheck
 import assert from "node:assert/strict";
-import { mergeSessionTitleOverrides, normalizeChatTitle } from "./cave-chat-titles";
+import { mergeSessionTitleOverrides, normalizeChatTitle } from "./cave-chat-titles.ts";
 
 const sessions = [
   { id: "s1", title: "daemon title", updated_at: "2026-06-01T00:00:00.000Z" },

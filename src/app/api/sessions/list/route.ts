@@ -17,7 +17,10 @@ type DaemonSession = {
   updated_at: string;
 };
 
-export async function GET() {
+export async function GET(req: Request) {
+  const url = new URL(req.url);
+  const includeArchived = url.searchParams.get("includeArchived") === "1";
+
   const [res, state] = await Promise.all([
     callDaemon<DaemonSession[]>({ path: "/api/v1/sessions" }),
     loadState(),
@@ -28,10 +31,23 @@ export async function GET() {
       { status: 503 },
     );
   }
-  const sessions = res.data.map((s) => ({
-    ...s,
-    familiarId: state.sessionFamiliar[s.id] ?? null,
-    origin: inferOrigin(s),
-  }));
+
+  const sessions = res.data
+    // Soft-delete: never surface sacrificed sessions to the UI.
+    .filter((s) => !state.sessionSacrificed[s.id])
+    .map((s) => {
+      const titleOverride = state.sessionTitles[s.id];
+      const archivedLocal = state.sessionArchived[s.id] ?? null;
+      const archived_at = archivedLocal ?? s.archived_at;
+      return {
+        ...s,
+        title: titleOverride ?? s.title,
+        archived_at,
+        familiarId: state.sessionFamiliar[s.id] ?? null,
+        origin: inferOrigin(s),
+      };
+    })
+    .filter((s) => includeArchived || !s.archived_at);
+
   return NextResponse.json({ ok: true, sessions });
 }

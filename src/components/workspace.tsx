@@ -50,7 +50,8 @@ export function Workspace() {
   const [responseNeeded, setResponseNeeded] = useState<Set<string>>(new Set());
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [mode, setMode] = useState<WorkspaceMode>("home");
-  const [inspectorOpen, setInspectorOpen] = useState(true);
+  const [inspectorOpen, setInspectorOpen] = useState(false);
+  const [pendingProjectChatRoot, setPendingProjectChatRoot] = useState<string | null>(null);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [inboxItems, setInboxItems] = useState<InboxItem[]>([]);
   const [escalationsUnresolved, setEscalationsUnresolved] = useState(0);
@@ -458,8 +459,11 @@ export function Workspace() {
         case "/palette":
           setPaletteOpen(true);
           return;
-        case "/comux":
-          setMode("comux");
+        case "/terminal":
+          setMode("terminal");
+          return;
+        case "/projects":
+          setMode("projects");
           return;
         case "/toggle-agent":
           toggleAgentPanel();
@@ -577,19 +581,25 @@ export function Workspace() {
   // count as needing attention; resolved/dismissed do not.
   const inboxBadgeCount = escalationsUnresolved;
 
+  const openProjectChat = useCallback((projectRoot: string) => {
+    setPendingProjectChatRoot(projectRoot);
+    setMode("chats");
+    if (activeId) {
+      setTimeout(() => {
+        routerRef.current?.newChat(projectRoot);
+        setPendingProjectChatRoot(null);
+      }, 0);
+    }
+  }, [activeId]);
+
   const sidebar = (
     <SidebarMinimal
       mode={mode}
       sessions={sessions}
       activeSessionId={routerRef.current?.currentSessionId() ?? null}
       inboxBadgeCount={inboxBadgeCount}
-      familiars={familiars}
-      activeId={activeId}
-      onFamiliarSelect={(id) => {
-        setActiveId(id);
-        setMode("sessions");
-      }}
       onNewChat={() => {
+        setPendingProjectChatRoot(null);
         setMode("chats");
         setTimeout(() => routerRef.current?.newChat(), 0);
       }}
@@ -650,6 +660,7 @@ export function Workspace() {
           <ChatRouter
             ref={routerRef}
             familiar={active}
+            familiars={familiars}
             sessions={sessions}
             daemonRunning={daemonRunning}
             onSessionStarted={loadSessions}
@@ -658,6 +669,17 @@ export function Workspace() {
               return true;
             }}
             onOpenOnboarding={openOnboarding}
+            onFamiliarSelect={(id) => {
+              setActiveId(id);
+              if (pendingProjectChatRoot) {
+                const projectRoot = pendingProjectChatRoot;
+                setPendingProjectChatRoot(null);
+                setTimeout(() => routerRef.current?.newChat(projectRoot), 0);
+              } else {
+                setTimeout(() => routerRef.current?.goToList(), 0);
+              }
+            }}
+            pendingProjectRoot={pendingProjectChatRoot}
           />
         </div>
         {inspectorOpen ? (
@@ -721,19 +743,27 @@ export function Workspace() {
       <CallsView familiars={familiars} />
     ) : mode === "browser" ? (
       <BrowserPane label="main" />
-    ) : mode === "comux" ? (
+    ) : mode === "terminal" ? (
       <ComuxView
+        view="terminal"
         sessions={sessions}
         onOpenSession={(sessionId, familiarId) => {
           if (familiarId) setActiveId(familiarId);
           setMode("chats");
           setTimeout(() => routerRef.current?.openSession(sessionId), 0);
         }}
-        onNewChat={(projectRoot) => {
-          if (!activeId && familiars[0]) setActiveId(familiars[0].id);
+        onNewChat={openProjectChat}
+      />
+    ) : mode === "projects" ? (
+      <ComuxView
+        view="projects"
+        sessions={sessions}
+        onOpenSession={(sessionId, familiarId) => {
+          if (familiarId) setActiveId(familiarId);
           setMode("chats");
-          setTimeout(() => routerRef.current?.newChat(projectRoot), 0);
+          setTimeout(() => routerRef.current?.openSession(sessionId), 0);
         }}
+        onNewChat={openProjectChat}
       />
     ) : mode === "github" ? (
       <GitHubView

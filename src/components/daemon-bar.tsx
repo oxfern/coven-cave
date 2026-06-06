@@ -8,7 +8,19 @@ import type { InboxPrefs } from "@/lib/cave-inbox-prefs";
 import { NotificationBell } from "@/components/notification-bell";
 import { Icon } from "@/lib/icon";
 
-export type Mode = "chats" | "board" | "inbox" | "plugins" | "browser" | "schedules" | "calls" | "comux" | "home" | "github" | "calendar";
+export type Mode =
+  | "chats"
+  | "board"
+  | "inbox"
+  | "plugins"
+  | "browser"
+  | "schedules"
+  | "calls"
+  | "terminal"
+  | "projects"
+  | "home"
+  | "github"
+  | "calendar";
 
 type Props = {
   mode: Mode;
@@ -33,7 +45,8 @@ const MODE_LABEL: Record<Mode, string> = {
   browser: "Browser",
   schedules: "Automations",
   calls: "Coven Calls",
-  comux: "Coven Code",
+  terminal: "Terminal",
+  projects: "Projects",
   github: "GitHub",
   calendar: "Calendar",
 };
