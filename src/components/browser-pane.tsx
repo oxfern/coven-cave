@@ -512,8 +512,8 @@ export function BrowserPane({ label = "default" }: { label?: string }) {
               className={[
                 "browser-tab group relative flex flex-col items-center justify-center gap-0.5 w-full cursor-pointer select-none transition-colors py-2.5",
                 isActive
-                  ? "bg-[#14141a] text-[--fg-base]"
-                  : "text-[--fg-muted] hover:bg-[#0f0f13] hover:text-[--fg-base]",
+                  ? "bg-[#14141a] text-[var(--fg-base)]"
+                  : "text-[var(--fg-muted)] hover:bg-[#0f0f13] hover:text-[var(--fg-base)]",
               ].join(" ")}
             >
               {/* Active indicator bar */}
@@ -533,7 +533,7 @@ export function BrowserPane({ label = "default" }: { label?: string }) {
               {tab.kind === "pinned" && tabs.filter((t) => t.kind === "pinned").length > 1 && (
                 <button
                   onClick={(e) => removeTab(tab.id, e)}
-                  className="absolute top-1 right-1 opacity-0 group-hover:opacity-60 hover:!opacity-100 text-[--fg-muted] transition-opacity"
+                  className="absolute top-1 right-1 opacity-0 group-hover:opacity-60 hover:!opacity-100 text-[var(--fg-muted)] transition-opacity"
                   title="Close tab"
                 >
                   <Icon name="ph:x-bold" width={7} />
@@ -547,7 +547,7 @@ export function BrowserPane({ label = "default" }: { label?: string }) {
         {/* Pin current page */}
         <button
           onClick={pinCurrentPage}
-          className="grid h-8 w-8 shrink-0 place-items-center rounded text-[--fg-muted] hover:bg-[--bg-raised] hover:text-[--fg-base] transition-colors"
+          className="grid h-8 w-8 shrink-0 place-items-center rounded text-[var(--fg-muted)] hover:bg-[var(--bg-raised)] hover:text-[var(--fg-base)] transition-colors"
           title="Pin current page as a tab"
         >
           <Icon name="ph:plus" width={13} />
@@ -558,16 +558,16 @@ export function BrowserPane({ label = "default" }: { label?: string }) {
       {/* ── Main area (toolbar + viewport) ──────────────────────── */}
       <div className="flex flex-1 flex-col overflow-hidden">
       {/* ── Toolbar ───────────────────────────────────────────────── */}
-      <header className="flex items-center gap-1 border-b border-[--border-hairline] bg-[--bg-raised]/40 px-2 py-1.5">
+      <header className="flex items-center gap-1 border-b border-[var(--border-hairline)] bg-[var(--bg-raised)]/40 px-2 py-1.5">
         {/* Back */}
         <button type="button" onClick={goBack} disabled={!canBack}
-          className="grid h-7 w-7 place-items-center rounded text-[--fg-muted] hover:bg-[--bg-raised] hover:text-[--fg-base] disabled:opacity-30 disabled:cursor-default"
+          className="grid h-7 w-7 place-items-center rounded text-[var(--fg-muted)] hover:bg-[var(--bg-raised)] hover:text-[var(--fg-base)] disabled:opacity-30 disabled:cursor-default"
           title="Back" aria-label="Back">
           <Icon name="ph:arrow-left-bold" width={13} />
         </button>
         {/* Forward */}
         <button type="button" onClick={goForward} disabled={!canForward}
-          className="grid h-7 w-7 place-items-center rounded text-[--fg-muted] hover:bg-[--bg-raised] hover:text-[--fg-base] disabled:opacity-30 disabled:cursor-default"
+          className="grid h-7 w-7 place-items-center rounded text-[var(--fg-muted)] hover:bg-[var(--bg-raised)] hover:text-[var(--fg-base)] disabled:opacity-30 disabled:cursor-default"
           title="Forward" aria-label="Forward">
           <Icon name="ph:arrow-right-bold" width={13} />
         </button>
@@ -577,7 +577,7 @@ export function BrowserPane({ label = "default" }: { label?: string }) {
             if (bridge) void bridge.invoke("browser_reload", { label: tabLabel(activeTabId) });
             else navigateTo(activeUrl);
           }}
-          className="grid h-7 w-7 place-items-center rounded text-[--fg-muted] hover:bg-[--bg-raised] hover:text-[--fg-base]"
+          className="grid h-7 w-7 place-items-center rounded text-[var(--fg-muted)] hover:bg-[var(--bg-raised)] hover:text-[var(--fg-base)]"
           title={loading ? "Stop" : "Reload"} aria-label={loading ? "Stop" : "Reload"}>
           {loading
             ? <Icon name="ph:x-bold" width={12} />
@@ -586,10 +586,10 @@ export function BrowserPane({ label = "default" }: { label?: string }) {
         {/* Address bar */}
         <form
           onSubmit={(e) => { e.preventDefault(); navigateTo(addressBar); }}
-          className="flex flex-1 items-center gap-1 rounded-md border border-[--border-hairline] bg-[--bg-raised]/40 px-2 py-1 focus-within:border-[--accent-presence]"
+          className="flex flex-1 items-center gap-1 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/40 px-2 py-1 focus-within:border-[var(--accent-presence)]"
         >
           {activeUrl.startsWith("https://") && (
-            <Icon name="ph:lock-simple-bold" width={11} className="shrink-0 text-[--fg-muted]" />
+            <Icon name="ph:lock-simple-bold" width={11} className="shrink-0 text-[var(--fg-muted)]" />
           )}
           <input
             type="text"
@@ -597,12 +597,12 @@ export function BrowserPane({ label = "default" }: { label?: string }) {
             onChange={(e) => setAddressBar(e.target.value)}
             onFocus={(e) => e.currentTarget.select()}
             placeholder="Search or enter address"
-            className="flex-1 bg-transparent text-[12px] text-[--fg-base] outline-none"
+            className="flex-1 bg-transparent text-[12px] text-[var(--fg-base)] outline-none"
           />
         </form>
         {/* Home */}
         <button type="button" onClick={() => navigateTo(HOME_URL)}
-          className="grid h-7 w-7 place-items-center rounded text-[--fg-muted] hover:bg-[--bg-raised] hover:text-[--fg-base]"
+          className="grid h-7 w-7 place-items-center rounded text-[var(--fg-muted)] hover:bg-[var(--bg-raised)] hover:text-[var(--fg-base)]"
           title="Home" aria-label="Home">
           <Icon name="ph:house-bold" width={13} />
         </button>
@@ -617,7 +617,7 @@ export function BrowserPane({ label = "default" }: { label?: string }) {
               window.open(activeUrl, "_blank", "noopener");
             }
           }}
-          className="grid h-7 w-7 place-items-center rounded text-[--fg-muted] hover:bg-[--bg-raised] hover:text-[--fg-base]"
+          className="grid h-7 w-7 place-items-center rounded text-[var(--fg-muted)] hover:bg-[var(--bg-raised)] hover:text-[var(--fg-base)]"
           title="Open in system browser" aria-label="Open in system browser">
           <Icon name="ph:arrow-square-out" width={13} />
         </button>
@@ -625,9 +625,9 @@ export function BrowserPane({ label = "default" }: { label?: string }) {
 
       {/* ── Loading bar ───────────────────────────────────────────── */}
       {loading && (
-        <div className="h-0.5 w-full overflow-hidden bg-[--bg-raised]">
+        <div className="h-0.5 w-full overflow-hidden bg-[var(--bg-raised)]">
           <div
-            className="h-full animate-[browser-progress_1.4s_ease-in-out_infinite] bg-[--accent-presence]"
+            className="h-full animate-[browser-progress_1.4s_ease-in-out_infinite] bg-[var(--accent-presence)]"
             style={{ width: "60%" }}
           />
         </div>
