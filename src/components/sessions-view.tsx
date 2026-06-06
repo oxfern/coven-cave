@@ -1,7 +1,7 @@
 "use client";
 
 import "@/styles/sessions-view.css";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Icon } from "@/lib/icon";
 import { FamiliarGlyph } from "@/components/familiar-glyph";
 import { resolveFamiliarGlyph } from "@/lib/familiar-glyph";
@@ -102,6 +102,8 @@ function NewChatCard({ onClick }: { onClick: () => void }) {
   );
 }
 
+const PAGE_SIZE = 20;
+
 // ── SessionGroup ──────────────────────────────────────────────────────────────
 
 function SessionGroup({
@@ -119,6 +121,10 @@ function SessionGroup({
   onNewChat: () => void;
   showNewChat: boolean;
 }) {
+  const [limit, setLimit] = useState(PAGE_SIZE);
+  const visible = sessions.slice(0, limit);
+  const remaining = sessions.length - limit;
+
   return (
     <div className="sessions-group">
       {familiar && (
@@ -129,7 +135,7 @@ function SessionGroup({
       )}
       <div className="sessions-grid">
         {showNewChat && <NewChatCard onClick={onNewChat} />}
-        {sessions.map((s) => (
+        {visible.map((s) => (
           <SessionCard
             key={s.id}
             session={s}
@@ -139,6 +145,15 @@ function SessionGroup({
           />
         ))}
       </div>
+      {remaining > 0 && (
+        <button
+          type="button"
+          className="sessions-load-more"
+          onClick={() => setLimit((l) => l + PAGE_SIZE)}
+        >
+          Show {remaining} more
+        </button>
+      )}
     </div>
   );
 }
@@ -162,6 +177,7 @@ export function SessionsView({
   onOpenSession,
   onNewChat,
 }: SessionsViewProps) {
+  const overrides = useGlyphOverrides();
   const activeFamiliar = familiars.find((f) => f.id === activeFamiliarId) ?? null;
 
   // Sort sessions newest-first
@@ -214,9 +230,34 @@ export function SessionsView({
       <div className="sessions-view-scroll">
         {filtered.length === 0 ? (
           <div className="sessions-empty">
-            <Icon name="ph:chat-circle-dots" width={32} className="sessions-empty-icon" />
-            <span>No sessions yet</span>
-            <span style={{ fontSize: 11, opacity: 0.6 }}>Start a new chat to get going</span>
+            <div className="sessions-empty-glyph">
+              {activeFamiliar ? (
+                <FamiliarGlyph
+                  glyph={resolveFamiliarGlyph(activeFamiliar, overrides)}
+                  size="sm"
+                />
+              ) : (
+                <Icon name="ph:sparkle" width={22} />
+              )}
+            </div>
+            <p className="sessions-empty-heading">
+              {activeFamiliar
+                ? `No chats with ${activeFamiliar.display_name} yet`
+                : "No sessions yet"}
+            </p>
+            <p className="sessions-empty-body">
+              {activeFamiliar
+                ? `Start a conversation and it'll show up here.`
+                : "Pick a familiar from the sidebar and start a chat."}
+            </p>
+            <button
+              type="button"
+              className="sessions-empty-cta"
+              onClick={() => onNewChat(activeFamiliarId ?? undefined)}
+            >
+              <Icon name="ph:plus" width={12} />
+              Start a chat
+            </button>
           </div>
         ) : activeFamiliarId ? (
           /* Single-familiar grid */
