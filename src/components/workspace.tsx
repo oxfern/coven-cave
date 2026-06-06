@@ -837,13 +837,7 @@ export function Workspace() {
         onNewChat={openProjectChat}
       />
     ) : mode === "github" ? (
-      <GitHubView
-        onOpenSession={(sessionId) => {
-          // TODO: jump to session in chats view once session routing is wired
-          setMode("chats");
-          setTimeout(() => routerRef.current?.openSession?.(sessionId), 0);
-        }}
-      />
+      <GitHubView />
     ) : mode === "calendar" ? (
       <CalendarView
         items={inboxItems}

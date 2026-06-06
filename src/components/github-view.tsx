@@ -1,19 +1,34 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/lib/icon";
-import { loadGitHubTasks, type GitHubTask, type GitHubTaskStatus } from "@/lib/github-tasks";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-// ── Status styles ─────────────────────────────────────────────────────────────
-
-const STATUS: Record<GitHubTaskStatus, { dot: string; label: string; text: string }> = {
-  running: { dot: "bg-emerald-400 animate-pulse", label: "running",  text: "text-emerald-400" },
-  review:  { dot: "bg-amber-400",                 label: "review",   text: "text-amber-400" },
-  done:    { dot: "bg-[var(--text-muted)]",        label: "done",     text: "text-[var(--text-muted)]" },
-  failed:  { dot: "bg-rose-400",                  label: "failed",   text: "text-rose-400" },
+type GitHubItem = {
+  kind: "pr" | "issue" | "review_request" | "notification";
+  id: string;
+  title: string;
+  repo: string;
+  number?: number;
+  url: string;
+  state?: string;
+  updatedAt: string;
+  draft?: boolean;
+  labels?: string[];
 };
+
+type ActivityResult = {
+  ok: true;
+  authed: boolean;
+  login: string | null;
+  items: GitHubItem[];
+  rateLimit: { remaining: number; limit: number } | null;
+};
+
+type PatStatus = { hasPat: boolean; login: string | null };
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function age(iso: string): string {
   const ts = Date.parse(iso);
@@ -27,129 +42,281 @@ function age(iso: string): string {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-// ── Placeholder tasks (until coven-github API is wired) ──────────────────────
+const KIND_ICON: Record<string, string> = {
+  pr: "ph:git-pull-request",
+  issue: "ph:issue-opened",
+  review_request: "ph:git-pull-request",
+  notification: "ph:bell",
+};
 
-const PLACEHOLDER_TASKS: GitHubTask[] = [
-  {
-    id: "demo-1",
-    repo: "OpenCoven/coven-code",
-    issueNumber: 42,
-    issueTitle: "Fix OAuth token refresh clock skew",
-    branch: "familiar/fix-issue-42",
-    prNumber: 38,
-    prUrl: "https://github.com/OpenCoven/coven-code/pull/38",
-    status: "review",
-    familiarId: "local-familiar",
-    familiarName: "Local familiar",
-    sessionId: undefined,
-    updatedAt: new Date(Date.now() - 12 * 60000).toISOString(),
-    checkRunUrl: undefined,
-  },
-  {
-    id: "demo-2",
-    repo: "OpenCoven/coven-cave",
-    issueNumber: 93,
-    issueTitle: "Browser viewport flickers on tab switch",
-    status: "running",
-    familiarId: "local-familiar",
-    familiarName: "Local familiar",
-    sessionId: undefined,
-    updatedAt: new Date(Date.now() - 3 * 60000).toISOString(),
-  },
-];
+const KIND_LABEL: Record<string, string> = {
+  pr: "PR",
+  issue: "Issue",
+  review_request: "Review",
+  notification: "Notif",
+};
+
+const KIND_COLOR: Record<string, string> = {
+  pr: "text-emerald-400",
+  issue: "text-[var(--accent-presence)]",
+  review_request: "text-amber-400",
+  notification: "text-[var(--text-muted)]",
+};
+
+// ── PAT Setup Modal ───────────────────────────────────────────────────────────
+
+function PatSetupModal({
+  onSaved,
+  onClose,
+  username,
+}: {
+  onSaved: (login: string) => void;
+  onClose: () => void;
+  username: string | null;
+}) {
+  const [pat, setPat] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { inputRef.current?.focus(); }, []);
+
+  async function save() {
+    const trimmed = pat.trim();
+    if (!trimmed) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/github/pat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pat: trimmed }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok) {
+        setError(data?.error ?? "Failed to save PAT. Check that it has read:user and repo scopes.");
+        return;
+      }
+      onSaved(data.login ?? username ?? "you");
+    } catch {
+      setError("Network error — please try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-elevated)] p-6 shadow-2xl">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Icon name="ph:github-logo" width={18} className="text-[var(--text-secondary)]" />
+            <h3 className="text-[15px] font-semibold">Connect GitHub</h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
+          >
+            <Icon name="ph:x" width={14} />
+          </button>
+        </div>
+
+        <p className="text-[12px] text-[var(--text-muted)] mb-1">
+          Cave uses the public GitHub API by default (no auth needed, 60 req/hr, public repos only).
+        </p>
+        <p className="text-[12px] text-[var(--text-muted)] mb-4">
+          Add a Personal Access Token to unlock private repos, review requests, and higher rate limits.
+          Your PAT is stored only in <code className="text-[var(--text-secondary)] bg-[var(--bg-raised)] px-1 rounded">.env.local</code> on this machine — never synced, never shared.
+        </p>
+
+        <div className="mb-2">
+          <label className="block text-[11px] font-medium text-[var(--text-secondary)] mb-1.5">
+            GitHub PAT
+          </label>
+          <input
+            ref={inputRef}
+            type="password"
+            value={pat}
+            onChange={(e) => setPat(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && void save()}
+            placeholder="ghp_…"
+            className="w-full rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-base)] px-3 py-2 text-[13px] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--accent-presence)] focus:outline-none"
+          />
+        </div>
+
+        {error && (
+          <p className="mb-3 text-[11px] text-rose-400">{error}</p>
+        )}
+
+        <div className="flex items-center justify-between mt-4">
+          <a
+            href="https://github.com/settings/tokens/new?scopes=read:user,repo,notifications&description=Cave+local"
+            target="_blank"
+            rel="noreferrer"
+            className="text-[11px] text-[var(--accent-presence)] hover:underline"
+          >
+            Generate a PAT on GitHub →
+          </a>
+          <button
+            type="button"
+            disabled={!pat.trim() || saving}
+            onClick={() => void save()}
+            className="rounded-lg bg-[var(--accent-presence)] px-4 py-1.5 text-[12px] font-medium text-white disabled:opacity-40 hover:opacity-90 transition-opacity"
+          >
+            {saving ? "Verifying…" : "Save"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-type Props = {
-  onOpenSession?: (sessionId: string) => void;
-};
+type Filter = "all" | "pr" | "review_request" | "issue";
 
-export function GitHubView({ onOpenSession }: Props) {
-  const [tasks, setTasks] = useState<GitHubTask[]>([]);
+export function GitHubView() {
+  const [activity, setActivity] = useState<ActivityResult | null>(null);
+  const [patStatus, setPatStatus] = useState<PatStatus | null>(null);
   const [loading, setLoading] = useState(true);
-  const [source, setSource] = useState<"api" | "demo">("api");
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<GitHubTaskStatus | "all">("all");
+  const [filter, setFilter] = useState<Filter>("all");
+  const [showPatModal, setShowPatModal] = useState(false);
+  const timerRef = useRef<number | null>(null);
+
+  async function fetchPatStatus() {
+    try {
+      const res = await fetch("/api/github/pat");
+      const data = await res.json().catch(() => null);
+      if (data) setPatStatus(data as PatStatus);
+    } catch { /* non-fatal */ }
+  }
+
+  async function fetchActivity(silent = false) {
+    if (!silent) setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/github/activity");
+      const data = await res.json().catch(() => null);
+
+      if (res.status === 401 && data?.error === "no_user") {
+        // No username — show setup prompt
+        setError("no_user");
+        setLoading(false);
+        return;
+      }
+
+      if (!res.ok || !data?.ok) {
+        setError(data?.error ?? `GitHub error (${res.status})`);
+        setLoading(false);
+        // back off 60s on config errors
+        timerRef.current = window.setTimeout(() => void fetchActivity(true), 60_000);
+        return;
+      }
+
+      setActivity(data as ActivityResult);
+      setError(null);
+      // poll every 90s when authed, 120s on public API
+      const interval = (data as ActivityResult).authed ? 90_000 : 120_000;
+      timerRef.current = window.setTimeout(() => void fetchActivity(true), interval);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load GitHub activity");
+      timerRef.current = window.setTimeout(() => void fetchActivity(true), 60_000);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    let cancelled = false;
-    let timer: number | null = null;
-
-    async function refresh() {
-      try {
-        const next = await loadGitHubTasks();
-        if (cancelled) return;
-        setTasks(next.tasks);
-        setSource("api");
-        setError(null);
-        // Only schedule next poll if we got a real response
-        if (!cancelled) timer = window.setTimeout(() => void refresh(), 15_000);
-      } catch (e) {
-        if (cancelled) return;
-        const msg = e instanceof Error ? e.message : "GitHub task endpoint unavailable";
-        setTasks(PLACEHOLDER_TASKS);
-        setSource("demo");
-        setError(msg);
-        // 503 = not configured — don't hammer the server, back off to 60s
-        const isUnconfigured = msg.includes("503") || msg.includes("not configured");
-        if (!cancelled) timer = window.setTimeout(() => void refresh(), isUnconfigured ? 60_000 : 15_000);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    void refresh();
-    return () => {
-      cancelled = true;
-      if (timer !== null) window.clearTimeout(timer);
-    };
+    void fetchPatStatus();
+    void fetchActivity();
+    return () => { if (timerRef.current !== null) window.clearTimeout(timerRef.current); };
   }, []);
 
-  const filtered = filter === "all" ? tasks : tasks.filter((t) => t.status === filter);
+  const items = activity?.items ?? [];
+  const filtered = filter === "all" ? items : items.filter((i) => i.kind === filter);
 
-  const counts: Record<GitHubTaskStatus, number> = {
-    running: tasks.filter((t) => t.status === "running").length,
-    review:  tasks.filter((t) => t.status === "review").length,
-    done:    tasks.filter((t) => t.status === "done").length,
-    failed:  tasks.filter((t) => t.status === "failed").length,
+  const counts: Record<Filter, number> = {
+    all: items.length,
+    pr: items.filter((i) => i.kind === "pr").length,
+    review_request: items.filter((i) => i.kind === "review_request").length,
+    issue: items.filter((i) => i.kind === "issue").length,
   };
 
   return (
     <section className="flex h-full flex-col bg-[var(--bg-base)] text-[var(--text-primary)]">
 
+      {showPatModal && (
+        <PatSetupModal
+          username={patStatus?.login ?? null}
+          onSaved={(login) => {
+            setPatStatus({ hasPat: true, login });
+            setShowPatModal(false);
+            if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+            void fetchActivity();
+          }}
+          onClose={() => setShowPatModal(false)}
+        />
+      )}
+
       {/* ── Header ── */}
       <header className="flex items-center gap-3 border-b border-[var(--border-hairline)] px-5 py-3">
         <div className="flex items-center gap-2">
           <Icon name="ph:github-logo" width={16} className="text-[var(--text-secondary)]" />
-          <h2 className="text-[15px] font-semibold">GitHub Tasks</h2>
+          <h2 className="text-[15px] font-semibold">GitHub</h2>
+          {activity?.login && (
+            <span className="text-[12px] text-[var(--text-muted)]">@{activity.login}</span>
+          )}
         </div>
-        <p className="text-[11px] text-[var(--text-muted)]">
-          Familiar-driven issues and PRs from coven-github{source === "demo" ? " · demo fallback" : ""}
-        </p>
 
-        {counts.running > 0 && (
-          <span className="flex items-center gap-1 rounded-full bg-emerald-950/60 px-2.5 py-0.5 text-[10px] font-medium text-emerald-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            {counts.running} running
+        {activity?.authed === false && (
+          <span className="rounded-full border border-[var(--border-hairline)] px-2 py-0.5 text-[10px] text-[var(--text-muted)]">
+            public API
+          </span>
+        )}
+        {activity?.authed === true && (
+          <span className="rounded-full border border-emerald-800/60 bg-emerald-950/40 px-2 py-0.5 text-[10px] text-emerald-400">
+            authenticated
           </span>
         )}
 
-        <a
-          href="https://github.com/OpenCoven/coven-github"
-          target="_blank"
-          rel="noreferrer"
-          className="ml-auto flex items-center gap-1 text-[11px] text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
-        >
-          coven-github
-          <Icon name="ph:arrow-square-out" width={11} />
-        </a>
+        {activity?.rateLimit && (
+          <span className="text-[10px] text-[var(--text-muted)]">
+            {activity.rateLimit.remaining}/{activity.rateLimit.limit} req left
+          </span>
+        )}
+
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowPatModal(true)}
+            title={patStatus?.hasPat ? "Manage GitHub PAT" : "Connect GitHub PAT"}
+            className="flex items-center gap-1.5 rounded-md border border-[var(--border-hairline)] px-2 py-1 text-[11px] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-raised)] transition-colors"
+          >
+            <Icon name="ph:key" width={11} />
+            {patStatus?.hasPat ? "PAT connected" : "Add PAT"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+              void fetchActivity();
+            }}
+            title="Refresh"
+            className="rounded-md p-1 text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-raised)] transition-colors"
+          >
+            <Icon name="ph:arrows-clockwise" width={13} />
+          </button>
+        </div>
       </header>
 
       {/* ── Filter tabs ── */}
       <div className="flex items-center gap-1 border-b border-[var(--border-hairline)] px-4 py-2">
-        {(["all", "running", "review", "done", "failed"] as const).map((f) => {
+        {(["all", "pr", "review_request", "issue"] as Filter[]).map((f) => {
+          const labels: Record<Filter, string> = { all: "All", pr: "PRs", review_request: "Reviews", issue: "Issues" };
           const isActive = filter === f;
-          const count = f === "all" ? tasks.length : counts[f];
+          const count = counts[f];
           return (
             <button
               key={f}
@@ -162,7 +329,7 @@ export function GitHubView({ onOpenSession }: Props) {
                   : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]",
               ].join(" ")}
             >
-              {f}
+              {labels[f]}
               {count > 0 && (
                 <span className={`rounded-full px-1 py-0.5 text-[9px] leading-none ${
                   isActive ? "bg-[var(--accent-presence)]/20 text-[var(--accent-presence)]" : "bg-[var(--bg-raised)] text-[var(--text-muted)]"
@@ -175,134 +342,130 @@ export function GitHubView({ onOpenSession }: Props) {
         })}
       </div>
 
-      {error ? (
-        <div className="border-b border-[var(--border-hairline)] bg-[var(--bg-raised)] px-5 py-1.5 text-[11px] text-[var(--text-muted)]">
-          {error}
-        </div>
-      ) : null}
-
-      {/* ── List ── */}
+      {/* ── Body ── */}
       <div className="min-h-0 flex-1 overflow-y-auto">
+
         {loading ? (
           <div className="flex h-full items-center justify-center">
             <span className="text-[12px] text-[var(--text-muted)]">Loading…</span>
           </div>
-        ) : filtered.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center gap-3 px-8 text-center">
-            <Icon name="ph:github-logo" width={24} className="text-[var(--text-muted)]" />
-            <p className="text-[13px] text-[var(--text-muted)]">
-              {tasks.length === 0
-                ? "No GitHub tasks yet. Assign an issue to your familiar bot user to get started."
-                : `No ${filter} tasks.`}
-            </p>
-            {tasks.length === 0 && (
-              <a
-                href="https://github.com/OpenCoven/coven-github/blob/main/docs/self-hosting.md"
-                target="_blank"
-                rel="noreferrer"
-                className="text-[12px] text-[var(--accent-presence)] hover:underline"
+
+        ) : error === "no_user" ? (
+          <div className="flex h-full flex-col items-center justify-center gap-4 px-8 text-center">
+            <Icon name="ph:github-logo" width={28} className="text-[var(--text-muted)]" />
+            <div>
+              <p className="text-[14px] font-medium text-[var(--text-primary)] mb-1">Connect your GitHub account</p>
+              <p className="text-[12px] text-[var(--text-muted)] max-w-xs">
+                Cave uses the public GitHub API (no auth needed) or your own PAT for private repos and reviews.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 items-center">
+              <button
+                type="button"
+                onClick={() => setShowPatModal(true)}
+                className="rounded-lg bg-[var(--accent-presence)] px-5 py-2 text-[13px] font-medium text-white hover:opacity-90 transition-opacity"
               >
-                Set up coven-github →
-              </a>
-            )}
+                Add GitHub PAT
+              </button>
+              <p className="text-[11px] text-[var(--text-muted)]">
+                Or set <code className="bg-[var(--bg-raised)] px-1 rounded">GITHUB_USERNAME</code> in <code className="bg-[var(--bg-raised)] px-1 rounded">.env.local</code> for public data only
+              </p>
+            </div>
           </div>
+
+        ) : error ? (
+          <div className="flex h-full flex-col items-center justify-center gap-3 px-8 text-center">
+            <p className="text-[12px] text-rose-400">{error}</p>
+            <button
+              type="button"
+              onClick={() => void fetchActivity()}
+              className="text-[11px] text-[var(--accent-presence)] hover:underline"
+            >
+              Retry
+            </button>
+          </div>
+
+        ) : filtered.length === 0 ? (
+          <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
+            <Icon name="ph:check-circle" width={22} className="text-[var(--text-muted)]" />
+            <p className="text-[13px] text-[var(--text-muted)]">
+              {filter === "all" ? "Nothing open right now." : `No open ${filter === "review_request" ? "review requests" : filter + "s"}.`}
+            </p>
+          </div>
+
         ) : (
           <ul className="divide-y divide-[var(--border-hairline)]">
-            {filtered.map((task) => {
-              const st = STATUS[task.status];
-              return (
-                <li key={task.id}>
-                  <div className="group flex items-start gap-3 px-5 py-3.5 hover:bg-[var(--bg-raised)]/50 transition-colors">
+            {filtered.map((item) => (
+              <li key={item.id}>
+                <a
+                  href={item.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="group flex items-start gap-3 px-5 py-3.5 hover:bg-[var(--bg-raised)]/50 transition-colors"
+                >
+                  {/* Kind icon */}
+                  <Icon
+                    name={(KIND_ICON[item.kind] ?? "ph:github-logo") as Parameters<typeof Icon>[0]["name"]}
+                    width={14}
+                    className={`mt-[3px] shrink-0 ${KIND_COLOR[item.kind] ?? "text-[var(--text-muted)]"}`}
+                  />
 
-                    {/* Status dot */}
-                    <span className={`mt-[5px] shrink-0 h-2 w-2 rounded-full ${st.dot}`} title={st.label} />
-
-                    {/* Content */}
-                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                      {/* Row 1: repo + timestamp */}
-                      <div className="flex items-baseline justify-between gap-2">
-                        <span className="flex items-center gap-1.5 min-w-0">
-                          <Icon name="ph:github-logo" width={11} className="shrink-0 text-[var(--text-muted)]" />
-                          <span className="truncate font-mono text-[11px] text-[var(--text-muted)]">
-                            {task.repo}#{task.issueNumber}
-                          </span>
+                  <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    {/* Row 1: repo + number + age */}
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="flex items-center gap-1.5 min-w-0">
+                        <span className="truncate font-mono text-[11px] text-[var(--text-muted)]">
+                          {item.repo}{item.number ? `#${item.number}` : ""}
                         </span>
-                        <span className="shrink-0 text-[11px] text-[var(--text-muted)]">{age(task.updatedAt)}</span>
-                      </div>
-
-                      {/* Row 2: issue title */}
-                      <span className="truncate text-[13px] font-semibold text-[var(--text-primary)]">
-                        {task.issueTitle}
+                        {item.draft && (
+                          <span className="rounded px-1 py-0.5 text-[9px] bg-[var(--bg-raised)] text-[var(--text-muted)]">draft</span>
+                        )}
                       </span>
-
-                      {/* Row 3: status + branch/PR */}
-                      <div className="flex items-center gap-2 text-[12px]">
-                        <span className={`font-medium ${st.text}`}>{st.label}</span>
-                        {task.branch && (
-                          <>
-                            <span className="text-[var(--text-muted)]">·</span>
-                            <span className="font-mono text-[var(--text-muted)]">{task.branch}</span>
-                          </>
-                        )}
-                        {task.prNumber && (
-                          <>
-                            <span className="text-[var(--text-muted)]">·</span>
-                            <a
-href={task.prUrl ?? `https://github.com/${task.repo}/pull/${task.prNumber!}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="text-[var(--accent-presence)] hover:underline"
-                            >
-                              PR #{task.prNumber}
-                            </a>
-                          </>
-                        )}
-                        <span className="ml-1 text-[11px] text-[var(--text-muted)]">
-                          by {task.familiarName}
-                        </span>
-                      </div>
+                      <span className="shrink-0 text-[11px] text-[var(--text-muted)]">{age(item.updatedAt)}</span>
                     </div>
 
-                    {/* Cave session button */}
-                    {task.sessionId && onOpenSession ? (
-                      <button
-                        onClick={() => onOpenSession(task.sessionId!)}
-className="self-center shrink-0 rounded border border-[var(--border-hairline)] px-2 py-0.5 text-[10px] text-[var(--text-secondary)] opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 transition-all hover:bg-[var(--bg-raised)]"
-                      >
-                        watch →
-                      </button>
-                    ) : task.checkRunUrl ? (
-                      <a
-                        href={task.checkRunUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-className="self-center shrink-0 rounded border border-[var(--border-hairline)] px-2 py-0.5 text-[10px] text-[var(--text-secondary)] opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 transition-all hover:bg-[var(--bg-raised)]"
-                      >
-                        check run →
-                      </a>
-                    ) : null}
+                    {/* Row 2: title */}
+                    <span className="truncate text-[13px] font-semibold text-[var(--text-primary)] group-hover:text-[var(--accent-presence)] transition-colors">
+                      {item.title}
+                    </span>
+
+                    {/* Row 3: kind + labels */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`text-[11px] font-medium ${KIND_COLOR[item.kind]}`}>
+                        {KIND_LABEL[item.kind]}
+                      </span>
+                      {item.labels?.slice(0, 3).map((l) => (
+                        <span
+                          key={l}
+                          className="rounded px-1.5 py-0.5 text-[9px] bg-[var(--bg-raised)] text-[var(--text-muted)]"
+                        >
+                          {l}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                </li>
-              );
-            })}
+
+                  <Icon name="ph:arrow-square-out" width={11} className="mt-1 shrink-0 text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity" />
+                </a>
+              </li>
+            ))}
           </ul>
         )}
       </div>
 
       {/* ── Footer ── */}
-      <footer className="border-t border-[var(--border-hairline)] px-5 py-2 text-[10px] text-[var(--text-muted)]">
-        coven-github · Coven-native GitHub App ·{" "}
-        <a
-          href="https://github.com/OpenCoven/coven-github"
-          target="_blank"
-          rel="noreferrer"
-          className="hover:text-[var(--text-secondary)]"
-        >
-          github.com/OpenCoven/coven-github
-        </a>
-      </footer>
+      {activity && (
+        <footer className="border-t border-[var(--border-hairline)] px-5 py-2 text-[10px] text-[var(--text-muted)] flex items-center justify-between">
+          <span>
+            {activity.authed
+              ? "Authenticated — private repos included"
+              : "Public API — add a PAT for private repos + review requests"}
+          </span>
+          {activity.rateLimit && activity.rateLimit.remaining < 10 && (
+            <span className="text-amber-400">⚠ {activity.rateLimit.remaining} requests remaining</span>
+          )}
+        </footer>
+      )}
     </section>
   );
 }

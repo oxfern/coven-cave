@@ -68,3 +68,4 @@ credentials/
 
 # Git worktrees
 .worktrees/
+.env.local
