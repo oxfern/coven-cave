@@ -9,14 +9,11 @@ export type Familiar = {
   last_seen?: string;
   active_sessions?: number;
   memory_freshness?: string;
-  /**
-   * Legacy daemon emoji field. Treated as a glyph hint of last resort —
-   * `icon` wins when both are present.
-   */
+  /** Legacy daemon glyph field. Treated as an icon hint of last resort. */
   emoji?: string;
   /**
-   * Daemon-owned glyph. Either a literal emoji character (`"🐈"`) or a
-   * Phosphor icon name (`"ph:cat-fill"`). Written by `PUT /api/v1/familiars/{id}/icon`.
+   * Daemon-owned glyph. Must be a Phosphor icon name (`"ph:cat-fill"`).
+   * Written by `PUT /api/v1/familiars/{id}/icon`.
    * Wins over `emoji` and is the primary daemon source of truth for the
    * familiar's glyph. The Cave-local override store still wins on render
    * while it has a value, but its writes flow back into this field.

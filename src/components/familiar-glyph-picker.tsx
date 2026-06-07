@@ -81,8 +81,7 @@ export function FamiliarGlyphPicker({ open, familiar, onClose }: Props) {
   }, [query]);
 
   // Recent only includes icon picks since the picker is icon-only now.
-  // Older emoji entries in localStorage are dropped from the recent strip
-  // (still render fine on the familiar itself via the legacy renderer).
+  // Older non-icon entries in localStorage are dropped from the recent strip.
   const recentEntries: GlyphCatalogEntry[] = useMemo(() => {
     const out: GlyphCatalogEntry[] = [];
     for (const value of recent) {

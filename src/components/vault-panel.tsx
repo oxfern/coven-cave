@@ -20,7 +20,7 @@ type Mapping = {
 // ── Status badge ──────────────────────────────────────────────────────────────
 
 const STATUS_META: Record<VaultStatus, { label: string; color: string; icon: string }> = {
-  resolved:   { label: "1Password ✓", color: "var(--color-success)", icon: "ph:vault" },
+  resolved:   { label: "1Password",   color: "var(--color-success)", icon: "ph:vault" },
   "env-only": { label: "env only",    color: "oklch(0.75 0.15 80)", icon: "ph:file-text" },
   unresolved: { label: "unresolved",  color: "var(--color-danger)", icon: "ph:warning" },
   error:      { label: "error",       color: "var(--color-danger)", icon: "ph:x-circle" },

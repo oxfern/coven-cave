@@ -598,7 +598,10 @@ export function GitHubView() {
               : "Public API — add a PAT for private repos + review requests"}
           </span>
           {activity.rateLimit && activity.rateLimit.remaining < 10 && (
-            <span className="text-[var(--color-warning)]">⚠ {activity.rateLimit.remaining} requests remaining</span>
+            <span className="inline-flex items-center gap-1 text-[var(--color-warning)]">
+              <Icon name="ph:warning-fill" width={12} aria-hidden />
+              {activity.rateLimit.remaining} requests remaining
+            </span>
           )}
         </footer>
       )}

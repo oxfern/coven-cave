@@ -838,7 +838,7 @@ export function Workspace() {
     <>
       <Shell
         ref={shellRef}
-        topBar={
+        topBar={mode === "browser" ? null : (
           <DaemonBar
             mode={isDaemonMode(mode) ? mode : "home"}
             onModeChange={setMode}
@@ -860,7 +860,7 @@ export function Workspace() {
               }
             }}
           />
-        }
+        )}
         nav={sidebar}
         iconNav={iconNav}
         list={list}
