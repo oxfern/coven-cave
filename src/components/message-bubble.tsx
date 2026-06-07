@@ -32,6 +32,7 @@ import { parse } from "@create-markdown/core";
 import type { Block } from "@create-markdown/core";
 import type { Highlighter } from "shiki";
 import moodCTheme from "@/styles/shiki/mood-c-dark.json";
+import { Icon } from "@/lib/icon";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -519,9 +520,105 @@ export function MessageBubble({ role, content, timestamp, showTimestamp = true, 
       <div className={isError ? "text-[var(--color-warning)]" : ""}>
         <MarkdownContent text={content} pending={pending} />
       </div>
-      {hovered && !pending && content && <CopyBubble text={content} />}
+      {hovered && !pending && content ? (
+        <div className="cave-bubble-actions">
+          <ExpandBubble text={content} label={label ?? "Familiar response"} />
+          <CopyBubble text={content} />
+        </div>
+      ) : null}
       <div className={`cave-bubble-timestamp${shouldShowTs ? " cave-bubble-timestamp--visible" : ""}`}>
         {fmtBubbleTime(timestamp)}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// ExpandBubble — opens the message in a full-width markdown reading view
+// ---------------------------------------------------------------------------
+
+function ExpandBubble({ text, label }: { text: string; label: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        aria-label="Expand message"
+        title="Expand"
+        onClick={() => setOpen(true)}
+        className="cave-copy-btn cave-copy-btn-bubble cave-copy-btn--icon"
+      >
+        <Icon name="ph:arrows-out-simple" width={11} aria-hidden />
+      </button>
+      {open ? <MarkdownExpandModal text={text} label={label} onClose={() => setOpen(false)} /> : null}
+    </>
+  );
+}
+
+function MarkdownExpandModal({
+  text,
+  label,
+  onClose,
+}: {
+  text: string;
+  label: string;
+  onClose: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  useEffect(() => () => { if (copyTimer.current) clearTimeout(copyTimer.current); }, []);
+
+  const copy = useCallback(async () => {
+    await navigator.clipboard.writeText(text).catch(() => undefined);
+    setCopied(true);
+    if (copyTimer.current) clearTimeout(copyTimer.current);
+    copyTimer.current = setTimeout(() => setCopied(false), 2000);
+  }, [text]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-sm"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Expanded ${label}`}
+    >
+      <div
+        className="relative flex h-[90vh] w-[92vw] max-w-[1100px] flex-col overflow-hidden rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-panel)] shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex shrink-0 items-center gap-2 border-b border-[var(--border-hairline)] px-4 py-2.5">
+          <Icon name="ph:arrows-out-simple" width={13} className="shrink-0 text-[var(--text-muted)]" aria-hidden />
+          <span className="flex-1 truncate text-[12px] text-[var(--text-secondary)]">{label}</span>
+          <button
+            type="button"
+            onClick={() => void copy()}
+            className="flex h-7 items-center gap-1.5 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)] px-2.5 text-[11px] text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+          >
+            <Icon name="ph:copy" width={11} aria-hidden />
+            {copied ? "Copied" : "Copy"}
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="ml-1 flex h-7 w-7 items-center justify-center rounded-md text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-raised)] hover:text-[var(--text-primary)]"
+            aria-label="Close expanded view"
+          >
+            <Icon name="ph:x-bold" width={11} aria-hidden />
+          </button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-8 py-6">
+          <div className="mx-auto w-full max-w-[820px]">
+            <MarkdownBlock text={text} className="cave-md--expanded" />
+          </div>
+        </div>
       </div>
     </div>
   );
