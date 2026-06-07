@@ -578,9 +578,9 @@ export function BrowserPane({ label = "default" }: { label?: string }) {
       </div>
 
       {/* ── Main area (toolbar + viewport) ──────────────────────── */}
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
       {/* ── Toolbar ───────────────────────────────────────────────── */}
-      <header className="flex items-center gap-1 border-b border-[var(--border-hairline)] bg-[var(--bg-raised)]/40 px-2 py-1.5">
+      <header className="relative z-10 flex min-h-10 shrink-0 items-center gap-1 border-b border-[var(--border-hairline)] bg-[var(--bg-raised)]/40 px-2 py-1.5">
         {/* Back */}
         <button type="button" onClick={goBack} disabled={!canBack}
           className="grid h-7 w-7 place-items-center rounded text-[var(--fg-muted)] hover:bg-[var(--bg-raised)] hover:text-[var(--fg-base)] disabled:opacity-30 disabled:cursor-default"
@@ -647,7 +647,7 @@ export function BrowserPane({ label = "default" }: { label?: string }) {
 
       {/* ── Loading bar ───────────────────────────────────────────── */}
       {loading && (
-        <div className="h-0.5 w-full overflow-hidden bg-[var(--bg-raised)]">
+        <div className="h-0.5 w-full shrink-0 overflow-hidden bg-[var(--bg-raised)]">
           <div
             className="h-full animate-[browser-progress_1.4s_ease-in-out_infinite] bg-[var(--accent-presence)]"
             style={{ width: "60%" }}
@@ -656,7 +656,7 @@ export function BrowserPane({ label = "default" }: { label?: string }) {
       )}
 
       {/* ── Viewport (webview overlay target) ─────────────────────── */}
-      <div className="relative flex-1 overflow-hidden" style={{ background: "#0c0c0e" }}>
+      <div className="relative min-h-0 flex-1 overflow-hidden" style={{ background: "#0c0c0e" }}>
         {quickOpen && (
           <BrowserQuickOpen
             tabs={tabs}
