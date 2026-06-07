@@ -14,8 +14,8 @@ assert.match(
 
 assert.match(
   agentsView,
-  /Search agents\.\.\./,
-  "AgentsView should keep agent search in the primary command row",
+  /Search chats…/,
+  "AgentsView should keep chat search in the primary command row",
 );
 
 assert.match(
