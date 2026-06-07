@@ -11,7 +11,10 @@
 
 import React from "react";
 import { Icon } from "@/lib/icon";
-import type { SessionRow } from "@/lib/types";
+import type { Familiar, SessionRow } from "@/lib/types";
+import type { InboxItem } from "@/lib/cave-inbox";
+import type { InboxPrefs } from "@/lib/cave-inbox-prefs";
+import { NotificationBell } from "@/components/notification-bell";
 
 export type FolderMode =
   | "agents"
@@ -33,9 +36,18 @@ export type SidebarMinimalProps = {
   activeSessionId?: string | null;
   onNewChat: () => void;
   onOpenSearch: () => void;
+  onOpenSettings: () => void;
   onModeChange: (mode: string) => void;
   onOpenSession: (id: string) => void;
   addons?: AddonsConfig;
+  /* Notifications — when omitted, the bell is hidden. */
+  inboxItems?: InboxItem[];
+  inboxPrefs?: InboxPrefs;
+  familiars?: Familiar[];
+  notificationBadgeCount?: number;
+  onOpenInbox?: () => void;
+  onOpenInboxItem?: (item: InboxItem) => void;
+  onNotificationPrefsChanged?: () => void;
 };
 
 const FOLDER_MODES: Array<{
@@ -69,16 +81,35 @@ const UTILITY_MODES: Array<{
 
 export { FOLDER_MODES, UTILITY_MODES };
 
+function SidebarSection({
+  label,
+  className = "",
+  children,
+}: {
+  label?: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={`sidebar-folders ${className}`.trim()}>
+      {label ? <div className="sidebar-section-label">{label}</div> : null}
+      {children}
+    </div>
+  );
+}
+
 function ActionRow({
   icon,
   label,
   active,
   onClick,
+  trailing,
 }: {
   icon: React.ReactNode;
   label: string;
   active?: boolean;
   onClick: () => void;
+  trailing?: React.ReactNode;
 }) {
   return (
     <button
@@ -89,6 +120,7 @@ function ActionRow({
     >
       <span className="sidebar-action-icon">{icon}</span>
       <span className="sidebar-action-label">{label}</span>
+      {trailing && <span className="sidebar-action-trailing">{trailing}</span>}
     </button>
   );
 }
@@ -123,7 +155,21 @@ function FolderRow({
 }
 
 export function SidebarMinimal(props: SidebarMinimalProps) {
-  const { mode, onNewChat, onModeChange, addons } = props;
+  const {
+    mode,
+    onNewChat,
+    onOpenSearch,
+    onOpenSettings,
+    onModeChange,
+    addons,
+    inboxItems,
+    inboxPrefs,
+    familiars,
+    notificationBadgeCount = 0,
+    onOpenInbox,
+    onOpenInboxItem,
+    onNotificationPrefsChanged,
+  } = props;
 
   // Filter out disabled add-on items. Default to hiding when addons is undefined.
   const visibleFolderModes = FOLDER_MODES.filter((fm) => {
@@ -132,10 +178,22 @@ export function SidebarMinimal(props: SidebarMinimalProps) {
     return true;
   });
 
+  const showNotifications =
+    !!onOpenInbox && !!onNotificationPrefsChanged && !!inboxPrefs;
+  const primaryFolderModes = visibleFolderModes.filter((fm) => fm.id === "agents" || fm.id === "board");
+  const toolFolderModes = visibleFolderModes.filter((fm) => fm.id === "terminal" || fm.id === "browser");
+  const addinFolderModes = visibleFolderModes.filter((fm) => fm.id === "github" || fm.id === "library");
+
   return (
     <nav className="sidebar-minimal">
-      {/* Header action */}
-      <div className="sidebar-actions">
+      {/* Header actions: Search + New chat */}
+      <div className="sidebar-actions sidebar-action-stack">
+        <ActionRow
+          icon={<Icon name="ph:magnifying-glass" width={14} />}
+          label="Search"
+          onClick={onOpenSearch}
+          trailing={<kbd className="sidebar-action-kbd">⌘K</kbd>}
+        />
         <ActionRow
           icon={<Icon name="ph:note-pencil" width={14} />}
           label="New chat"
@@ -143,31 +201,9 @@ export function SidebarMinimal(props: SidebarMinimalProps) {
         />
       </div>
 
-      {/* Primary nav rows: Agents / Tasks / Terminal / Browser */}
-      <div className="sidebar-folders">
-        {visibleFolderModes
-          .filter((fm) => fm.id !== "github" && fm.id !== "library")
-          .map((fm) => (
-            <React.Fragment key={fm.id}>
-              {fm.dividerBefore && <div className="sidebar-divider" />}
-              <FolderRow
-                id={fm.id}
-                label={fm.label}
-                iconName={fm.iconName}
-                active={mode === fm.id}
-                badge={fm.badge?.(props)}
-                onClick={() => onModeChange(fm.id)}
-              />
-            </React.Fragment>
-          ))}
-      </div>
-
-      {/* Add-ins section: GitHub · Library, directly under primary side-panel rows */}
-      <div className="sidebar-folders sidebar-addins">
-        <div className="sidebar-section-label">Add-ins</div>
-        {visibleFolderModes
-          .filter((fm) => fm.id === "github" || fm.id === "library")
-          .map((fm) => (
+      <div className="sidebar-nav-scroll">
+        <SidebarSection label="Work">
+          {primaryFolderModes.map((fm) => (
             <FolderRow
               key={fm.id}
               id={fm.id}
@@ -178,19 +214,77 @@ export function SidebarMinimal(props: SidebarMinimalProps) {
               onClick={() => onModeChange(fm.id)}
             />
           ))}
+        </SidebarSection>
+
+        <SidebarSection label="Tools">
+          {toolFolderModes.map((fm) => (
+            <FolderRow
+              key={fm.id}
+              id={fm.id}
+              label={fm.label}
+              iconName={fm.iconName}
+              active={mode === fm.id}
+              badge={fm.badge?.(props)}
+              onClick={() => onModeChange(fm.id)}
+            />
+          ))}
+        </SidebarSection>
+
+        {addinFolderModes.length > 0 ? (
+          <SidebarSection label="Add-ins" className="sidebar-addins">
+            {addinFolderModes.map((fm) => (
+              <FolderRow
+                key={fm.id}
+                id={fm.id}
+                label={fm.label}
+                iconName={fm.iconName}
+                active={mode === fm.id}
+                badge={fm.badge?.(props)}
+                onClick={() => onModeChange(fm.id)}
+              />
+            ))}
+          </SidebarSection>
+        ) : null}
+
+        <SidebarSection label="Manage" className="sidebar-actions sidebar-actions--footer">
+          {UTILITY_MODES.map((item) => (
+            <ActionRow
+              key={item.id}
+              icon={<Icon name={item.iconName} width={14} />}
+              label={item.label}
+              active={mode === item.id}
+              onClick={() => onModeChange(item.id)}
+            />
+          ))}
+        </SidebarSection>
       </div>
 
-      {/* Utility footer: Roles · Automations · Calendar */}
-      <div className="sidebar-actions sidebar-actions--footer">
-        {UTILITY_MODES.map((item) => (
-          <ActionRow
-            key={item.id}
-            icon={<Icon name={item.iconName} width={14} />}
-            label={item.label}
-            active={mode === item.id}
-            onClick={() => onModeChange(item.id)}
-          />
-        ))}
+      {/* Bottom: Notifications + Settings */}
+      <div className="sidebar-foot">
+        {showNotifications ? (
+          <div className="sidebar-foot-bell">
+            <NotificationBell
+              items={inboxItems ?? []}
+              familiars={familiars ?? []}
+              prefs={inboxPrefs!}
+              badgeCount={notificationBadgeCount}
+              onOpenInbox={onOpenInbox!}
+              onOpenItem={onOpenInboxItem}
+              onPrefsChanged={onNotificationPrefsChanged!}
+            />
+            <span className="sidebar-foot-label">Notifications</span>
+          </div>
+        ) : null}
+        <button
+          type="button"
+          className="sidebar-foot-btn"
+          onClick={onOpenSettings}
+          aria-label="Settings"
+          title="Settings"
+        >
+          <Icon name="ph:gear-six" width={14} className="sidebar-foot-icon" />
+          <span className="sidebar-foot-label">Settings</span>
+        </button>
       </div>
     </nav>
   );

@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { SidebarMinimal, FOLDER_MODES, UTILITY_MODES } from "@/components/sidebar-minimal";
 import { Icon } from "@/lib/icon";
 import type { ChatRouterHandle } from "@/components/chat-router";
-import { DaemonBar } from "@/components/daemon-bar";
+import type { WorkspaceMode as WorkspaceModeFromDaemon } from "@/lib/workspace-mode";
 import { CommandPalette, type PaletteIntent } from "@/components/command-palette";
 import { BoardView } from "@/components/board-view";
 import { PluginsView } from "@/components/plugins-view";
@@ -30,12 +31,7 @@ import type { InboxPrefs } from "@/lib/cave-inbox-prefs";
 import type { Familiar, SessionRow } from "@/lib/types";
 import { DEMO_MODE, DEMO_FAMILIARS } from "@/lib/demo-seed";
 
-type WorkspaceMode = Parameters<typeof DaemonBar>[0]["mode"];
-
-// Narrow helper for DaemonBar.
-function isDaemonMode(m: WorkspaceMode): m is Parameters<typeof DaemonBar>[0]["mode"] {
-  return !!m;
-}
+type WorkspaceMode = WorkspaceModeFromDaemon;
 
 // Icon-only nav strip shown when the sidebar is collapsed
 function IconNavStrip({
@@ -78,6 +74,7 @@ function IconNavStrip({
 }
 
 export function Workspace() {
+  const nextRouter = useRouter();
   const routerRef = useRef<ChatRouterHandle | null>(null);
   const shellRef = useRef<ShellHandle | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -122,6 +119,23 @@ export function Workspace() {
         if (j.ok && j.config?.addons) setAddons(j.config.addons);
       })
       .catch(() => {/* keep defaults */});
+  }, []);
+
+  // Daemon status poll (previously lived on DaemonBar before chrome consolidation)
+  useEffect(() => {
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const res = await fetch("/api/daemon/status", { cache: "no-store" });
+        const json = (await res.json()) as { running?: boolean };
+        if (!cancelled) setDaemonRunning(json.running === true);
+      } catch {
+        if (!cancelled) setDaemonRunning(false);
+      }
+    };
+    void tick();
+    const t = setInterval(tick, 5000);
+    return () => { cancelled = true; clearInterval(t); };
   }, []);
 
   const loadFamiliars = useCallback(async () => {
@@ -446,16 +460,6 @@ export function Workspace() {
     setTimeout(() => window.dispatchEvent(new CustomEvent("cave:agents-list")), 0);
   }, []);
 
-  const openFamiliarChatKnob = useCallback(() => {
-    setShellAgentPane("chat");
-    setStripLock("chat");
-    setMode("agents");
-    setTimeout(() => {
-      shellRef.current?.openAgent();
-      window.dispatchEvent(new CustomEvent("cave:agents-list"));
-    }, 0);
-  }, []);
-
   const openToastTarget = useCallback((toast: Toast) => {
     setToasts((prev) => prev.filter((t) => t.id !== toast.id));
     if (toast.sessionId) {
@@ -681,6 +685,7 @@ export function Workspace() {
         startAgentChat(activeId);
       }}
       onOpenSearch={() => setPaletteOpen(true)}
+      onOpenSettings={() => nextRouter.push("/settings")}
       onModeChange={(m) => {
         if (m === "browser") {
           setMode("browser");
@@ -691,6 +696,19 @@ export function Workspace() {
       onOpenSession={(id) => {
         openAgentSession(id);
       }}
+      inboxItems={inboxItemsWithEphemeral}
+      inboxPrefs={inboxPrefs}
+      familiars={familiars}
+      notificationBadgeCount={inboxBadgeCount}
+      onOpenInbox={() => setMode("inbox")}
+      onOpenInboxItem={(item) => {
+        if (item.sessionId) {
+          openAgentSession(item.sessionId, item.familiarId);
+        } else {
+          setMode("inbox");
+        }
+      }}
+      onNotificationPrefsChanged={refreshPrefs}
     />
   );
 
@@ -838,29 +856,6 @@ export function Workspace() {
     <>
       <Shell
         ref={shellRef}
-        topBar={mode === "browser" ? null : (
-          <DaemonBar
-            mode={isDaemonMode(mode) ? mode : "home"}
-            onModeChange={setMode}
-            onOpenSearch={() => setPaletteOpen(true)}
-            onOpenFamiliarChat={openFamiliarChatKnob}
-            inboxBadgeCount={inboxBadgeCount}
-            onRunningChange={setDaemonRunning}
-            inboxItems={[]}
-            inboxPrefs={inboxPrefs}
-            familiars={familiars}
-            activeFamiliar={active}
-            onPrefsChanged={refreshPrefs}
-            onOpenInbox={() => setMode("inbox")}
-            onOpenInboxItem={(item) => {
-              if (item.sessionId) {
-                openAgentSession(item.sessionId, item.familiarId);
-              } else {
-                setMode("inbox");
-              }
-            }}
-          />
-        )}
         nav={sidebar}
         iconNav={iconNav}
         list={list}

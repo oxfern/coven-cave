@@ -86,6 +86,97 @@
   color: var(--text-muted);
   flex-shrink: 0;
   opacity: 0.6;
+  padding: 1px 5px;
+  border-radius: 4px;
+  border: 1px solid var(--border-hairline);
+  background: var(--bg-base);
+}
+
+.sidebar-action-trailing {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+/* Stack the top-level Search + New chat actions tightly */
+.sidebar-action-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Middle nav region scrolls if the user has lots of sections */
+.sidebar-nav-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-hairline) transparent;
+}
+
+/* ── Bottom: Notifications + Settings ─────────────────────────────────────── */
+.sidebar-foot {
+  flex-shrink: 0;
+  padding: 8px;
+  border-top: 1px solid var(--border-hairline);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebar-foot-bell,
+.sidebar-foot-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 8px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s ease, color 0.12s ease;
+  width: 100%;
+}
+
+.sidebar-foot-bell:hover,
+.sidebar-foot-btn:hover {
+  background: var(--bg-raised);
+  color: var(--text-primary);
+}
+
+.sidebar-foot-icon {
+  flex-shrink: 0;
+  opacity: 0.7;
+  transition: opacity 0.12s ease;
+}
+
+.sidebar-foot-btn:hover .sidebar-foot-icon {
+  opacity: 1;
+}
+
+.sidebar-foot-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+/* NotificationBell renders an absolutely-positioned popover anchored at the
+ * top-right of its trigger. In the sidebar foot that pushes the popover off
+ * the bottom of the viewport, so flip it to open upward to the right. */
+.sidebar-foot-bell > div > div[class*="z-50"] {
+  top: auto !important;
+  bottom: calc(100% + 6px) !important;
+  right: auto !important;
+  left: 4px !important;
 }
 
 /* ── Folder mode rows ────────────────────────────────────────────────────── */
@@ -830,4 +921,172 @@
 .sidebar-addins .sidebar-section-label {
   padding-top: var(--space-2);
   opacity: 0.7;
+}
+
+/* ── Left panel polish: compact command stack + continuous navigation ────── */
+.sidebar-minimal {
+  gap: 10px;
+  padding: 10px 8px 10px;
+  background:
+    linear-gradient(180deg, color-mix(in oklch, var(--bg-raised) 55%, transparent), transparent 42%),
+    var(--bg-base);
+}
+
+.sidebar-action-stack {
+  display: grid;
+  gap: 6px;
+  padding: 0 6px;
+}
+
+.sidebar-action-stack .sidebar-action-row {
+  min-height: 38px;
+  border: 1px solid var(--border-hairline);
+  border-radius: 10px;
+  background: color-mix(in oklch, var(--bg-raised) 78%, transparent);
+  padding: 0 11px;
+  font-size: 13px;
+}
+
+.sidebar-action-stack .sidebar-action-row:first-child {
+  min-height: 42px;
+  font-size: 14px;
+}
+
+.sidebar-action-stack .sidebar-action-row:hover {
+  border-color: var(--border-strong);
+  background: var(--bg-elevated);
+}
+
+.sidebar-action-trailing {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.sidebar-nav-scroll {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 11px;
+  overflow-y: auto;
+  padding: 0 6px 2px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-hairline) transparent;
+}
+
+.sidebar-nav-scroll::-webkit-scrollbar { width: 3px; }
+.sidebar-nav-scroll::-webkit-scrollbar-thumb {
+  border-radius: 3px;
+  background: var(--border-hairline);
+}
+
+.sidebar-folders {
+  border-bottom: 1px solid var(--border-hairline);
+  padding: 0 0 10px;
+}
+
+.sidebar-section-label {
+  padding: 0 10px 5px;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0;
+  opacity: 0.76;
+}
+
+.sidebar-divider {
+  display: none;
+}
+
+.sidebar-folder-row,
+.sidebar-actions--footer .sidebar-action-row {
+  min-height: 34px;
+  border-radius: 8px;
+  padding: 0 10px;
+  color: var(--text-muted);
+}
+
+.sidebar-folder-row:hover,
+.sidebar-actions--footer .sidebar-action-row:hover {
+  background: var(--bg-raised);
+  color: var(--text-primary);
+}
+
+.sidebar-folder-row--active,
+.sidebar-actions--footer .sidebar-action-row--active {
+  background: color-mix(in oklch, var(--accent-presence) 13%, transparent);
+  box-shadow: inset 2px 0 0 var(--accent-presence);
+  color: var(--text-primary);
+}
+
+.sidebar-actions--footer {
+  margin-top: 0;
+  border-top: 0;
+  border-bottom: 1px solid var(--border-hairline);
+  padding: 0 0 10px;
+}
+
+.sidebar-foot {
+  display: grid;
+  flex-shrink: 0;
+  gap: 4px;
+  border-top: 1px solid var(--border-hairline);
+  padding: 8px 6px 0;
+}
+
+.sidebar-foot-bell,
+.sidebar-foot-btn {
+  display: flex;
+  min-height: 34px;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  padding: 0 8px;
+  color: var(--text-muted);
+  text-align: left;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.sidebar-foot-bell:hover,
+.sidebar-foot-btn:hover {
+  background: var(--bg-raised);
+  color: var(--text-primary);
+}
+
+.sidebar-foot-bell > .relative {
+  flex-shrink: 0;
+}
+
+.sidebar-foot-icon {
+  flex-shrink: 0;
+}
+
+.sidebar-foot-label {
+  min-width: 0;
+  overflow: hidden;
+  color: inherit;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-height: 760px) {
+  .sidebar-minimal {
+    gap: 7px;
+    padding-top: 8px;
+  }
+
+  .sidebar-nav-scroll {
+    gap: 8px;
+  }
+
+  .sidebar-folder-row,
+  .sidebar-actions--footer .sidebar-action-row,
+  .sidebar-foot-bell,
+  .sidebar-foot-btn {
+    min-height: 31px;
+  }
 }

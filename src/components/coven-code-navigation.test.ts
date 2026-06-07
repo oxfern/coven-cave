@@ -4,7 +4,6 @@ import { readFile } from "node:fs/promises";
 
 const sidebar = await readFile(new URL("./sidebar-minimal.tsx", import.meta.url), "utf8");
 const workspace = await readFile(new URL("./workspace.tsx", import.meta.url), "utf8");
-const daemonBar = await readFile(new URL("./daemon-bar.tsx", import.meta.url), "utf8");
 const comuxView = await readFile(new URL("./comux-view.tsx", import.meta.url), "utf8");
 
 assert.match(
@@ -49,46 +48,62 @@ assert.doesNotMatch(
   "Sidebar should not render its own collapse row; the shell nav tab is the single sidebar toggle",
 );
 
+// The top header row was retired in favor of consolidating its affordances into
+// the sidebar. Search lives at the top of the sidebar, Settings + Notifications
+// at the bottom, and no horizontal DaemonBar is rendered.
+
 assert.match(
-  daemonBar,
-  /terminal: "Terminal"/,
-  "Top bar should label Terminal mode",
+  sidebar,
+  /onOpenSearch:\s*\(\)\s*=>\s*void/,
+  "Sidebar should accept a search-open action now that search lives in the sidebar",
 );
 
 assert.match(
-  daemonBar,
-  /projects: "Projects"/,
-  "Top bar should label Projects mode",
+  sidebar,
+  /onOpenSettings:\s*\(\)\s*=>\s*void/,
+  "Sidebar should accept a settings-open action now that settings lives in the sidebar footer",
 );
 
 assert.match(
-  daemonBar,
-  /onOpenFamiliarChat\?: \(\) => void/,
-  "Top bar should accept a focused familiar chat action",
+  sidebar,
+  /NotificationBell/,
+  "Sidebar should be capable of rendering the notification bell in its footer",
 );
 
 assert.match(
-  daemonBar,
-  /aria-label="Open familiar chat"[\s\S]*Chat with \$\{activeFamiliar\.display_name\}[\s\S]*⌘J/,
-  "Top bar center control should be a familiar chat knob instead of a search-only trigger",
+  sidebar,
+  /label="Search"/,
+  "Sidebar should expose a Search action row at the top",
+);
+
+assert.doesNotMatch(
+  workspace,
+  /<DaemonBar/,
+  "Workspace should no longer render the DaemonBar top header",
+);
+
+assert.doesNotMatch(
+  workspace,
+  /topBar=\{/,
+  "Workspace should not pass a topBar prop to Shell after chrome consolidation",
 );
 
 assert.match(
   workspace,
-  /const openFamiliarChatKnob = useCallback\(\(\) => \{[\s\S]*setShellAgentPane\("chat"\)[\s\S]*setStripLock\("chat"\)[\s\S]*setMode\("agents"\)[\s\S]*shellRef\.current\?\.openAgent\(\)[\s\S]*cave:agents-list/,
-  "Workspace should wire the top knob to the familiar chat surface",
+  /onOpenSearch=\{\(\)\s*=>\s*setPaletteOpen\(true\)\}/,
+  "Workspace should wire the sidebar Search action to the command palette",
 );
 
 assert.match(
   workspace,
-  /onOpenFamiliarChat=\{openFamiliarChatKnob\}[\s\S]*activeFamiliar=\{active\}/,
-  "Workspace should pass active familiar context into the top chat knob",
+  /onOpenSettings=\{\(\)\s*=>\s*nextRouter\.push\("\/settings"\)\}/,
+  "Workspace should wire the sidebar Settings action to the /settings route",
 );
 
 assert.match(
   workspace,
-  /topBar=\{mode === "browser" \? null : \([\s\S]*<DaemonBar/,
-  "Workspace should hide the app top header row in Browser mode",
+  /onNotificationPrefsChanged=\{refreshPrefs\}/,
+  "Workspace should pass notification-prefs callback through to the sidebar",
 );
 
 assert.match(
