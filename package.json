@@ -1,10 +1,11 @@
 {
   "name": "coven-cave",
-  "version": "0.0.46",
+  "version": "0.0.47",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "dev:app": "bash scripts/dev-app.sh",
+    "mobile:tailscale": "bash scripts/mobile-tailscale.sh",
     "build": "next build",
     "typecheck": "tsc --noEmit",
     "start": "next start"
