@@ -370,6 +370,31 @@
   right: 0.45em;
 }
 
+/* When grouped inside .cave-bubble-actions, drop the absolute positioning so
+ * the buttons can sit side-by-side in flex layout. The wrapper handles
+ * placement. */
+.cave-bubble-actions {
+  position: absolute;
+  top: 0.35em;
+  right: 0.45em;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.cave-bubble-actions .cave-copy-btn-bubble {
+  position: static;
+  top: auto;
+  right: auto;
+}
+
+/* Icon-only copy/expand button variant — tighter padding */
+.cave-copy-btn--icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 5px;
+}
+
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    SYNTAX BLOCK (tool I/O, file preview, inspector pane)
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
