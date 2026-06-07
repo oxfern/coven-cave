@@ -8,8 +8,6 @@ import { MessageBubble, SyntaxBlock } from "@/components/message-bubble";
 import { canonicalize, formatHelp, matchSlash, type SlashCommand } from "@/lib/slash-commands";
 import { Icon } from "@/lib/icon";
 import { useKeySymbols } from "@/lib/platform-keys";
-import { FamiliarGlyph } from "@/components/familiar-glyph";
-import { parseGlyphString, DEFAULT_FAMILIAR_GLYPH } from "@/lib/familiar-glyph";
 import {
   MAX_ATTACHMENT_TEXT_CHARS,
   stripPreviewOnlyAttachmentFields,
@@ -170,23 +168,9 @@ function ChatEmptyState({
   modKey: string;
   onPrompt?: (text: string) => void;
 }) {
-  const glyph = parseGlyphString(familiar.icon) ?? parseGlyphString(familiar.emoji) ?? DEFAULT_FAMILIAR_GLYPH;
 
   return (
     <div className="flex flex-col items-center justify-center py-16 px-6 select-none">
-      {/* Avatar ring */}
-      <div
-        className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg"
-        style={{
-          background: "linear-gradient(135deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.03) 100%)",
-          border: "1px solid rgba(255,255,255,0.08)",
-          color: "var(--accent-presence)",
-        }}
-        aria-hidden
-      >
-        <FamiliarGlyph glyph={glyph} size="lg" className="inline-flex items-center justify-center" />
-      </div>
-
       {/* Name + tagline */}
       <h2 className="mb-1 text-base font-semibold" style={{ color: "rgba(255,255,255,0.85)" }}>
         {familiar.display_name}
@@ -895,17 +879,9 @@ function TurnRow({ turn, familiar, showTimestamp = true }: { turn: Turn; familia
   const duration = fmtDuration(turn.durationMs);
   const { visible, reasoning } = splitReasoning(turn.text);
   const tools = turn.tools ?? [];
-  const glyph = parseGlyphString(familiar.icon) ?? parseGlyphString(familiar.emoji) ?? DEFAULT_FAMILIAR_GLYPH;
 
   return (
     <div className="cave-turn-assistant">
-      {/* Avatar column */}
-      <div className="cave-turn-avatar" aria-hidden>
-        <div className="cave-turn-avatar-ring">
-          <FamiliarGlyph glyph={glyph} size="sm" />
-        </div>
-      </div>
-
       {/* Content column */}
       <div className="cave-turn-content text-[14px] leading-relaxed text-[var(--text-primary)] group/turn">
         {tools.length > 0 ? <ToolGroup tools={tools} /> : null}
