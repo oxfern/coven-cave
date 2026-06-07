@@ -251,7 +251,7 @@ async function main() {
     type: "png",
     animations: "disabled",
   });
-  console.log("✓ chat.png");
+  console.log("OK chat.png");
 
   await browser.close();
 }

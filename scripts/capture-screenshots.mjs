@@ -124,9 +124,9 @@ async function main() {
         type: "png",
         animations: "disabled",
       });
-      console.log(`  ✓ ${cap.file}`);
+      console.log(`  OK ${cap.file}`);
     } catch (err) {
-      console.error(`  ✗ ${cap.file}: ${err.message}`);
+      console.error(`  ERR ${cap.file}: ${err.message}`);
     }
   }
 

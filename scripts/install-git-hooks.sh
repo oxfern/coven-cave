@@ -17,5 +17,5 @@ fi
 chmod +x "$HOOKS_DIR"/* 2>/dev/null || true
 git -C "$REPO_ROOT" config core.hooksPath scripts/git-hooks
 
-echo "✓ core.hooksPath -> scripts/git-hooks"
+echo "OK core.hooksPath -> scripts/git-hooks"
 echo "  installed hooks: $(ls "$HOOKS_DIR" | xargs)"
