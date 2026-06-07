@@ -9,6 +9,8 @@ import type { CardStep } from "@/lib/cave-board-types";
 import type { GitHubItem } from "@/lib/github-tasks";
 import { Icon } from "@/lib/icon";
 import type { IconName } from "@/lib/icon";
+import { FamiliarGlyph } from "@/components/familiar-glyph";
+import { parseGlyphString, DEFAULT_FAMILIAR_GLYPH } from "@/lib/familiar-glyph";
 
 const DEFAULT_TIMEOUT_MS = 2 * 60 * 60 * 1000;
 
@@ -709,6 +711,10 @@ export function BoardInspector({ card, familiars, sessions, onClose, onPatch, on
 
   const session = sessions.find((s) => s.id === card.sessionId) ?? null;
   const moves = NEXT_MOVES[card.lifecycle] ?? [];
+  const currentFamiliar = familiars.find((f) => f.id === card.familiarId) ?? null;
+  const familiarGlyph = currentFamiliar
+    ? parseGlyphString(currentFamiliar.icon) ?? parseGlyphString(currentFamiliar.emoji) ?? DEFAULT_FAMILIAR_GLYPH
+    : null;
 
   const close = () => { setClosing(true); setTimeout(onClose, 180); };
 
@@ -746,73 +752,118 @@ export function BoardInspector({ card, familiars, sessions, onClose, onPatch, on
       <div className="board-drawer-backdrop" onClick={close} />
       <div className={`board-drawer${closing ? " board-drawer--closing" : ""}`} role="dialog" aria-modal aria-label="Card inspector">
         <div className="board-drawer-header">
-          <span className="board-drawer-title">{card.title}</span>
+          <input
+            className="board-drawer-title-input"
+            defaultValue={card.title}
+            aria-label="Card title"
+            spellCheck={false}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); }
+            }}
+            onBlur={(e) => {
+              const next = e.target.value.trim();
+              if (next && next !== card.title) onPatch(card.id, { title: next });
+              else e.target.value = card.title;
+            }}
+          />
           <button type="button" className="board-drawer-close" onClick={close} aria-label="Close">
             <Icon name="ph:x-bold" width={12} />
           </button>
         </div>
 
         <div className="board-drawer-body">
-          <div className="board-drawer-field">
-            <div className="board-drawer-field-label">Title</div>
-            <input className="board-drawer-field-input" defaultValue={card.title}
-              onBlur={(e) => { if (e.target.value.trim() && e.target.value !== card.title) onPatch(card.id, { title: e.target.value.trim() }); }} />
-          </div>
-
-          <div className="board-drawer-grid-2">
-            <div className="board-drawer-field">
-              <div className="board-drawer-field-label">Status</div>
-              <select className="board-drawer-field-select" value={card.status}
-                onChange={(e) => onMoveStatus(card.id, e.target.value as CardStatus)}>
-                {STATUSES.map((s) => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
-              </select>
+          <div className="board-drawer-meta-card">
+            <div className="board-drawer-grid-2">
+              <div className="board-drawer-field">
+                <div className="board-drawer-field-label">Status</div>
+                <div className="board-drawer-select-shell board-drawer-select-shell--with-leading">
+                  <span className={`board-drawer-status-dot board-drawer-status-dot--${card.status}`} aria-hidden />
+                  <select
+                    className="board-drawer-field-select board-drawer-field-select--styled"
+                    value={card.status}
+                    onChange={(e) => onMoveStatus(card.id, e.target.value as CardStatus)}
+                  >
+                    {STATUSES.map((s) => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+                  </select>
+                  <Icon name="ph:caret-up-down-bold" width={11} className="board-drawer-select-caret" />
+                </div>
+              </div>
+              <div className="board-drawer-field">
+                <div className="board-drawer-field-label">Priority</div>
+                <div className="board-drawer-select-shell board-drawer-select-shell--with-leading">
+                  <span className={`board-drawer-priority-flag board-drawer-priority-flag--${card.priority}`} aria-hidden />
+                  <select
+                    className="board-drawer-field-select board-drawer-field-select--styled"
+                    value={card.priority}
+                    onChange={(e) => onPatch(card.id, { priority: e.target.value as CardPriority })}
+                  >
+                    {PRIORITIES.map((p) => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
+                  </select>
+                  <Icon name="ph:caret-up-down-bold" width={11} className="board-drawer-select-caret" />
+                </div>
+              </div>
             </div>
-            <div className="board-drawer-field">
-              <div className="board-drawer-field-label">Priority</div>
-              <select className="board-drawer-field-select" value={card.priority}
-                onChange={(e) => onPatch(card.id, { priority: e.target.value as CardPriority })}>
-                {PRIORITIES.map((p) => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
-              </select>
-            </div>
-          </div>
 
-          <div className="board-drawer-field">
-            <div className="board-drawer-field-label">Familiar</div>
-            <select className="board-drawer-field-select" value={card.familiarId ?? ""}
-              onChange={(e) => onPatch(card.id, { familiarId: e.target.value || null })}>
-              <option value="">Unassigned</option>
-              {familiars.map((f) => <option key={f.id} value={f.id}>{f.display_name}</option>)}
-            </select>
+            <div className="board-drawer-field">
+              <div className="board-drawer-field-label">Familiar</div>
+              <div className="board-drawer-select-shell board-drawer-select-shell--with-leading">
+                <span className="board-drawer-familiar-avatar" aria-hidden>
+                  {familiarGlyph ? (
+                    <FamiliarGlyph glyph={familiarGlyph} size="sm" />
+                  ) : (
+                    <Icon name="ph:user" width={12} className="text-[var(--text-muted)]" />
+                  )}
+                </span>
+                <select
+                  className="board-drawer-field-select board-drawer-field-select--styled"
+                  value={card.familiarId ?? ""}
+                  onChange={(e) => onPatch(card.id, { familiarId: e.target.value || null })}
+                >
+                  <option value="">Unassigned</option>
+                  {familiars.map((f) => <option key={f.id} value={f.id}>{f.display_name}</option>)}
+                </select>
+                <Icon name="ph:caret-up-down-bold" width={11} className="board-drawer-select-caret" />
+              </div>
+            </div>
           </div>
 
           <div className="board-drawer-field">
             <div className="board-drawer-field-label">Chat</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              {session ? (
-                <span className="board-table-muted" style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {session.title || "(untitled)"}
+            {session ? (
+              <button
+                type="button"
+                className="board-drawer-chat-card board-drawer-chat-card--linked"
+                onClick={() => onJumpToSession?.(session.id, session.familiarId ?? null)}
+              >
+                <span className="board-drawer-chat-icon" aria-hidden>
+                  <Icon name="ph:chat-circle-dots" width={14} />
                 </span>
-              ) : (
-                <span className="board-table-muted" style={{ flex: 1 }}>
-                  No chat linked yet.
+                <span className="board-drawer-chat-body">
+                  <span className="board-drawer-chat-title">{session.title || "(untitled)"}</span>
+                  <span className="board-drawer-chat-desc">Open conversation</span>
                 </span>
-              )}
-              {session ? (
-                <button type="button" className="board-toolbar-btn"
-                  onClick={() => onJumpToSession?.(session.id, session.familiarId ?? null)}>
-                  Open chat <Icon name="ph:arrow-square-out" width={11} />
-                </button>
-              ) : (
+                <Icon name="ph:arrow-square-out" width={12} className="board-drawer-chat-trail" />
+              </button>
+            ) : (
+              <div className="board-drawer-chat-card board-drawer-chat-card--empty">
+                <span className="board-drawer-chat-icon board-drawer-chat-icon--empty" aria-hidden>
+                  <Icon name="ph:chat-circle-dots" width={14} />
+                </span>
+                <span className="board-drawer-chat-body">
+                  <span className="board-drawer-chat-title">No chat linked</span>
+                  <span className="board-drawer-chat-desc">Start a conversation with this card's familiar.</span>
+                </span>
                 <button
                   type="button"
-                  className="board-toolbar-btn"
+                  className="board-drawer-chat-cta"
                   disabled={chatLinking}
                   onClick={() => void onOpenTaskChat?.(card.id)}
                 >
-                  {chatLinking ? "Starting..." : "Start chat"} <Icon name="ph:chat-circle-dots" width={11} />
+                  {chatLinking ? "Starting…" : "Start chat"}
+                  <Icon name="ph:arrow-right-bold" width={11} />
                 </button>
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
           <div className="board-drawer-field">
