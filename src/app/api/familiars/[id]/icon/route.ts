@@ -12,7 +12,6 @@ type Body = { icon?: string | null };
  *
  * The body matches the daemon contract:
  *   `{ "icon": "ph:cat-fill" }` — insert/replace
- *   `{ "icon": "🐈" }`           — emoji literal works too
  *   `{ "icon": null }` / `{}`    — clear the field
  */
 export async function PUT(

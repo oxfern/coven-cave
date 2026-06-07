@@ -195,8 +195,8 @@ export function FamiliarStatusCard({ card, expanded, onToggle }: Props) {
   ).length;
 
   const glyph = parseGlyphString(card.glyph) ?? {
-    kind: "emoji" as const,
-    char: card.displayName.charAt(0).toUpperCase(),
+    kind: "icon" as const,
+    name: "ph:sparkle-fill",
   };
 
   // Separate running badge vs stuck badge

@@ -258,15 +258,11 @@ function FamiliarPicker({
                 ].join(" ")}
               >
                 <span className="shrink-0 w-4 text-center text-[14px] leading-none">
-                  {glyph.kind === "emoji" ? (
-                    glyph.char
-                  ) : (
-                    <Icon
-                      name={glyph.name as Parameters<typeof Icon>[0]["name"]}
-                      width={14}
-                      className="text-[var(--text-muted)]"
-                    />
-                  )}
+                  <Icon
+                    name={glyph.name as Parameters<typeof Icon>[0]["name"]}
+                    width={14}
+                    className="text-[var(--text-muted)]"
+                  />
                 </span>
                 <span className="truncate">{f.display_name}</span>
                 {isSelected && (

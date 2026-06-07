@@ -5,11 +5,9 @@
  * `@iconify-json/ph` package, filtered to the "fill" variants for visual
  * weight consistency with the rest of the cave chrome.
  *
- * Emoji entries used to live here as well, but Cave's UI standardised on
- * Phosphor for chrome neutrality. The renderer in `familiar-glyph.tsx`
- * still draws emoji values defensively so users with saved emoji avatars
- * from earlier versions keep working — they just can't pick a new one
- * from the picker.
+ * Cave's UI standardised on Phosphor for chrome neutrality. Legacy non-icon
+ * glyph values are ignored by the glyph parser and fall back to the default
+ * icon.
  */
 
 import phCollection from "@iconify-json/ph/icons.json";

@@ -33,12 +33,12 @@ function tabHint(tab: BrowserTab): string {
 }
 
 function favicon(tab: BrowserTab): string {
-  if (tab.kind === "localhost") return "↯";
+  if (tab.kind === "localhost") return "/window.svg";
   try {
     const u = new URL(tab.url);
     return `https://www.google.com/s2/favicons?domain=${u.hostname}&sz=16`;
   } catch {
-    return "🌐";
+    return "/globe.svg";
   }
 }
 
@@ -131,7 +131,7 @@ export function BrowserQuickOpen({ tabs, activeId, onSelect, onClose }: Props) {
               className="text-xs"
               style={{ color: "rgba(255,255,255,0.3)" }}
             >
-              ✕
+              x
             </button>
           )}
         </div>
@@ -147,7 +147,6 @@ export function BrowserQuickOpen({ tabs, activeId, onSelect, onClose }: Props) {
               const isActive = tab.id === activeId;
               const isHighlighted = i === safeIdx;
               const fav = favicon(tab);
-              const isEmoji = fav.length <= 2;
 
               return (
                 <li key={tab.id}>
@@ -162,12 +161,8 @@ export function BrowserQuickOpen({ tabs, activeId, onSelect, onClose }: Props) {
                   >
                     {/* Favicon */}
                     <span className="flex h-4 w-4 shrink-0 items-center justify-center">
-                      {isEmoji ? (
-                        <span className="text-sm leading-none">{fav}</span>
-                      ) : (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={fav} alt="" width={14} height={14} className="rounded-sm opacity-70" />
-                      )}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={fav} alt="" width={14} height={14} className="rounded-sm opacity-70" />
                     </span>
 
                     {/* Title + hint */}

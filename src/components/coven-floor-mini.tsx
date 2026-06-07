@@ -42,7 +42,6 @@ function FamiliarPill({
   card: FamiliarCard;
   onClick?: () => void;
 }) {
-  const isEmoji = card.glyph && !card.glyph.startsWith("ph:");
   return (
     <button
       type="button"
@@ -63,11 +62,7 @@ function FamiliarPill({
       }}
       title={card.currentTask ?? card.status}
     >
-      {isEmoji ? (
-        <span className="text-[13px] leading-none">{card.glyph}</span>
-      ) : (
-        <span className="text-[11px] font-mono leading-none opacity-60">{card.displayName[0]}</span>
-      )}
+      <span className="text-[11px] font-mono leading-none opacity-60">{card.displayName[0]}</span>
       <span className="truncate max-w-[80px]">{card.displayName}</span>
       <StatusDot card={card} />
     </button>

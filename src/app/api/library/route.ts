@@ -8,11 +8,11 @@ import type { LibraryDoc, LibraryCollection } from "@/lib/library-types";
 // ── Familiar registry ─────────────────────────────────────────────────────────
 // Each entry is a workspace root that exposes a research/ dir.
 // Phase 1: Sage only. Phase 2: add Echo, Cody, etc. here (or read from coven daemon).
-const FAMILIAR_WORKSPACES: { id: string; name: string; emoji: string; root: string }[] = [
+const FAMILIAR_WORKSPACES: { id: string; name: string; icon: string; root: string }[] = [
   {
     id: "sage",
     name: "Sage",
-    emoji: "🌿",
+    icon: "ph:leaf-fill",
     root: path.join(homedir(), ".openclaw", "workspace", "sage"),
   },
 ];
@@ -244,6 +244,6 @@ export async function GET(req: NextRequest) {
     collection: collectionId,
     familiar: familiarId,
     collections,
-    familiars: FAMILIAR_WORKSPACES.map(({ id, name, emoji }) => ({ id, name, emoji })),
+    familiars: FAMILIAR_WORKSPACES.map(({ id, name, icon }) => ({ id, name, icon })),
   });
 }

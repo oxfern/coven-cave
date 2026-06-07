@@ -41,20 +41,6 @@ type Props = {
 export function FamiliarGlyph({ glyph, size = "md", className, title }: Props) {
   const px = SIZE_PX[size];
 
-  if (glyph.kind === "emoji") {
-    return (
-      <span
-        className={className ?? "inline-flex items-center justify-center"}
-        style={{ fontSize: px, lineHeight: 1 }}
-        title={title}
-        aria-label={title}
-        role={title ? "img" : undefined}
-      >
-        {glyph.char}
-      </span>
-    );
-  }
-
   ensureRegistered();
   return (
     <span

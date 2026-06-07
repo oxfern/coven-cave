@@ -38,7 +38,7 @@ export type FamiliarCard = {
   id: string;
   displayName: string;
   role: string;
-  /** Emoji or Phosphor icon name, e.g. "🐾" or "ph:cat-fill". */
+  /** Phosphor icon name, e.g. "ph:cat-fill". */
   glyph: string;
   /** Derived roll-up status. */
   status: FamiliarStatus;

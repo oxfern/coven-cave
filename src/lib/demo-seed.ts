@@ -28,7 +28,7 @@ export const DEMO_FAMILIARS: Familiar[] = [
     role: "Orchestrator",
     status: "active",
     active_sessions: 3,
-    emoji: "✦",
+    icon: "ph:sparkle-fill",
     note: "Coordinating weekly call prep",
   },
   {
@@ -37,7 +37,7 @@ export const DEMO_FAMILIARS: Familiar[] = [
     role: "Code Familiar",
     status: "active",
     active_sessions: 1,
-    emoji: "🦄",
+    icon: "ph:code-fill",
     note: "Working on Hexes Phase 2A",
   },
   {
@@ -46,7 +46,7 @@ export const DEMO_FAMILIARS: Familiar[] = [
     role: "Research Familiar",
     status: "active",
     active_sessions: 2,
-    emoji: "◈",
+    icon: "ph:book-open-fill",
     note: "On OpenAI fallback model",
   },
   {
@@ -55,7 +55,7 @@ export const DEMO_FAMILIARS: Familiar[] = [
     role: "Interface Familiar",
     status: "idle",
     active_sessions: 0,
-    emoji: "◉",
+    icon: "ph:paint-brush-fill",
     note: "Awaiting design review",
   },
   {
@@ -64,7 +64,7 @@ export const DEMO_FAMILIARS: Familiar[] = [
     role: "Systems Familiar",
     status: "idle",
     active_sessions: 0,
-    emoji: "⌘",
+    icon: "ph:terminal-window-fill",
     note: "Needs input on memory archive",
   },
   {
@@ -73,7 +73,7 @@ export const DEMO_FAMILIARS: Familiar[] = [
     role: "Creative Familiar",
     status: "idle",
     active_sessions: 0,
-    emoji: "✿",
+    icon: "ph:palette-fill",
     note: "Slide deck ready",
   },
   {
@@ -82,7 +82,7 @@ export const DEMO_FAMILIARS: Familiar[] = [
     role: "Ops Familiar",
     status: "offline",
     active_sessions: 0,
-    emoji: "⬡",
+    icon: "ph:gear-six-fill",
     note: "Escalated: gateway auth failure",
   },
 ];

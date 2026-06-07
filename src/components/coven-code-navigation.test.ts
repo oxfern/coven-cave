@@ -87,6 +87,12 @@ assert.match(
 
 assert.match(
   workspace,
+  /topBar=\{mode === "browser" \? null : \([\s\S]*<DaemonBar/,
+  "Workspace should hide the app top header row in Browser mode",
+);
+
+assert.match(
+  workspace,
   /mode === "agents"[\s\S]*<AgentsView/,
   "Workspace should route Agents to the integrated AgentsView",
 );
