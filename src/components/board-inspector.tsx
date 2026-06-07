@@ -216,7 +216,11 @@ function GitHubAttachSection({
   return (
     <div className="board-drawer-field">
       <div className="board-drawer-field-label" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span>GitHub</span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+          <Icon name="ph:github-logo" width={11} />
+          GitHub
+          {attachedItems.length > 0 && <span className="board-drawer-count-pill">{attachedItems.length}</span>}
+        </span>
         <button
           type="button"
           className="board-toolbar-btn"
@@ -881,13 +885,20 @@ export function BoardInspector({ card, familiars, sessions, onClose, onPatch, on
           </div>
 
           <div className="board-drawer-field">
-            <div className="board-drawer-field-label">CWD</div>
-            <input className="board-drawer-field-input" defaultValue={card.cwd ?? ""}
-              placeholder="/Users/buns/Documents/GitHub/OpenCoven/coven-cave"
-              onBlur={(e) => {
-                const next = e.target.value.trim() || null;
-                if (next !== card.cwd) onPatch(card.id, { cwd: next });
-              }} />
+            <div className="board-drawer-field-label"><Icon name="ph:folder" width={11} /> CWD</div>
+            <div className="board-drawer-path-shell">
+              <Icon name="ph:folder" width={12} className="board-drawer-path-icon" />
+              <input
+                className="board-drawer-field-input board-drawer-path-input"
+                defaultValue={card.cwd ?? ""}
+                placeholder="/path/to/working/directory"
+                spellCheck={false}
+                onBlur={(e) => {
+                  const next = e.target.value.trim() || null;
+                  if (next !== card.cwd) onPatch(card.id, { cwd: next });
+                }}
+              />
+            </div>
           </div>
 
           <StepsSection card={card} onPatch={onPatch} />
@@ -897,69 +908,91 @@ export function BoardInspector({ card, familiars, sessions, onClose, onPatch, on
           <GitHubAttachSection card={card} familiars={familiars} onPatch={onPatch} />
 
           <div className="board-drawer-field">
-            <div className="board-drawer-field-label">Notes</div>
-            <textarea className="board-drawer-field-textarea" defaultValue={card.notes}
-              onBlur={(e) => { if (e.target.value !== card.notes) onPatch(card.id, { notes: e.target.value }); }} />
+            <div className="board-drawer-field-label"><Icon name="ph:note-bold" width={11} /> Notes</div>
+            <textarea
+              className="board-drawer-field-textarea"
+              defaultValue={card.notes}
+              placeholder="Context, decisions, things to remember…"
+              onBlur={(e) => { if (e.target.value !== card.notes) onPatch(card.id, { notes: e.target.value }); }}
+            />
           </div>
 
           <div className="board-drawer-field">
-            <div className="board-drawer-field-label">Labels</div>
-            <div className="board-label-chips" style={{ marginBottom: 8 }}>
-              {card.labels.map((l) => (
-                <span key={l} className="board-label-chip">
-                  {l}
-                  <button type="button" className="board-label-chip-remove"
-                    onClick={() => onPatch(card.id, { labels: card.labels.filter((x) => x !== l) })}
-                    aria-label={`Remove ${l}`}>
-                    <Icon name="ph:x-bold" width={8} />
-                  </button>
-                </span>
-              ))}
+            <div className="board-drawer-field-label">
+              <Icon name="ph:tag-bold" width={11} /> Labels
+              {card.labels.length > 0 && <span className="board-drawer-count-pill">{card.labels.length}</span>}
             </div>
+            {card.labels.length > 0 && (
+              <div className="board-label-chips" style={{ marginBottom: 8 }}>
+                {card.labels.map((l) => (
+                  <span key={l} className="board-label-chip">
+                    {l}
+                    <button type="button" className="board-label-chip-remove"
+                      onClick={() => onPatch(card.id, { labels: card.labels.filter((x) => x !== l) })}
+                      aria-label={`Remove ${l}`}>
+                      <Icon name="ph:x-bold" width={8} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
             <div style={{ display: "flex", gap: 6 }}>
               <input className="board-drawer-field-input" style={{ flex: 1 }} placeholder="Add label…"
                 value={newLabel} onChange={(e) => setNewLabel(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addLabel(); } }} />
-              <button type="button" className="board-toolbar-btn" onClick={addLabel}>Add</button>
+              <button type="button" className="board-toolbar-btn" onClick={addLabel} disabled={!newLabel.trim()}>
+                <Icon name="ph:plus-bold" width={11} /> Add
+              </button>
             </div>
           </div>
 
           <div className="board-drawer-field">
             <div className="board-drawer-field-label">Lifecycle</div>
-            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, marginBottom: 8 }}>
-              <LifecycleBadge lifecycle={card.lifecycle} needsHuman={card.needsHuman} />
-              {card.lifecycle === "running" && <TimeoutBadge runningSince={card.runningSince} timeoutMs={card.timeoutMs} />}
-            </div>
-            {moves.length > 0 && (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                {moves.map((m) => (
-                  <button key={`${m.to}-${m.retry}`} type="button" className="board-toolbar-btn"
-                    disabled={lifecycleBusy !== null}
-                    onClick={() => void doLifecycle(m.to, m.retry)}>
-                    {lifecycleBusy === m.to ? "…" : m.label}
-                  </button>
-                ))}
+            <div className="board-drawer-lifecycle-card">
+              <div className="board-drawer-lifecycle-row">
+                <LifecycleBadge lifecycle={card.lifecycle} needsHuman={card.needsHuman} />
+                {card.lifecycle === "running" && <TimeoutBadge runningSince={card.runningSince} timeoutMs={card.timeoutMs} />}
               </div>
-            )}
-            {lifecycleErr && <p style={{ fontSize: 10, color: "var(--color-danger)", marginTop: 4 }}>{lifecycleErr}</p>}
+              {moves.length > 0 && (
+                <div className="board-drawer-lifecycle-actions">
+                  {moves.map((m) => (
+                    <button
+                      key={`${m.to}-${m.retry}`}
+                      type="button"
+                      className={`board-drawer-lifecycle-action${m.retry ? " board-drawer-lifecycle-action--retry" : ""}${m.to === "cancelled" ? " board-drawer-lifecycle-action--danger" : ""}`}
+                      disabled={lifecycleBusy !== null}
+                      onClick={() => void doLifecycle(m.to, m.retry)}
+                    >
+                      {lifecycleBusy === m.to ? "…" : m.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {lifecycleErr && <p className="board-drawer-lifecycle-error">{lifecycleErr}</p>}
+            </div>
           </div>
 
-          <div className="board-drawer-grid-2 board-table-muted">
-            <div><div className="board-drawer-field-label">Created</div>{new Date(card.createdAt).toLocaleString()}</div>
-            <div><div className="board-drawer-field-label">Updated</div>{new Date(card.updatedAt).toLocaleString()}</div>
+          <div className="board-drawer-stamps">
+            <span><span className="board-drawer-stamp-label">Created</span> {new Date(card.createdAt).toLocaleString()}</span>
+            <span className="board-drawer-stamp-sep">·</span>
+            <span><span className="board-drawer-stamp-label">Updated</span> {new Date(card.updatedAt).toLocaleString()}</span>
           </div>
         </div>
 
         <div className="board-drawer-footer">
           {deleteConfirm ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Delete this card?</span>
-              <button type="button" className="board-drawer-delete-btn"
-                onClick={async () => { await onDelete(card.id); close(); }}>Confirm</button>
+            <div className="board-drawer-confirm">
+              <span className="board-drawer-confirm-text">Delete this card?</span>
               <button type="button" className="board-toolbar-btn" onClick={() => setDeleteConfirm(false)}>Cancel</button>
+              <button type="button" className="board-drawer-delete-btn board-drawer-delete-btn--solid"
+                onClick={async () => { await onDelete(card.id); close(); }}>
+                <Icon name="ph:trash" width={11} /> Delete
+              </button>
             </div>
           ) : (
-            <button type="button" className="board-drawer-delete-btn" onClick={() => setDeleteConfirm(true)}>Delete</button>
+            <button type="button" className="board-drawer-delete-btn" onClick={() => setDeleteConfirm(true)}>
+              <Icon name="ph:trash" width={11} /> Delete
+            </button>
           )}
           <button type="button" className="board-toolbar-btn" onClick={close}>Close</button>
         </div>
