@@ -9,8 +9,8 @@ const comuxView = await readFile(new URL("./comux-view.tsx", import.meta.url), "
 
 assert.match(
   sidebar,
-  /\{ id: "agents",\s+label: "Agents"/,
-  "Sidebar should expose Agents as the first-class familiar work destination",
+  /\{ id: "agents",\s+label: "Familiars"/,
+  "Sidebar should expose Familiars as the first-class familiar work destination",
 );
 
 assert.doesNotMatch(
