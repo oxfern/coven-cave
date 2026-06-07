@@ -7,12 +7,34 @@ import {
   runtimeSourceSetupState,
   adapterManifestScaffoldForHarness,
   covenHelpSupportsAdapterList,
+  openClawAdapterReport,
 } from "./harness-adapters.ts";
 
 assert.deepEqual(
   COMPATIBILITY_ADAPTERS.map((adapter) => adapter.id),
-  ["codex", "claude", "hermes"],
+  ["codex", "claude", "hermes", "openclaw"],
 );
+
+assert.deepEqual(openClawAdapterReport(2), {
+  id: "openclaw",
+  label: "OpenClaw",
+  binary: "openclaw",
+  chatSupported: false,
+  installed: true,
+  path: null,
+  version: "2 agents",
+  installHint: "Connect or create an OpenClaw agent under ~/.openclaw/agents.",
+  source: "openclaw",
+  manifestPath: null,
+});
+
+assert.equal(openClawAdapterReport(0).installed, false);
+
+const mergedOpenClaw = mergeAdapterReports([openClawAdapterReport(1)], []);
+assert.equal(mergedOpenClaw.length, 1);
+assert.equal(mergedOpenClaw[0].id, "openclaw");
+assert.equal(mergedOpenClaw[0].installed, true);
+assert.equal(mergedOpenClaw[0].source, "openclaw");
 
 const merged = mergeAdapterReports(
   [

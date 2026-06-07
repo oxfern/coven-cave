@@ -67,7 +67,7 @@ async function main() {
     type: "png",
     animations: "disabled",
   });
-  console.log("✓ /tmp/library-all-default.png");
+  console.log("saved /tmp/library-all-default.png");
 
   // Toggle Group: source
   const groupBtn = page.getByRole("button", { name: /^Group: date$/ }).first();
@@ -80,7 +80,7 @@ async function main() {
       type: "png",
       animations: "disabled",
     });
-    console.log("✓ /tmp/library-all-grouped.png");
+    console.log("saved /tmp/library-all-grouped.png");
   } else {
     console.warn("group toggle button not found");
   }

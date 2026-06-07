@@ -189,18 +189,7 @@ export async function POST(req: Request) {
     : undefined;
 
   // Native Cave chat can drive any Coven harness that resolves through
-  // `coven run <harness> --stream-json`. OpenClaw-backed familiars use the
-  // OpenClaw agent bridge instead of the local harness runner.
-  if (binding.harness === "openclaw") {
-    return new Response(
-      JSON.stringify({
-        ok: false,
-        error:
-          "OpenClaw-backed familiars need the OpenClaw bridge. Pick a local harness familiar here, or open the agent from OpenClaw.",
-      }),
-      { status: 501, headers: { "content-type": "application/json" } },
-    );
-  }
+  // `coven run <harness> --stream-json`, including external adapter manifests.
 
   // Build coven run argv.
   // Important: pass every flag BEFORE the prompt and add a `--` separator,

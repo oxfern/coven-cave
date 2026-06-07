@@ -77,7 +77,32 @@ export const COMPATIBILITY_ADAPTERS: CompatibilityAdapter[] = [
       "Install Hermes, make sure `hermes` is on PATH, then let Cave create its Coven adapter manifest.",
     source: "bundled",
   },
+  {
+    id: "openclaw",
+    label: "OpenClaw",
+    binary: "openclaw",
+    chatSupported: false,
+    installHint: "Connect or create an OpenClaw agent under ~/.openclaw/agents.",
+    source: "bundled",
+  },
 ];
+
+export function openClawAdapterReport(openclawAgentCount: number): AdapterReport {
+  return {
+    id: "openclaw",
+    label: "OpenClaw",
+    binary: "openclaw",
+    chatSupported: false,
+    installed: openclawAgentCount > 0,
+    path: null,
+    version: openclawAgentCount > 0
+      ? `${openclawAgentCount} agent${openclawAgentCount === 1 ? "" : "s"}`
+      : null,
+    installHint: "Connect or create an OpenClaw agent under ~/.openclaw/agents.",
+    source: "openclaw",
+    manifestPath: null,
+  };
+}
 
 export function covenHelpSupportsAdapterList(helpText: string): boolean {
   return /^\s+adapters?\s+.*\badapters?\b/im.test(helpText);
@@ -131,7 +156,7 @@ export function mergeAdapterReports(
 
   return [...merged.values()].sort((a, b) => {
     const rank = (id: string) =>
-      id === "codex" ? 0 : id === "claude" ? 1 : id === "hermes" ? 2 : 3;
+      id === "codex" ? 0 : id === "claude" ? 1 : id === "hermes" ? 2 : id === "openclaw" ? 3 : 4;
     return rank(a.id) - rank(b.id) || a.label.localeCompare(b.label);
   });
 }

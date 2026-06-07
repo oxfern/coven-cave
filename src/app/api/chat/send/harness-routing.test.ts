@@ -23,6 +23,12 @@ assert.doesNotMatch(
   "Native chat should not hard-code a local harness allow-list",
 );
 
+assert.doesNotMatch(
+  chatRoute,
+  /binding\.harness === "openclaw"/,
+  "Native chat should not special-case OpenClaw outside the generic harness route",
+);
+
 assert.match(
   boardRoute,
   /binding\.harness === "openclaw"/,

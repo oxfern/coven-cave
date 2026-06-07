@@ -1,6 +1,16 @@
 import { NextResponse } from "next/server";
 import { spawn } from "node:child_process";
-import { COMPATIBILITY_ADAPTERS, covenHelpSupportsAdapterList, mergeAdapterReports, type AdapterReport, type CovenAdapterSummary } from "@/lib/harness-adapters";
+import { readdir } from "node:fs/promises";
+import { homedir } from "node:os";
+import path from "node:path";
+import {
+  COMPATIBILITY_ADAPTERS,
+  covenHelpSupportsAdapterList,
+  mergeAdapterReports,
+  openClawAdapterReport,
+  type AdapterReport,
+  type CovenAdapterSummary,
+} from "@/lib/harness-adapters";
 import { covenBin, covenSpawnEnv } from "@/lib/coven-bin";
 
 export const dynamic = "force-dynamic";
@@ -103,9 +113,26 @@ function loadCovenAdapterSummaries(): Promise<CovenAdapterSummary[]> {
   });
 }
 
+async function countOpenClawAgents(): Promise<number> {
+  try {
+    const entries = await readdir(path.join(homedir(), ".openclaw", "agents"), {
+      withFileTypes: true,
+    });
+    return entries.filter(
+      (entry) => entry.isDirectory() && !entry.name.startsWith("."),
+    ).length;
+  } catch {
+    return 0;
+  }
+}
+
 export async function GET() {
+  const openclawAgentCount = await countOpenClawAgents();
   const reports: HarnessReport[] = await Promise.all(
     COMPATIBILITY_ADAPTERS.map(async (h) => {
+      if (h.id === "openclaw") {
+        return openClawAdapterReport(openclawAgentCount);
+      }
       const path = await which(h.binary);
       if (!path) {
         return { ...h, installed: false, path: null, version: null };
