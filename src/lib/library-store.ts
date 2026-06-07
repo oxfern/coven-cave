@@ -12,7 +12,9 @@ export type IndexEntry = {
 };
 export type LibraryIndex = { version: 1; entries: IndexEntry[] };
 
-const DEFAULT_ROOT = path.join(homedir(), ".openclaw", "workspace", "sage", "library");
+const DEFAULT_ROOT = process.env.CAVE_LIBRARY_DIR
+  ? process.env.CAVE_LIBRARY_DIR
+  : path.join(homedir(), ".openclaw", "workspace", "sage", "library");
 
 type Mutex = { p: Promise<void> };
 const mutex: Mutex = { p: Promise.resolve() };
