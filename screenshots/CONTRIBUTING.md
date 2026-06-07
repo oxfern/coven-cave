@@ -8,16 +8,22 @@ desktop app — capture them carefully.
 
 The README expects these files to exist. Replace any missing entries.
 
-| File              | What to show                                                                                 | Status   |
-|-------------------|----------------------------------------------------------------------------------------------|----------|
-| `shell.png`       | Three-pane shell with sidebar + chat + agent panel; an active familiar with a live session   | needed   |
-| `chat.png`        | Chat view mid-conversation, including a markdown reply with a syntax-highlighted code block  | needed   |
-| `terminal.png`    | Dedicated terminal page inside Cave, showing an active xterm session                         | needed   |
-| `home.png`        | HomeComposer cold-start with the new suggestion skeletons → resolved suggestions             | needed   |
-| `board.png`       | Board view with kanban + filter popover open                                                 | needed   |
-| `library.png`     | Library three-pane layout with a doc preview                                                 | needed   |
-| `calendar.png`    | Calendar week view with the new view-mode toggle                                             | needed   |
-| `floor.png`       | Coven Floor session traceability surface                                                     | needed   |
+| File              | What to show                                                                                 | Status      |
+|-------------------|----------------------------------------------------------------------------------------------|-------------|
+| `home.png`        | HomeComposer cold-start: hero, composer with Nova selected, three resolved suggestions       | **landed**  |
+| `shell.png`       | Familiars shell — sidebar, Chats/Floor/Memory tabs, daemon-offline warning, empty-state CTA  | **landed**  |
+| `board.png`       | Board view — 4-column kanban (Backlog/Inbox/Running/Review) with real cards                  | **landed**  |
+| `library.png`     | Library three-pane layout — research rail, document list, preview slot                       | **landed**  |
+| `calendar.png`    | Calendar week view — today highlighted, view-mode toggle, real demo event                    | **landed**  |
+| `floor.png`       | Coven Floor surface, Floor tab active                                                        | **landed**  |
+| `terminal.png`    | Terminal mode — empty state with "+ New terminal" CTA                                        | **landed**  |
+| `chat.png`        | Chat view mid-conversation, with a markdown reply + syntax-highlighted code block            | needed (\*) |
+
+(\*) `chat.png` could not be captured automatically because the
+`coven` daemon was not running locally — the chat view collapses to
+the same daemon-offline empty state as `shell.png`. Capture this one
+manually with the daemon online, against a real conversation, then
+drop the PNG into `screenshots/chat.png` and push.
 
 ## Capture settings
 
