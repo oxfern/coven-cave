@@ -436,10 +436,8 @@
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 .cave-turn-assistant {
-  display: grid;
-  grid-template-columns: 32px 1fr;
-  gap: 10px;
-  align-items: start;
+  display: block;
+  width: 100%;
 }
 
 .cave-turn-avatar {
@@ -463,6 +461,8 @@
 
 .cave-turn-content {
   min-width: 0;
+  width: min(100%, 920px);
+  max-width: 920px;
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
