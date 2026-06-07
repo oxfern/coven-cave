@@ -17,13 +17,18 @@ The README expects these files to exist. Replace any missing entries.
 | `calendar.png`    | Calendar week view — today highlighted, view-mode toggle, real demo event                    | **landed**  |
 | `floor.png`       | Coven Floor surface, Floor tab active                                                        | **landed**  |
 | `terminal.png`    | Terminal mode — empty state with "+ New terminal" CTA                                        | **landed**  |
-| `chat.png`        | Chat view mid-conversation, with a markdown reply + syntax-highlighted code block            | needed (\*) |
+| `chat.png`        | Chat view mid-conversation between user and Cody, with a TypeScript code block               | **landed** (\*) |
 
-(\*) `chat.png` could not be captured automatically because the
-`coven` daemon was not running locally — the chat view collapses to
-the same daemon-offline empty state as `shell.png`. Capture this one
-manually with the daemon online, against a real conversation, then
-drop the PNG into `screenshots/chat.png` and push.
+(\*) `chat.png` is captured against mocked endpoints
+(`/api/sessions/list`, `/api/familiars`, `/api/chat/conversation/[id]`)
+because the local `coven` daemon's session ledger was empty at
+capture time. The conversation is the "Phase 2A: relay PR" demo
+scripted in `scripts/capture-chat-screenshot.mjs`. The async
+markdown renderer (`mdToHtml` in `MessageBubble`) hasn't fully
+resolved by screenshot time — bullets render as raw `**…**` and
+the code block is unhighlighted. For the next refresh, either bump
+the post-click wait further, or capture manually against a real
+populated session.
 
 ## Capture settings
 

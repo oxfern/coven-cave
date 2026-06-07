@@ -129,6 +129,48 @@ function parseListInput(value: string): string[] {
     .filter(Boolean);
 }
 
+function splitAutomationPrompt(prompt: string): {
+  goals: string;
+  deliverables: string;
+  hasStructuredSections: boolean;
+} {
+  const sectionPattern = /^\s*(?:#{1,6}\s*)?(Goals|Deliverables)\s*:?\s*$/gim;
+  const matches = [...prompt.matchAll(sectionPattern)];
+  if (matches.length === 0) {
+    return { goals: prompt, deliverables: "", hasStructuredSections: false };
+  }
+
+  const parts = { goals: "", deliverables: "" };
+  const leading = prompt.slice(0, matches[0].index ?? 0).trim();
+  if (leading) parts.goals = leading;
+
+  matches.forEach((match, index) => {
+    const key = match[1].toLowerCase() === "deliverables" ? "deliverables" : "goals";
+    const start = (match.index ?? 0) + match[0].length;
+    const end = matches[index + 1]?.index ?? prompt.length;
+    const value = prompt.slice(start, end).trim();
+    parts[key] = parts[key] ? `${parts[key]}\n\n${value}`.trim() : value;
+  });
+
+  return { ...parts, hasStructuredSections: true };
+}
+
+function composeAutomationPrompt(
+  goals: string,
+  deliverables: string,
+  includeHeadings: boolean,
+): string {
+  const nextGoals = goals.trim();
+  const nextDeliverables = deliverables.trim();
+
+  if (!includeHeadings && !nextDeliverables) return nextGoals;
+
+  const sections: string[] = [];
+  if (nextGoals) sections.push(`Goals:\n${nextGoals}`);
+  if (nextDeliverables) sections.push(`Deliverables:\n${nextDeliverables}`);
+  return sections.join("\n\n");
+}
+
 function FieldLabel({ children }: { children: ReactNode }) {
   return (
     <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
@@ -390,8 +432,10 @@ function CodexDetailPanel({
 }) {
   const isActive = auto.status === "ACTIVE";
   const parsedSchedule = useMemo(() => parseCodexRrule(auto.rrule), [auto.rrule]);
+  const promptParts = splitAutomationPrompt(auto.prompt);
   const [name, setName] = useState(auto.name);
-  const [prompt, setPrompt] = useState(auto.prompt);
+  const [goals, setGoals] = useState(promptParts.goals);
+  const [deliverables, setDeliverables] = useState(promptParts.deliverables);
   const [model, setModel] = useState(auto.model ?? "");
   const [reasoningEffort, setReasoningEffort] = useState(auto.reasoningEffort ?? "medium");
   const [executionEnvironment, setExecutionEnvironment] = useState(auto.executionEnvironment ?? "worktree");
@@ -404,8 +448,10 @@ function CodexDetailPanel({
 
   useEffect(() => {
     const nextSchedule = parseCodexRrule(auto.rrule);
+    const nextPromptParts = splitAutomationPrompt(auto.prompt);
     setName(auto.name);
-    setPrompt(auto.prompt);
+    setGoals(nextPromptParts.goals);
+    setDeliverables(nextPromptParts.deliverables);
     setModel(auto.model ?? "");
     setReasoningEffort(auto.reasoningEffort ?? "medium");
     setExecutionEnvironment(auto.executionEnvironment ?? "worktree");
@@ -420,11 +466,15 @@ function CodexDetailPanel({
   const nextRrule = buildCodexRrule(scheduleMode, scheduleTime, scheduleDays, rawRrule);
   const tags = parseListInput(tagsText);
   const cwds = parseListInput(cwdsText);
+  const promptDirty = goals !== promptParts.goals || deliverables !== promptParts.deliverables;
+  const nextPrompt = promptDirty
+    ? composeAutomationPrompt(goals, deliverables, promptParts.hasStructuredSections || deliverables.trim().length > 0)
+    : auto.prompt;
   const invalidSchedule =
     !nextRrule.startsWith("RRULE:") || (scheduleMode === "weekly" && scheduleDays.length === 0);
   const dirty =
     name !== auto.name ||
-    prompt !== auto.prompt ||
+    promptDirty ||
     model !== (auto.model ?? "") ||
     reasoningEffort !== (auto.reasoningEffort ?? "medium") ||
     executionEnvironment !== (auto.executionEnvironment ?? "worktree") ||
@@ -443,7 +493,7 @@ function CodexDetailPanel({
     if (!canSave) return;
     onSave(auto, {
       name: name.trim(),
-      prompt,
+      prompt: nextPrompt,
       rrule: nextRrule,
       model: model.trim(),
       reasoning_effort: reasoningEffort,
@@ -482,11 +532,22 @@ function CodexDetailPanel({
         </div>
 
         <div>
-          <FieldLabel>Prompt</FieldLabel>
+          <FieldLabel>Goals</FieldLabel>
           <textarea
-            value={prompt}
-            onChange={(event) => setPrompt(event.target.value)}
-            rows={9}
+            value={goals}
+            onChange={(event) => setGoals(event.target.value)}
+            rows={6}
+            className="w-full resize-y rounded-md border px-2 py-2 text-[12px] leading-relaxed outline-none focus:border-white/30"
+            style={fieldStyle}
+          />
+        </div>
+
+        <div>
+          <FieldLabel>Deliverables</FieldLabel>
+          <textarea
+            value={deliverables}
+            onChange={(event) => setDeliverables(event.target.value)}
+            rows={5}
             className="w-full resize-y rounded-md border px-2 py-2 text-[12px] leading-relaxed outline-none focus:border-white/30"
             style={fieldStyle}
           />
