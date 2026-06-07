@@ -7,6 +7,7 @@ const defaultPermissions = readFileSync(new URL("./default.toml", import.meta.ur
 const commandPermissions = readFileSync(new URL("./pty.toml", import.meta.url), "utf8");
 const browserRust = readFileSync(new URL("../src/browser.rs", import.meta.url), "utf8");
 const browserPane = readFileSync(new URL("../../src/components/browser-pane.tsx", import.meta.url), "utf8");
+const bottomTerminal = readFileSync(new URL("../../src/components/bottom-terminal.tsx", import.meta.url), "utf8");
 
 const requiredPermissionIds = [
   "allow-pty-start",
@@ -82,4 +83,27 @@ test("browser event labels use the same native prefix in Rust and React", () => 
   assert.match(browserPane, /return `\$\{NATIVE_BROWSER_LABEL_PREFIX\}\$\{label\}-tab-`;/);
   assert.equal(browserPane.match(/startsWith\(eventPrefix\)/g)?.length, 2);
   assert.equal(browserPane.match(/slice\(eventPrefix\.length\)/g)?.length, 2);
+});
+
+test("terminal commands use Tauri camelCase command arguments", () => {
+  assert.match(
+    bottomTerminal,
+    /invoke\("pty_write", \{[\s\S]*threadId: threadId,[\s\S]*bytes:/,
+    "pty_write must pass threadId so desktop keystrokes reach Rust",
+  );
+  assert.match(
+    bottomTerminal,
+    /invoke\("pty_resize", \{[\s\S]*threadId: threadId,[\s\S]*cols:[\s\S]*rows:/,
+    "pty_resize must pass threadId so desktop resize reaches Rust",
+  );
+  assert.match(
+    bottomTerminal,
+    /invoke\("pty_stop", \{ threadId: threadId \}/,
+    "pty_stop must pass threadId so desktop cleanup reaches Rust",
+  );
+  assert.doesNotMatch(
+    bottomTerminal,
+    /invoke\("pty_(?:write|resize|stop)", \{[\s\S]{0,120}thread_id:/,
+    "direct Tauri command args should not use snake_case without rename_all",
+  );
 });

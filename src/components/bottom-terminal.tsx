@@ -150,12 +150,13 @@ export function BottomTerminal({
       log("pty:data + pty:exit listeners registered");
 
       // Pipe user input back to the PTY.
-      // NOTE: Tauri v2 invoke does NOT auto-convert camelCase → snake_case;
-      // param names must match the Rust fn signature exactly.
+      // Tauri command parameters are camelCase on the JS side by default.
+      // The nested pty_start options object below is a Rust struct, so its
+      // fields intentionally stay snake_case for Serde.
       const onDataDispose = term.onData((data) => {
         if (stopped) return;
         void bridge.invoke("pty_write", {
-          thread_id: threadId,
+          threadId: threadId,
           bytes: Array.from(new TextEncoder().encode(data)),
         }).catch((err) => log("pty_write FAILED", err));
       });
@@ -195,7 +196,7 @@ export function BottomTerminal({
         try {
           fit.fit();
           void bridge.invoke("pty_resize", {
-            thread_id: threadId,
+            threadId: threadId,
             cols: term.cols,
             rows: term.rows,
           });
@@ -219,7 +220,7 @@ export function BottomTerminal({
         unlistenExit();
         termRef.current = null;
         term.dispose();
-        void bridge.invoke("pty_stop", { thread_id: threadId });
+        void bridge.invoke("pty_stop", { threadId: threadId });
       };
 
       if (disposed) cleanup();

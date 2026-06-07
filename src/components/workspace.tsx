@@ -17,7 +17,6 @@ import { FamiliarGlyphPicker } from "@/components/familiar-glyph-picker";
 import { Shell, type ShellHandle } from "@/components/shell";
 import { ChooserModal, type ChooserOption } from "@/components/ui/chooser-modal";
 import { AgentPanel } from "@/components/agent-panel";
-import { BottomTerminal } from "@/components/bottom-terminal";
 import { BrowserPane } from "@/components/browser-pane";
 import { AutomationsView } from "@/components/automations-view";
 import { ComuxView } from "@/components/comux-view";
@@ -922,7 +921,6 @@ export function Workspace() {
             </button>
           </>
         }
-        bottom={<BottomTerminal threadId="cave.bottom.main" />}
       />
 
       <CommandPalette

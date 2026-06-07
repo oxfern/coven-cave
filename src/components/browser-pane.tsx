@@ -137,7 +137,7 @@ function savePinnedTabs(tabs: BrowserTab[]) {
 function defaultPinnedTabs(): BrowserTab[] {
   return [
     { id: "home", url: HOME_URL, title: "OpenCoven", pinned: true, kind: "pinned" },
-    { id: "vercel", url: "https://vercel.com/dashboard", title: "Vercel", pinned: true, kind: "pinned" },
+    { id: "opencvn-x", url: "https://x.com/OpenCvn", title: "OpenCvn", pinned: true, kind: "pinned" },
     { id: "github", url: "https://github.com/OpenCoven", title: "GitHub", pinned: true, kind: "pinned" },
   ];
 }

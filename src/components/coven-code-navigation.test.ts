@@ -97,6 +97,24 @@ assert.match(
   "Workspace should route Terminal to ComuxView terminal mode",
 );
 
+assert.doesNotMatch(
+  workspace,
+  /bottom=\{<BottomTerminal[\s\S]*threadId="cave\.bottom\.main"[\s\S]*\/>\}/,
+  "Workspace should not mount a persistent bottom terminal outside the dedicated Terminal page",
+);
+
+assert.doesNotMatch(
+  workspace,
+  /import \{ BottomTerminal \} from "@\/components\/bottom-terminal";/,
+  "Workspace should not import BottomTerminal when the terminal only lives in ComuxView",
+);
+
+assert.match(
+  comuxView,
+  /<BottomTerminal[\s\S]*threadId=\{`cave\.comux\.\$\{s\.id\}`\}/,
+  "ComuxView should keep BottomTerminal for dedicated Terminal page sessions",
+);
+
 assert.match(
   workspace,
   /mode === "projects"[\s\S]*<ComuxView[\s\S]*view="projects"/,

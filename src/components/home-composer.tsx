@@ -27,14 +27,12 @@ import { Icon, type IconName } from "@/lib/icon";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type Destination = "chat" | "board" | "reminder" | "inbox" | "call";
+export type Destination = "chat" | "board" | "reminder";
 
 const DESTINATIONS: { id: Destination; label: string; icon: IconName }[] = [
   { id: "chat",     label: "Chat",     icon: "ph:chat-circle-dots" },
   { id: "board",    label: "Tasks",    icon: "ph:kanban" },
   { id: "reminder", label: "Reminder", icon: "ph:alarm-fill" },
-  { id: "inbox",    label: "Inbox",    icon: "ph:tray" },
-  { id: "call",     label: "Call",     icon: "ph:phone" },
 ];
 
 type Props = {
@@ -220,20 +218,6 @@ export function HomeComposer({
           else onToast("Reminder creation failed.");
           break;
         }
-        case "inbox": {
-          const res = await fetch("/api/inbox", {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ kind: "note", title: prompt, source: "user", familiarId: familiarId ?? null }),
-          });
-          const json = (await res.json().catch(() => ({ ok: false }))) as { ok: boolean };
-          if (json.ok) { setText(""); onNavigateToInbox(); }
-          else onToast("Inbox note creation failed.");
-          break;
-        }
-        case "call":
-          onToast("Call scheduling coming soon.");
-          break;
       }
     } finally {
       setSending(false);
