@@ -340,7 +340,7 @@ export function PluginsView({ onOpenChat, onCreateSkill, onCreatePlugin, familia
         <div className="flex h-12 items-center justify-between gap-4">
           {/* Tabs flush left — underline style */}
           <nav className="flex h-full items-end gap-1 overflow-x-auto" aria-label="View tabs">
-            {(["roles", "plugins", "skills", "workflows"] as const).map((t) => (
+            {(["roles", "workflows", "plugins", "skills"] as const).map((t) => (
               <button
                 key={t}
                 type="button"
@@ -399,7 +399,7 @@ export function PluginsView({ onOpenChat, onCreateSkill, onCreatePlugin, familia
 
       {/* ── Scrolling content ───────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto w-full max-w-[920px] px-4 pb-12 sm:px-8">
+        <div className="mx-auto w-full max-w-[1200px] px-4 pb-12 sm:px-8">
 
           {/* ── Overview section ─────────────────────────────────────────── */}
           <div className="pb-6 pt-6">
@@ -475,8 +475,14 @@ export function PluginsView({ onOpenChat, onCreateSkill, onCreatePlugin, familia
             ) : tab === "skills" ? (
               <SkillGrid items={filteredSkills} loaded={skillsLoaded} error={skillsError} onSelect={(s) => setSelectedSkill(s)} />
             ) : tab === "workflows" ? (
-            <WorkflowGrid items={workflows} loaded={rolesLoaded} error={rolesError} />
-          ) : tab === "roles" ? (
+              <WorkflowGrid
+                items={workflows}
+                roles={roles}
+                loaded={rolesLoaded}
+                error={rolesError}
+                onOpenRole={(role) => { setSelectedRole(role); setTab("roles"); }}
+              />
+            ) : tab === "roles" ? (
               <RoleGrid
                 items={filteredRoles}
                 loaded={rolesLoaded}
@@ -1227,13 +1233,19 @@ function RoleCapabilitySection({
 // ── WorkflowGrid ─────────────────────────────────────────────────────────────
 function WorkflowGrid({
   items,
+  roles,
   loaded,
   error,
+  onOpenRole,
 }: {
   items: WorkflowEntry[];
+  roles: RoleEntry[];
   loaded: boolean;
   error: string | null;
+  onOpenRole: (role: RoleEntry) => void;
 }) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
   if (!loaded) return <GridSkeleton />;
   if (error) {
     return (
@@ -1251,33 +1263,98 @@ function WorkflowGrid({
   }
   return (
     <div className="flex flex-col gap-1">
-      {items.map((wf) => (
-        <div
-          key={wf.id}
-          className="flex items-start gap-3 rounded-lg border border-border bg-[var(--bg-panel)] px-4 py-3 transition-colors hover:bg-[var(--bg-elevated)]"
-        >
-          {/* Icon swatch */}
-          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--bg-elevated)]">
-            <Icon name="ph:git-branch-bold" width={16} className="text-[var(--text-muted)]" />
+      {items.map((wf) => {
+        const isOpen = expandedId === wf.id;
+        const matchingRoles = roles.filter((r) => wf.declaredBy.includes(r.name) || wf.declaredBy.includes(r.id));
+        return (
+          <div
+            key={wf.id}
+            className={`rounded-lg border bg-[var(--bg-panel)] transition-colors ${
+              isOpen ? "border-[color-mix(in_oklch,var(--accent-presence)_40%,var(--border-hairline))]" : "border-border hover:bg-[var(--bg-elevated)]"
+            }`}
+          >
+            <button
+              type="button"
+              onClick={() => setExpandedId(isOpen ? null : wf.id)}
+              aria-expanded={isOpen}
+              className="flex w-full items-start gap-3 px-4 py-3 text-left"
+            >
+              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--bg-elevated)]">
+                <Icon name="ph:git-branch-bold" width={16} className="text-[var(--text-muted)]" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-[13px] font-medium text-[var(--text-primary)]">{wf.id}</span>
+                  <span className="rounded-full border border-[var(--border-hairline)] bg-[var(--bg-raised)]/60 px-1.5 py-0.5 text-[10px] text-[var(--text-muted)]">
+                    workflow
+                  </span>
+                </div>
+                <p className="mt-0.5 text-[11px] text-[var(--text-muted)]">
+                  {wf.declaredBy.length === 1
+                    ? `Declared by ${wf.declaredBy[0]}`
+                    : `Declared by ${wf.declaredBy.slice(0, -1).join(", ")} and ${wf.declaredBy[wf.declaredBy.length - 1]}`}
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2 text-[11px] text-[var(--text-muted)]">
+                <span>{wf.declaredBy.length} role{wf.declaredBy.length !== 1 ? "s" : ""}</span>
+                <Icon
+                  name="ph:caret-down-bold"
+                  width={10}
+                  className={`transition-transform duration-150 ${isOpen ? "rotate-180" : ""}`}
+                />
+              </div>
+            </button>
+
+            {isOpen ? (
+              <div className="border-t border-[var(--border-hairline)] px-4 py-3">
+                <div className="mb-2 text-[10px] uppercase tracking-widest text-[var(--text-muted)]">
+                  Declared in
+                </div>
+                {matchingRoles.length === 0 ? (
+                  <p className="text-[12px] text-[var(--text-muted)]">
+                    None of the loaded roles match this workflow id. Edit a role’s frontmatter directly to bind it.
+                  </p>
+                ) : (
+                  <ul className="flex flex-col gap-1">
+                    {matchingRoles.map((role) => (
+                      <li
+                        key={`${role.id}:${role.familiar}`}
+                        className="flex items-center gap-3 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-elevated)] px-3 py-2"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[12.5px] font-medium text-[var(--text-primary)]">{role.name}</span>
+                            <span className="rounded-full border border-[var(--border-hairline)] bg-[var(--bg-raised)]/60 px-1.5 py-0.5 text-[10px] text-[var(--text-muted)]">
+                              {role.familiar}
+                            </span>
+                          </div>
+                          <p
+                            className="mt-0.5 truncate font-mono text-[10.5px] text-[var(--text-muted)]"
+                            title={role.path}
+                          >
+                            {role.path}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); onOpenRole(role); }}
+                          className="flex shrink-0 items-center gap-1.5 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)] px-2.5 py-1 text-[11px] text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+                        >
+                          <Icon name="ph:pencil-simple" width={11} />
+                          Edit in role
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <p className="mt-3 text-[10.5px] text-[var(--text-muted)]">
+                  Workflows are declared in the <code className="font-mono text-[10px]">workflows:</code> frontmatter list of each role markdown file. Open a role to add or remove this workflow from its declaration.
+                </p>
+              </div>
+            ) : null}
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-[13px] font-medium text-[var(--text-primary)]">{wf.id}</span>
-              <span className="rounded-full border border-[var(--border-hairline)] bg-[var(--bg-raised)]/60 px-1.5 py-0.5 text-[10px] text-[var(--text-muted)]">
-                workflow
-              </span>
-            </div>
-            <p className="mt-0.5 text-[11px] text-[var(--text-muted)]">
-              {wf.declaredBy.length === 1
-                ? `Declared by ${wf.declaredBy[0]}`
-                : `Declared by ${wf.declaredBy.slice(0, -1).join(", ")} and ${wf.declaredBy[wf.declaredBy.length - 1]}`}
-            </p>
-          </div>
-          <div className="shrink-0 text-[11px] text-[var(--text-muted)]">
-            {wf.declaredBy.length} role{wf.declaredBy.length !== 1 ? "s" : ""}
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
