@@ -282,7 +282,9 @@ export function SidebarMinimal(props: SidebarMinimalProps) {
           aria-label="Settings"
           title="Settings"
         >
-          <Icon name="ph:gear-six" width={14} className="sidebar-foot-icon" />
+          <span className="sidebar-foot-icon-cell" aria-hidden="true">
+            <Icon name="ph:gear-six" width={14} className="sidebar-foot-icon" />
+          </span>
           <span className="sidebar-foot-label">Settings</span>
         </button>
       </div>

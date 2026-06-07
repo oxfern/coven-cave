@@ -46,3 +46,15 @@ assert.match(
   /\.sidebar-foot-bell,\n\.sidebar-foot-btn/,
   "Notifications and settings should share the same footer row treatment",
 );
+
+assert.match(
+  source,
+  /sidebar-foot-icon-cell/,
+  "Settings should use the same fixed footer icon cell as notifications",
+);
+
+assert.match(
+  styles,
+  /\.sidebar-foot-bell > \.relative,\n\.sidebar-foot-icon-cell/,
+  "Footer rows should align labels from matching icon cells",
+);

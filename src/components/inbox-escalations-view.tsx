@@ -225,7 +225,7 @@ export function InboxEscalationsView({ onOpenSource }: Props) {
       ) : null}
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-        <div className="mx-auto max-w-3xl">
+        <div className="mx-auto w-full max-w-[1200px]">
           {visible.length === 0 ? (
             <div
               className="rounded-2xl border px-6 py-12 text-center"

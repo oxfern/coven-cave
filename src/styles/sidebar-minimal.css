@@ -1062,8 +1062,13 @@
   color: var(--text-primary);
 }
 
-.sidebar-foot-bell > .relative {
-  flex-shrink: 0;
+.sidebar-foot-bell > .relative,
+.sidebar-foot-icon-cell {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  place-items: center;
 }
 
 .sidebar-foot-icon {
