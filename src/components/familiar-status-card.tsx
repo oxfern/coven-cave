@@ -96,9 +96,9 @@ const MAX_VISIBLE = 12;
 function SessionItem({ session, indent }: { session: SessionSummary; indent: boolean }) {
   const statusCls =
     session.status === "running"
-      ? "text-emerald-400"
+      ? "text-[var(--color-success)]"
       : session.status === "failed" || session.status === "timeout"
-        ? "text-amber-400"
+        ? "text-[var(--color-warning)]"
         : "text-[var(--text-muted)]";
 
   const runtime = fmtRuntime(session.runtimeMs);
@@ -206,9 +206,9 @@ export function FamiliarStatusCard({ card, expanded, onToggle }: Props) {
   // Left accent class based on status
   const accentBorderCls =
     card.status === "active"
-      ? "border-l-2 border-l-[oklch(0.65_0.18_280)]"
+      ? "border-l-2 border-l-[var(--accent-presence)]"
       : card.status === "stuck"
-        ? "border-l-2 border-l-amber-500"
+        ? "border-l-2 border-l-[var(--color-warning)]"
         : "";
 
   return (
@@ -313,10 +313,10 @@ export function FamiliarStatusCard({ card, expanded, onToggle }: Props) {
           <div className="mb-2 text-[10px] text-[var(--text-muted)]">
             {card.sessions.length} session{card.sessions.length !== 1 ? "s" : ""}
             {runningCount > 0 && (
-              <span className="text-emerald-400"> · {runningCount} running</span>
+              <span className="text-[var(--color-success)]"> · {runningCount} running</span>
             )}
             {failedCount > 0 && (
-              <span className="text-amber-400"> · {failedCount} failed</span>
+              <span className="text-[var(--color-warning)]"> · {failedCount} failed</span>
             )}
             {doneCount > 0 && (
               <span> · {doneCount} done</span>

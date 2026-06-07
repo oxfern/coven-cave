@@ -48,14 +48,14 @@ function classifyAge(updatedAt: string | undefined, sessionStatus?: string): Dot
 function dotColor(state: DotState): string {
   switch (state) {
     case "healthy":
-      return "var(--accent-presence, #9A8ECD)";
+      return "var(--accent-presence)";
     case "degraded":
-      return "#C9A227";
+      return "var(--color-warning)";
     case "offline":
-      return "#B8474A";
+      return "var(--color-danger)";
     case "unknown":
     default:
-      return "var(--text-muted, #6b7280)";
+      return "var(--text-muted)";
   }
 }
 
@@ -172,13 +172,13 @@ export function HealthStrip({ familiars }: { familiars: Familiar[] }) {
             type="button"
             title={`${d.label} · ${d.state}`}
             onClick={() => setOpen(isOpen ? null : d.key)}
-            className="group relative inline-flex h-3 w-3 items-center justify-center rounded-full transition-transform hover:scale-125"
+            className="focus-ring group relative inline-flex h-3 w-3 items-center justify-center rounded-full transition-transform hover:scale-125"
             style={{
               backgroundColor: dotColor(d.state),
               boxShadow:
                 d.state === "healthy"
-                  ? `0 0 0 1px rgba(154,142,205,0.25), 0 0 6px rgba(154,142,205,0.45)`
-                  : `0 0 0 1px var(--border-hairline, rgba(255,255,255,0.08))`,
+                  ? `0 0 0 1px color-mix(in oklch, var(--accent-presence) 25%, transparent), 0 0 6px color-mix(in oklch, var(--accent-presence) 45%, transparent)`
+                  : `0 0 0 1px var(--border-hairline)`,
             }}
             aria-label={`${d.label} health: ${d.state}`}
           />
@@ -186,12 +186,7 @@ export function HealthStrip({ familiars }: { familiars: Familiar[] }) {
       })}
       {overflow > 0 ? (
         <span
-          className="ml-1 inline-flex h-4 items-center rounded-full px-1.5 text-[10px] tabular-nums"
-          style={{
-            color: "var(--text-muted, #9ca3af)",
-            backgroundColor: "var(--surface-soft, rgba(255,255,255,0.04))",
-            boxShadow: "0 0 0 1px var(--border-hairline, rgba(255,255,255,0.08))",
-          }}
+          className="ml-1 inline-flex h-4 items-center rounded-full bg-[var(--bg-raised)] px-1.5 text-[10px] text-[var(--text-muted)] tabular-nums shadow-[0_0_0_1px_var(--border-hairline)]"
           title={`${overflow} more session${overflow === 1 ? "" : "s"}`}
         >
           +{overflow}
@@ -199,14 +194,7 @@ export function HealthStrip({ familiars }: { familiars: Familiar[] }) {
       ) : null}
 
       {open ? (
-        <div
-          className="absolute right-0 top-5 z-50 min-w-[220px] rounded-md border p-2.5 text-[11px] shadow-lg"
-          style={{
-            backgroundColor: "var(--bg-raised, #1a1825)",
-            borderColor: "var(--border-hairline, rgba(255,255,255,0.08))",
-            color: "var(--text-primary, #e6e6f0)",
-          }}
-        >
+        <div className="absolute right-0 top-5 z-50 min-w-[220px] rounded-md border border-[var(--border-strong)] bg-[var(--bg-elevated)] p-2.5 text-[11px] text-[var(--text-primary)] shadow-lg">
           {(() => {
             const d = dots.find((x) => x.key === open);
             if (!d) return null;
@@ -218,13 +206,13 @@ export function HealthStrip({ familiars }: { familiars: Familiar[] }) {
                     style={{ backgroundColor: dotColor(d.state) }}
                   />
                   <span className="font-medium">{d.label}</span>
-                  <span className="ml-auto opacity-60">{d.state}</span>
+                  <span className="ml-auto text-[var(--text-muted)]">{d.state}</span>
                 </div>
                 {d.detail ? (
-                  <div style={{ color: "var(--text-secondary, #b9b8c5)" }}>{d.detail}</div>
+                  <div className="text-[var(--text-secondary)]">{d.detail}</div>
                 ) : null}
                 {d.lastSeen ? (
-                  <div style={{ color: "var(--text-muted, #6b7280)" }}>
+                  <div className="text-[var(--text-muted)]">
                     last seen {relTime(d.lastSeen)}
                   </div>
                 ) : null}

@@ -91,13 +91,13 @@ export function InspectorPane({ familiar, inboxItems = [], onOpenInbox }: Props)
             onClick={() => setTab(t)}
             className={`flex-1 px-3 py-3 uppercase tracking-widest transition-colors ${
               tab === t
-                ? "border-b-2 border-purple-500 text-[var(--text-primary)]"
+                ? "border-b-2 border-[var(--accent-presence)] text-[var(--text-primary)]"
                 : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
             }`}
           >
             {TAB_LABEL[t]}
             {t === "inbox" && inboxBadge > 0 ? (
-              <span className="ml-1 rounded-full bg-rose-600 px-1 text-[9px] font-bold text-white">
+              <span className="ml-1 rounded-full bg-[var(--color-danger)] px-1 text-[9px] font-bold text-white">
                 {inboxBadge}
               </span>
             ) : null}
@@ -146,7 +146,7 @@ function InboxTab({
         {onOpenInbox ? (
           <button
             onClick={onOpenInbox}
-            className="ml-1 text-purple-300 hover:text-purple-200"
+            className="ml-1 text-[var(--accent-presence)] hover:text-[var(--accent-presence)]"
           >
             Create →
           </button>
@@ -166,8 +166,8 @@ function InboxTab({
             <span
               className={`shrink-0 rounded px-1 py-px text-[9px] uppercase tracking-widest ${
                 it.status === "fired"
-                  ? "bg-amber-500/20 text-amber-200"
-                  : "bg-sky-500/20 text-sky-200"
+                  ? "bg-[color-mix(in_oklch,var(--color-warning)_20%,transparent)] text-[var(--color-warning)]"
+                  : "bg-[color-mix(in_oklch,var(--accent-presence-soft)_20%,transparent)] text-[var(--accent-presence-soft)]"
               }`}
             >
               {it.status}
@@ -267,7 +267,7 @@ function MemoryFileView({ path, file, reveal, totalRedactions, onRevealToggle, o
     <div className="flex items-center justify-between border-b border-[var(--border-hairline)] bg-[var(--bg-raised)]/60 px-3 py-1.5 text-[11px]">
       <div>
         {totalRedactions > 0 ? (
-          <span className="text-amber-300">{totalRedactions} secret{totalRedactions === 1 ? "" : "s"} redacted</span>
+          <span className="text-[var(--color-warning)]">{totalRedactions} secret{totalRedactions === 1 ? "" : "s"} redacted</span>
         ) : (
           <span className="text-[var(--text-muted)]">no secrets detected</span>
         )}
@@ -276,7 +276,7 @@ function MemoryFileView({ path, file, reveal, totalRedactions, onRevealToggle, o
         onClick={onRevealToggle}
         className={`rounded px-2 py-0.5 text-[10px] uppercase tracking-widest transition-colors ${
           reveal
-            ? "bg-rose-600/80 text-white hover:bg-rose-500"
+            ? "bg-[color-mix(in_oklch,var(--color-danger)_80%,transparent)] text-white hover:bg-[var(--color-danger)]"
             : "border border-[var(--border-strong)] text-[var(--text-secondary)] hover:bg-[var(--bg-raised)]"
         }`}
         title={reveal ? "Hide secrets" : "Reveal raw (shows secrets)"}
@@ -320,13 +320,13 @@ function MemoryFileView({ path, file, reveal, totalRedactions, onRevealToggle, o
             <div className="flex-1 truncate font-mono text-[13px] text-[var(--text-secondary)]">{filename}</div>
             <div className="flex items-center gap-2">
               {totalRedactions > 0 && (
-                <span className="text-[11px] text-amber-300">{totalRedactions} secret{totalRedactions === 1 ? "" : "s"} redacted</span>
+                <span className="text-[11px] text-[var(--color-warning)]">{totalRedactions} secret{totalRedactions === 1 ? "" : "s"} redacted</span>
               )}
               <button
                 onClick={onRevealToggle}
                 className={`rounded px-2.5 py-1 text-[10px] uppercase tracking-widest transition-colors ${
                   reveal
-                    ? "bg-rose-600/80 text-white hover:bg-rose-500"
+                    ? "bg-[color-mix(in_oklch,var(--color-danger)_80%,transparent)] text-white hover:bg-[var(--color-danger)]"
                     : "border border-[var(--border-strong)] text-[var(--text-secondary)] hover:bg-[var(--bg-raised)]"
                 }`}
                 title={reveal ? "Hide secrets" : "Reveal raw (shows secrets)"}
@@ -458,7 +458,7 @@ function MemoryTab({ familiar }: { familiar: Familiar | null }) {
   }, [covenEntries, query, familiar]);
 
   if (error) {
-    return <p className="p-4 text-xs text-amber-300">Memory unavailable: {error}</p>;
+    return <p className="p-4 text-xs text-[var(--color-warning)]">Memory unavailable: {error}</p>;
   }
 
   if (openPath) {
@@ -491,7 +491,7 @@ function MemoryTab({ familiar }: { familiar: Familiar | null }) {
             }}
             className={`rounded px-2 py-0.5 text-[10px] uppercase tracking-widest transition-colors ${
               mode === m
-                ? "bg-purple-600/80 text-white"
+                ? "bg-[color-mix(in_oklch,var(--accent-presence)_80%,transparent)] text-white"
                 : "border border-[var(--border-strong)] text-[var(--text-secondary)] hover:bg-[var(--bg-raised)]"
             }`}
           >
@@ -508,7 +508,7 @@ function MemoryTab({ familiar }: { familiar: Familiar | null }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={mode === "coven" ? "Filter coven memory…" : "Filter memory files…"}
-          className="w-full rounded-md border border-[var(--border-hairline)] bg-[var(--bg-base)] px-2 py-1 text-xs text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] focus:border-purple-600"
+          className="w-full rounded-md border border-[var(--border-hairline)] bg-[var(--bg-base)] px-2 py-1 text-xs text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--accent-presence)]"
         />
       </div>
       ) : null}
@@ -531,7 +531,7 @@ function MemoryTab({ familiar }: { familiar: Familiar | null }) {
                   <br />
                   <button
                     onClick={() => setMode("files")}
-                    className="mt-1 text-purple-300 hover:text-purple-200 underline"
+                    className="mt-1 text-[var(--accent-presence)] hover:text-[var(--accent-presence)] underline"
                   >
                     Browse memory files →
                   </button>
@@ -570,7 +570,7 @@ function MemoryTab({ familiar }: { familiar: Familiar | null }) {
                     : `${process.env.NEXT_PUBLIC_COVEN_MEMORY_ROOT ?? "/Users/buns/.coven/memory"}/${e.path}`;
                   setOpenPath(guessed);
                 }}
-                className="mt-1 text-[10px] text-purple-300 hover:text-purple-200"
+                className="mt-1 text-[10px] text-[var(--accent-presence)] hover:text-[var(--accent-presence)]"
               >
                 open file →
               </button>
@@ -674,10 +674,10 @@ function CapRow({ label, value, mono }: { label: string; value: string; mono?: b
 
 function KindBadge({ kind }: { kind: string }) {
   const colorMap: Record<string, string> = {
-    agent: "bg-purple-600/20 text-purple-200",
-    harness: "bg-sky-600/20 text-sky-200",
-    hybrid: "bg-emerald-600/20 text-emerald-200",
-    mcp: "bg-amber-600/20 text-amber-200",
+    agent: "bg-[color-mix(in_oklch,var(--accent-presence)_20%,transparent)] text-[var(--accent-presence)]",
+    harness: "bg-[color-mix(in_oklch,var(--accent-presence-soft)_20%,transparent)] text-[var(--accent-presence-soft)]",
+    hybrid: "bg-[color-mix(in_oklch,var(--color-success)_20%,transparent)] text-[var(--color-success)]",
+    mcp: "bg-[color-mix(in_oklch,var(--color-warning)_20%,transparent)] text-[var(--color-warning)]",
     builtin: "bg-[var(--bg-raised)] text-[var(--text-muted)]",
   };
   const k = (kind ?? "").toLowerCase();
@@ -834,9 +834,9 @@ function FamiliarCapabilityPanel({ familiar }: { familiar: Familiar | null }) {
 
       {/* Error banner */}
       {errors.length > 0 ? (
-        <div className="rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1.5">
+        <div className="rounded border border-[color-mix(in_oklch,var(--color-warning)_30%,transparent)] bg-[color-mix(in_oklch,var(--color-warning)_10%,transparent)] px-2 py-1.5">
           {errors.map((e, i) => (
-            <p key={i} className="text-[10px] text-amber-300">{e}</p>
+            <p key={i} className="text-[10px] text-[var(--color-warning)]">{e}</p>
           ))}
         </div>
       ) : null}
@@ -852,12 +852,12 @@ function FamiliarCapabilityPanel({ familiar }: { familiar: Familiar | null }) {
             {activeRoles.map((role) => (
               <li
                 key={`${role.familiar}:${role.id}`}
-                className="rounded border border-purple-500/20 bg-purple-600/10 px-2 py-1.5"
+                className="rounded border border-[color-mix(in_oklch,var(--accent-presence)_20%,transparent)] bg-[color-mix(in_oklch,var(--accent-presence)_10%,transparent)] px-2 py-1.5"
               >
                 <div className="flex items-center gap-1.5">
-                  <Icon name="ph:sparkle" width={13} className="shrink-0 text-purple-300" />
+                  <Icon name="ph:sparkle" width={13} className="shrink-0 text-[var(--accent-presence)]" />
                   <span className="font-medium text-[var(--text-primary)]">{role.name}</span>
-                  <span className="ml-auto rounded bg-purple-600/20 px-1 text-[10px] text-purple-200">
+                  <span className="ml-auto rounded bg-[color-mix(in_oklch,var(--accent-presence)_20%,transparent)] px-1 text-[10px] text-[var(--accent-presence)]">
                     {role.familiar}
                   </span>
                   {role.skills.length > 0 ? (
@@ -891,13 +891,13 @@ function FamiliarCapabilityPanel({ familiar }: { familiar: Familiar | null }) {
               badge={`${roleGrantedSkillIds.size} via active roles`}
               open={skillsRoleOpen}
               onToggle={() => setSkillsRoleOpen((v) => !v)}
-              accentClass="border-l-2 border-l-purple-500"
+              accentClass="border-l-2 border-l-[var(--accent-presence)]"
             >
               <ul className="space-y-1 pt-1">
                 {Array.from(roleGrantedSkillIds).map((sid) => {
                   const skill = localSkills.find((s) => s.id === sid);
                   return (
-                    <li key={sid} className="rounded bg-purple-600/10 px-2 py-1">
+                    <li key={sid} className="rounded bg-[color-mix(in_oklch,var(--accent-presence)_10%,transparent)] px-2 py-1">
                       <div className="flex items-center gap-1.5">
                         <span className="font-medium text-[var(--text-primary)]">
                           {skill?.name ?? sid}
@@ -914,7 +914,7 @@ function FamiliarCapabilityPanel({ familiar }: { familiar: Familiar | null }) {
                           {skill.tags.map((t) => (
                             <span
                               key={t}
-                              className="rounded bg-purple-600/20 px-1 text-[10px] text-purple-200"
+                              className="rounded bg-[color-mix(in_oklch,var(--accent-presence)_20%,transparent)] px-1 text-[10px] text-[var(--accent-presence)]"
                             >
                               {t}
                             </span>
@@ -934,7 +934,7 @@ function FamiliarCapabilityPanel({ familiar }: { familiar: Familiar | null }) {
             badge={String(familiarSkills.length)}
             open={skillsFamiliarOpen}
             onToggle={() => setSkillsFamiliarOpen((v) => !v)}
-            accentClass="border-l-2 border-l-emerald-500"
+            accentClass="border-l-2 border-l-[var(--color-success)]"
           >
             {familiarSkills.length === 0 ? (
               <p className="pt-1 text-[10px] text-[var(--text-muted)]">
@@ -943,7 +943,7 @@ function FamiliarCapabilityPanel({ familiar }: { familiar: Familiar | null }) {
             ) : (
               <ul className="space-y-1 pt-1">
                 {familiarSkills.map((s) => (
-                  <li key={s.id} className="rounded bg-emerald-600/10 px-2 py-1">
+                  <li key={s.id} className="rounded bg-[color-mix(in_oklch,var(--color-success)_10%,transparent)] px-2 py-1">
                     <div className="flex items-center gap-1.5">
                       <span className="font-medium text-[var(--text-primary)]">{s.name}</span>
                       <KindBadge kind={s.kind ?? "agent"} />
@@ -958,7 +958,7 @@ function FamiliarCapabilityPanel({ familiar }: { familiar: Familiar | null }) {
                         {s.tags.map((t) => (
                           <span
                             key={t}
-                            className="rounded bg-emerald-600/20 px-1 text-[10px] text-emerald-200"
+                            className="rounded bg-[color-mix(in_oklch,var(--color-success)_20%,transparent)] px-1 text-[10px] text-[var(--color-success)]"
                           >
                             {t}
                           </span>
@@ -1040,7 +1040,7 @@ function FamiliarCapabilityPanel({ familiar }: { familiar: Familiar | null }) {
                   <span
                     className={`rounded px-1 text-[10px] uppercase tracking-wider ${
                       p.enabled
-                        ? "bg-emerald-600/20 text-emerald-200"
+                        ? "bg-[color-mix(in_oklch,var(--color-success)_20%,transparent)] text-[var(--color-success)]"
                         : "bg-[var(--bg-raised)] text-[var(--text-muted)]"
                     }`}
                   >
@@ -1088,7 +1088,7 @@ function FamiliarCapabilityPanel({ familiar }: { familiar: Familiar | null }) {
             {mcpPlugins.map((p) => (
               <li
                 key={p.id}
-                className="rounded border border-amber-500/20 bg-amber-600/5 px-2 py-1.5"
+                className="rounded border border-[color-mix(in_oklch,var(--color-warning)_20%,transparent)] bg-[color-mix(in_oklch,var(--color-warning)_5%,transparent)] px-2 py-1.5"
               >
                 <div className="flex items-center gap-1.5">
                   <span className="font-medium text-[var(--text-primary)]">{p.name}</span>
@@ -1096,7 +1096,7 @@ function FamiliarCapabilityPanel({ familiar }: { familiar: Familiar | null }) {
                   <span
                     className={`rounded px-1 text-[10px] uppercase tracking-wider ${
                       p.enabled
-                        ? "bg-emerald-600/20 text-emerald-200"
+                        ? "bg-[color-mix(in_oklch,var(--color-success)_20%,transparent)] text-[var(--color-success)]"
                         : "bg-[var(--bg-raised)] text-[var(--text-muted)]"
                     }`}
                   >
@@ -1122,11 +1122,11 @@ function FamiliarCapabilityPanel({ familiar }: { familiar: Familiar | null }) {
             {warnings.map((w, i) => (
               <li
                 key={i}
-                className="flex items-start gap-1.5 rounded bg-amber-500/10 px-2 py-1.5"
+                className="flex items-start gap-1.5 rounded bg-[color-mix(in_oklch,var(--color-warning)_10%,transparent)] px-2 py-1.5"
               >
-                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />
+                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-warning)]" />
                 <div>
-                  <span className="font-medium text-amber-200">{w.kind}</span>
+                  <span className="font-medium text-[var(--color-warning)]">{w.kind}</span>
                   <p className="text-[10px] text-[var(--text-secondary)]">{w.message}</p>
                 </div>
               </li>

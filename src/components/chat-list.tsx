@@ -45,11 +45,11 @@ function repoName(p: string): string {
 }
 
 const STATUS_STYLES: Record<string, { dot: string; label: string; preview: string }> = {
-  running:   { dot: "bg-emerald-400 animate-pulse", label: "running",   preview: "text-emerald-400" },
+  running:   { dot: "bg-[var(--color-success)] animate-pulse", label: "running",   preview: "text-[var(--color-success)]" },
   completed: { dot: "bg-[var(--text-muted)]",        label: "done",      preview: "text-[var(--text-muted)]" },
-  failed:    { dot: "bg-rose-400",                   label: "failed",    preview: "text-rose-400" },
-  queued:    { dot: "bg-amber-400",                  label: "queued",    preview: "text-amber-400" },
-  paused:    { dot: "bg-sky-400",                    label: "paused",    preview: "text-sky-400" },
+  failed:    { dot: "bg-[var(--color-danger)]",                   label: "failed",    preview: "text-[var(--color-danger)]" },
+  queued:    { dot: "bg-[var(--color-warning)]",                  label: "queued",    preview: "text-[var(--color-warning)]" },
+  paused:    { dot: "bg-[var(--accent-presence-soft)]",                    label: "paused",    preview: "text-[var(--accent-presence-soft)]" },
 };
 
 function statusStyle(s: string) {
@@ -163,11 +163,11 @@ export function ChatList({ familiar, familiars = [], sessions, daemonRunning, on
               <span
                 className={`flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${
                   daemonRunning
-                    ? "bg-emerald-950/60 text-emerald-400"
-                    : "bg-rose-950/60 text-rose-400"
+                    ? "bg-[color-mix(in_oklch,var(--color-success)_60%,transparent)] text-[var(--color-success)]"
+                    : "bg-[color-mix(in_oklch,var(--color-danger)_60%,transparent)] text-[var(--color-danger)]"
                 }`}
               >
-                <span className={`inline-block h-1.5 w-1.5 rounded-full ${daemonRunning ? "bg-emerald-400 animate-pulse" : "bg-rose-400"}`} />
+                <span className={`inline-block h-1.5 w-1.5 rounded-full ${daemonRunning ? "bg-[var(--color-success)] animate-pulse" : "bg-[var(--color-danger)]"}`} />
                 {daemonRunning ? "online" : "offline"}
               </span>
             </div>
@@ -233,7 +233,7 @@ export function ChatList({ familiar, familiars = [], sessions, daemonRunning, on
             className={[
               "flex h-8 shrink-0 items-center gap-1.5 rounded-md border px-2.5 text-[11px] font-medium transition-colors",
               unreadsOnly
-                ? "border-emerald-500/40 bg-emerald-950/40 text-emerald-400"
+                ? "border-[color-mix(in_oklch,var(--color-success)_40%,transparent)] bg-[color-mix(in_oklch,var(--color-success)_40%,transparent)] text-[var(--color-success)]"
                 : "border-[var(--border-hairline)] text-[var(--text-muted)] hover:border-[var(--text-muted)] hover:text-[var(--text-secondary)]",
             ].join(" ")}
           >
@@ -245,7 +245,7 @@ export function ChatList({ familiar, familiars = [], sessions, daemonRunning, on
 
       {/* ── Error banner ── */}
       {error && (
-        <div className="border-b border-amber-700/40 bg-amber-900/20 px-4 py-1.5 text-xs text-amber-200">
+        <div className="border-b border-[color-mix(in_oklch,var(--color-warning)_40%,transparent)] bg-[color-mix(in_oklch,var(--color-warning)_20%,transparent)] px-4 py-1.5 text-xs text-[var(--color-warning)]">
           {error}
         </div>
       )}

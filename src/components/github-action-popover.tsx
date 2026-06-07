@@ -37,8 +37,8 @@ function FeedbackBanner({
     <div
       className={`flex items-center gap-1.5 rounded px-2.5 py-1.5 text-[11px] ${
         status === "success"
-          ? "bg-emerald-950/60 text-emerald-300"
-          : "bg-rose-950/60 text-rose-300"
+          ? "bg-[color-mix(in_oklch,var(--color-success)_60%,transparent)] text-[var(--color-success)]"
+          : "bg-[color-mix(in_oklch,var(--color-danger)_60%,transparent)] text-[var(--color-danger)]"
       }`}
     >
       <Icon

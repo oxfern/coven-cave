@@ -62,6 +62,30 @@ assert.match(
 );
 
 assert.match(
+  daemonBar,
+  /onOpenFamiliarChat\?: \(\) => void/,
+  "Top bar should accept a focused familiar chat action",
+);
+
+assert.match(
+  daemonBar,
+  /aria-label="Open familiar chat"[\s\S]*Chat with \$\{activeFamiliar\.display_name\}[\s\S]*⌘J/,
+  "Top bar center control should be a familiar chat knob instead of a search-only trigger",
+);
+
+assert.match(
+  workspace,
+  /const openFamiliarChatKnob = useCallback\(\(\) => \{[\s\S]*setShellAgentPane\("chat"\)[\s\S]*setStripLock\("chat"\)[\s\S]*setMode\("agents"\)[\s\S]*shellRef\.current\?\.openAgent\(\)[\s\S]*cave:agents-list/,
+  "Workspace should wire the top knob to the familiar chat surface",
+);
+
+assert.match(
+  workspace,
+  /onOpenFamiliarChat=\{openFamiliarChatKnob\}[\s\S]*activeFamiliar=\{active\}/,
+  "Workspace should pass active familiar context into the top chat knob",
+);
+
+assert.match(
   workspace,
   /mode === "agents"[\s\S]*<AgentsView/,
   "Workspace should route Agents to the integrated AgentsView",

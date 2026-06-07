@@ -44,7 +44,7 @@ function TimeoutBadge({ runningSince, timeoutMs }: { runningSince?: string; time
   if (!text) return null;
   const over = runningSince ? Date.now() - new Date(runningSince).getTime() > (timeoutMs ?? DEFAULT_TIMEOUT_MS) : false;
   return (
-    <span className={`rounded border px-1.5 py-px text-[10px] uppercase tracking-widest ${over ? "border-rose-500/40 bg-rose-500/10 text-rose-200" : "border-border bg-card text-muted-foreground"}`}>
+    <span className={`rounded border px-1.5 py-px text-[10px] uppercase tracking-widest ${over ? "border-[color-mix(in_oklch,var(--color-danger)_40%,transparent)] bg-[color-mix(in_oklch,var(--color-danger)_10%,transparent)] text-[var(--color-danger)]" : "border-border bg-card text-muted-foreground"}`}>
       {text}
     </span>
   );
@@ -100,15 +100,15 @@ function InlinePATSetup({ onSaved }: { onSaved: () => void }) {
           style={{ background: "var(--bg-base)", border: "1px solid var(--border-hairline)", borderRadius: 6,
             padding: "5px 8px", fontSize: 11, color: "var(--text-primary)", outline: "none", width: "100%", boxSizing: "border-box" }} />
       </div>
-      {error && <p style={{ fontSize: 10, color: "#f87171", margin: 0 }}>{error}</p>}
+      {error && <p style={{ fontSize: 10, color: "var(--color-danger)", margin: 0 }}>{error}</p>}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 2 }}>
         <a href="https://github.com/settings/tokens/new?scopes=read:user,repo,notifications&description=Cave+local"
           target="_blank" rel="noreferrer"
-          style={{ fontSize: 10, color: "oklch(0.65 0.18 280)", textDecoration: "none" }}>
+          style={{ fontSize: 10, color: "var(--accent-presence)", textDecoration: "none" }}>
           Generate PAT →
         </a>
         <button type="button" disabled={(!pat.trim() && !usernameInput.trim()) || saving} onClick={() => void save()}
-          style={{ background: "oklch(0.65 0.18 280)", color: "#fff", border: "none", borderRadius: 6,
+          style={{ background: "var(--accent-presence)", color: "var(--text-primary)", border: "none", borderRadius: 6,
             padding: "4px 12px", fontSize: 11, fontWeight: 500, cursor: "pointer", opacity: saving ? 0.6 : 1 }}>
           {saving ? "Verifying…" : "Save"}
         </button>
@@ -126,9 +126,9 @@ const KIND_ICON: Record<string, string> = {
 };
 
 const STATE_COLOR: Record<string, string> = {
-  open: "text-emerald-400",
+  open: "text-[var(--color-success)]",
   merged: "text-violet-400",
-  closed: "text-rose-400",
+  closed: "text-[var(--color-danger)]",
 };
 
 function GitHubAttachSection({
@@ -261,7 +261,7 @@ function GitHubAttachSection({
               <div style={{ padding: "12px 10px", fontSize: 11, color: "var(--text-muted)", textAlign: "center" }}>Loading…</div>
             )}
             {err && (
-              <div style={{ padding: "10px", fontSize: 11, color: "#f87171" }}>{err}</div>
+              <div style={{ padding: "10px", fontSize: 11, color: "var(--color-danger)" }}>{err}</div>
             )}
             {!loading && !err && configured === false && (
               <InlinePATSetup onSaved={() => { setItems([]); setConfigured(null); setFetchKey((k) => k + 1); }} />
@@ -283,7 +283,7 @@ function GitHubAttachSection({
                 <div key={item.id} style={{
                   display: "flex", alignItems: "center", gap: 8,
                   padding: "7px 10px", borderBottom: "1px solid var(--border-hairline)",
-                  background: attached ? "color-mix(in oklab, oklch(0.65 0.18 280) 8%, var(--bg-raised))" : undefined,
+                  background: attached ? "color-mix(in oklch, var(--accent-presence) 8%, var(--bg-raised))" : undefined,
                 }}>
                   <Icon
                     name={iconName(item.kind)}
@@ -316,7 +316,7 @@ function GitHubAttachSection({
                       className="board-toolbar-btn"
                       style={{
                         fontSize: 10, padding: "2px 7px",
-                        ...(attached ? { color: "oklch(0.65 0.18 280)", borderColor: "oklch(0.65 0.18 280)" } : {}),
+                        ...(attached ? { color: "var(--accent-presence)", borderColor: "var(--accent-presence)" } : {}),
                       }}
                       onClick={() => attached ? detach(item.url) : attach(item)}
                     >
@@ -438,7 +438,7 @@ function LinksSection({
                   <button
                     type="button"
                     className="board-toolbar-btn"
-                    style={{ padding: "1px 4px", color: "#f87171" }}
+                    style={{ padding: "1px 4px", color: "var(--color-danger)" }}
                     onClick={() => deleteLink(link)}
                     title="Remove link"
                   >
@@ -564,7 +564,7 @@ function StepsSection({
           )}
         </span>
         {total > 0 && (
-          <span style={{ fontSize: 10, color: pct === 100 ? "var(--color-emerald-400, #34d399)" : "var(--text-muted)" }}>
+          <span style={{ fontSize: 10, color: pct === 100 ? "var(--color-success)" : "var(--text-muted)" }}>
             {pct}%
           </span>
         )}
@@ -582,7 +582,7 @@ function StepsSection({
           <div style={{
             height: "100%",
             width: pct + "%",
-            background: pct === 100 ? "oklch(0.76 0.18 150)" : "oklch(0.65 0.18 280)",
+            background: pct === 100 ? "var(--color-success)" : "var(--accent-presence)",
             transition: "width 0.2s ease, background 0.2s ease",
           }} />
         </div>
@@ -600,7 +600,7 @@ function StepsSection({
                 gap: 8,
                 padding: "6px 8px",
                 borderRadius: 6,
-                background: step.done ? "color-mix(in oklab, oklch(0.76 0.18 150) 6%, var(--bg-elevated))" : "var(--bg-elevated)",
+                background: step.done ? "color-mix(in oklch, var(--color-success) 6%, var(--bg-elevated))" : "var(--bg-elevated)",
                 border: "1px solid var(--border-hairline)",
               }}
             >
@@ -615,7 +615,7 @@ function StepsSection({
                   height: 15,
                   borderRadius: 4,
                   border: step.done ? "none" : "1.5px solid var(--border-strong)",
-                  background: step.done ? "oklch(0.76 0.18 150)" : "transparent",
+                  background: step.done ? "var(--color-success)" : "transparent",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -653,7 +653,7 @@ function StepsSection({
                     <Icon name="ph:arrow-down-bold" width={9} />
                   </button>
                 )}
-                <button type="button" className="board-toolbar-btn" style={{ padding: "1px 4px", color: "#f87171" }}
+                <button type="button" className="board-toolbar-btn" style={{ padding: "1px 4px", color: "var(--color-danger)" }}
                   onClick={() => deleteStep(step.id)} title="Delete step">
                   <Icon name="ph:x-bold" width={9} />
                 </button>
@@ -876,7 +876,7 @@ export function BoardInspector({ card, familiars, sessions, onClose, onPatch, on
                 ))}
               </div>
             )}
-            {lifecycleErr && <p style={{ fontSize: 10, color: "#f87171", marginTop: 4 }}>{lifecycleErr}</p>}
+            {lifecycleErr && <p style={{ fontSize: 10, color: "var(--color-danger)", marginTop: 4 }}>{lifecycleErr}</p>}
           </div>
 
           <div className="board-drawer-grid-2 board-table-muted">

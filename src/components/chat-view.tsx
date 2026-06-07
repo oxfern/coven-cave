@@ -709,7 +709,7 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
       </div>
 
       {error ? (
-        <div className="border-t border-amber-700/40 bg-amber-900/20 px-5 py-1.5 text-xs text-amber-200">
+        <div className="border-t border-[color-mix(in_oklch,var(--color-warning)_40%,transparent)] bg-[color-mix(in_oklch,var(--color-warning)_20%,transparent)] px-5 py-1.5 text-xs text-[var(--color-warning)]">
           {error}
         </div>
       ) : null}
@@ -807,13 +807,13 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
               </div>
               <div className="flex items-center gap-2 text-[var(--text-muted)]">
                 <span className="flex items-center gap-1 rounded-full border border-[var(--border-hairline)] px-2 py-1 text-[11px]">
-                  <span className="text-purple-300">◆</span>
+                  <span className="text-[var(--accent-presence)]">◆</span>
                   <span className="font-mono text-[var(--text-secondary)]">{familiar.model ?? "—"}</span>
                 </span>
                 {busy ? (
                   <button
                     onClick={cancelSend}
-                    className="grid h-7 w-7 place-items-center rounded-md bg-rose-500/90 text-white transition-colors hover:bg-rose-500"
+                    className="grid h-7 w-7 place-items-center rounded-md bg-[color-mix(in_oklch,var(--color-danger)_90%,transparent)] text-white transition-colors hover:bg-[var(--color-danger)]"
                     title="Cancel (esc)"
                   >
                     ■
@@ -958,7 +958,7 @@ function AttachmentLightbox({ attachment, onClose }: { attachment: ChatAttachmen
           <span className="flex-1 truncate text-[12px] text-[var(--text-secondary)]">{attachment.name}</span>
           <span className="shrink-0 text-[11px] text-[var(--text-muted)]">{fmtBytes(attachment.size)}</span>
           {attachment.truncated ? (
-            <span className="shrink-0 rounded bg-amber-900/40 px-1.5 py-0.5 text-[10px] text-amber-300">truncated</span>
+            <span className="shrink-0 rounded bg-[color-mix(in_oklch,var(--color-warning)_40%,transparent)] px-1.5 py-0.5 text-[10px] text-[var(--color-warning)]">truncated</span>
           ) : null}
           <button
             type="button"
@@ -1085,10 +1085,10 @@ function ToolGroup({ tools }: { tools: ToolEvent[] }) {
   const errCount  = tools.filter((t) => t.status === "error").length;
 
   const statusDot = anyError
-    ? "bg-rose-400"
+    ? "bg-[var(--color-danger)]"
     : anyRunning
-    ? "bg-amber-400 animate-pulse"
-    : "bg-emerald-400/70";
+    ? "bg-[var(--color-warning)] animate-pulse"
+    : "bg-[color-mix(in_oklch,var(--color-success)_70%,transparent)]";
 
   const label = anyRunning
     ? `${tools.length} tool call${tools.length > 1 ? "s" : ""} · running`
@@ -1177,10 +1177,10 @@ function ToolBlock({ tool }: { tool: ToolEvent }) {
   const [open, setOpen] = useState(false);
   const statusDot =
     tool.status === "running"
-      ? "bg-amber-400 animate-pulse"
+      ? "bg-[var(--color-warning)] animate-pulse"
       : tool.status === "error"
-      ? "bg-rose-400"
-      : "bg-emerald-400";
+      ? "bg-[var(--color-danger)]"
+      : "bg-[var(--color-success)]";
   const hasBody = !!(tool.input || tool.output);
   const dur = fmtDuration(tool.durationMs);
   return (
@@ -1200,7 +1200,7 @@ function ToolBlock({ tool }: { tool: ToolEvent }) {
             hasBody ? "" : "opacity-30"
           }`}
         />
-        <Icon name="ph:wrench-bold" width="0.85rem" height="0.85rem" className="text-purple-300" />
+        <Icon name="ph:wrench-bold" width="0.85rem" height="0.85rem" className="text-[var(--accent-presence)]" />
         <span className="font-mono text-[var(--text-primary)]">{tool.name}</span>
         <span className={`ml-auto h-1.5 w-1.5 rounded-full ${statusDot}`} />
         {dur && tool.status !== "running" ? (

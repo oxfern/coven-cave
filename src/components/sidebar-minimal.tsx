@@ -84,6 +84,7 @@ function ActionRow({
     <button
       type="button"
       className={`sidebar-action-row ${active ? "sidebar-action-row--active" : ""}`}
+      aria-current={active ? "page" : undefined}
       onClick={onClick}
     >
       <span className="sidebar-action-icon">{icon}</span>
@@ -111,6 +112,7 @@ function FolderRow({
     <button
       type="button"
       className={`sidebar-folder-row${active ? " sidebar-folder-row--active" : ""}`}
+      aria-current={active ? "page" : undefined}
       onClick={onClick}
     >
       <Icon name={iconName} width={15} className="sidebar-folder-icon" />

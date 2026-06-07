@@ -97,8 +97,8 @@ function itemDate(item: InboxItem): Date | null {
 function urgencyColor(item: InboxItem): string {
   const meta = (item as unknown as { comms?: { urgency?: string } }).comms;
   if (!meta) return "bg-[var(--text-muted)]";
-  if (meta.urgency === "expiring") return "bg-[#8E3DFF]";
-  if (meta.urgency === "time-sensitive") return "bg-amber-400";
+  if (meta.urgency === "expiring") return "bg-[var(--accent-presence)]";
+  if (meta.urgency === "time-sensitive") return "bg-[var(--color-warning)]";
   return "bg-[var(--text-muted)]";
 }
 
@@ -223,7 +223,7 @@ function AgendaView({
             <span
               className={`text-[11px] font-semibold uppercase tracking-wider ${
                 isSameDay(date, new Date())
-                  ? "text-[#8E3DFF]"
+                  ? "text-[var(--accent-presence)]"
                   : "text-[var(--text-muted)]"
               }`}
             >
@@ -544,7 +544,7 @@ function WeekView({
             <div
               key={i}
               className={`flex-1 min-w-[80px] px-2 py-2 text-center ${
-                col.isToday ? "bg-[#8E3DFF]/10" : ""
+                col.isToday ? "bg-[color-mix(in_oklch,var(--accent-presence)_10%,transparent)]" : ""
               }`}
             >
               <div className="text-[10px] uppercase tracking-wider text-[var(--text-muted)]">
@@ -552,7 +552,7 @@ function WeekView({
               </div>
               <div
                 className={`text-sm font-semibold ${
-                  col.isToday ? "text-[#8E3DFF]" : "text-[var(--text-primary)]"
+                  col.isToday ? "text-[var(--accent-presence)]" : "text-[var(--text-primary)]"
                 }`}
               >
                 {col.date.getDate()}
@@ -650,7 +650,7 @@ function MonthView({
                   <span
                     className={`mb-1 flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-medium ${
                       isToday
-                        ? "bg-[#8E3DFF] text-white"
+                        ? "bg-[var(--accent-presence)] text-white"
                         : isCurrentMonth
                         ? "text-[var(--text-primary)]"
                         : "text-[var(--text-muted)]"
@@ -909,7 +909,7 @@ export function CalendarView({ items, familiars, onAddEntry, onOpenItem }: Props
               onClick={() => setViewMode(id)}
               className={`px-2.5 py-1 text-[11px] transition-colors sm:px-3 ${
                 viewMode === id
-                  ? "bg-[#8E3DFF] text-white"
+                  ? "bg-[var(--accent-presence)] text-white"
                   : "text-[var(--text-secondary)] hover:bg-[var(--bg-raised)]"
               }`}
             >

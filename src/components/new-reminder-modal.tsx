@@ -230,7 +230,7 @@ export function NewReminderModal({
             onChange={(e) => setTitle(e.target.value)}
             placeholder="check the deploy"
             autoFocus
-            className="w-full rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/40 px-3 py-2 text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] focus:border-purple-600"
+            className="w-full rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/40 px-3 py-2 text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--accent-presence)]"
           />
         </Field>
 
@@ -244,8 +244,8 @@ export function NewReminderModal({
             placeholder="in 30m · in 2h · today 17:30 · tomorrow 9am"
             className={`w-full rounded-md border bg-[var(--bg-raised)]/40 px-3 py-2 text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] ${
               whenText && !parsed
-                ? "border-amber-600/60"
-                : "border-[var(--border-hairline)] focus:border-purple-600"
+                ? "border-[color-mix(in_oklch,var(--color-warning)_60%,transparent)]"
+                : "border-[var(--border-hairline)] focus:border-[var(--accent-presence)]"
             }`}
           />
           <div className="mt-1 flex items-center justify-between text-[10px] text-[var(--text-muted)]">
@@ -268,7 +268,7 @@ export function NewReminderModal({
               if (e.target.value) setWhenText("");
             }}
             min={toLocalInput(new Date().toISOString())}
-            className="w-full rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/40 px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-purple-600"
+            className="w-full rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/40 px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent-presence)]"
           />
         </Field>
 
@@ -303,8 +303,8 @@ export function NewReminderModal({
               placeholder="*/15 * * * *"
               className={`w-full rounded-md border bg-[var(--bg-raised)]/40 px-3 py-2 font-mono text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] ${
                 cronExpr && !cronFields
-                  ? "border-amber-600/60"
-                  : "border-[var(--border-hairline)] focus:border-purple-600"
+                  ? "border-[color-mix(in_oklch,var(--color-warning)_60%,transparent)]"
+                  : "border-[var(--border-hairline)] focus:border-[var(--accent-presence)]"
               }`}
             />
             <div className="mt-1 text-[10px] text-[var(--text-muted)]">
@@ -324,7 +324,7 @@ export function NewReminderModal({
         ) : null}
 
         {error ? (
-          <div className="mb-3 rounded border border-amber-700/40 bg-amber-900/20 px-3 py-1.5 text-xs text-amber-200">
+          <div className="mb-3 rounded border border-[color-mix(in_oklch,var(--color-warning)_40%,transparent)] bg-[color-mix(in_oklch,var(--color-warning)_20%,transparent)] px-3 py-1.5 text-xs text-[var(--color-warning)]">
             {error}
           </div>
         ) : null}
@@ -333,7 +333,7 @@ export function NewReminderModal({
           <button
             onClick={create}
             disabled={!title.trim() || !resolvedFireAt || busy}
-            className="rounded-md bg-rose-700 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-rose-600 disabled:opacity-50"
+            className="rounded-md bg-[var(--color-danger)] px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-[var(--color-danger)] disabled:opacity-50"
           >
             {busy ? "Creating…" : previewLabel ? `Remind ${previewLabel}` : "Create"}
           </button>
@@ -374,7 +374,7 @@ function Select({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full appearance-none rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/40 px-3 py-2 pr-8 text-sm text-[var(--text-primary)] outline-none focus:border-purple-600"
+        className="w-full appearance-none rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/40 px-3 py-2 pr-8 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent-presence)]"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value} className="bg-[var(--bg-raised)]">

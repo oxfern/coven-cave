@@ -683,7 +683,7 @@ function RoleGrid({
                 {roles.length}
               </span>
               {activeCount > 0 && (
-                <span className="rounded-full bg-emerald-500/15 px-1.5 py-px text-[10px] text-emerald-300">
+                <span className="rounded-full bg-[color-mix(in_oklch,var(--color-success)_15%,transparent)] px-1.5 py-px text-[10px] text-[var(--color-success)]">
                   {activeCount} active
                 </span>
               )}
@@ -829,7 +829,7 @@ function RoleCard({
         selected
           ? "border-[var(--accent-presence)] bg-[var(--accent-presence)]/10"
           : role.active
-            ? "border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10"
+            ? "border-[color-mix(in_oklch,var(--color-success)_30%,transparent)] bg-[color-mix(in_oklch,var(--color-success)_5%,transparent)] hover:bg-[color-mix(in_oklch,var(--color-success)_10%,transparent)]"
             : "border-[var(--border-hairline)] bg-[var(--bg-card)] hover:bg-[var(--bg-raised)]",
       ].join(" ")}
     >
@@ -839,7 +839,7 @@ function RoleCard({
         selected
           ? "bg-[var(--accent-presence)]/20 text-[var(--accent-presence)]"
           : role.active
-            ? "bg-emerald-500/15 text-emerald-300"
+            ? "bg-[color-mix(in_oklch,var(--color-success)_15%,transparent)] text-[var(--color-success)]"
             : "bg-[var(--bg-elevated)] text-[var(--text-secondary)]",
       ].join(" ")}>
         <Icon name="ph:sparkle" width={14} />
@@ -850,7 +850,7 @@ function RoleCard({
         <div className="flex min-w-0 items-center gap-1.5">
           <span className="truncate text-[13px] font-medium text-[var(--text-primary)]">{role.name}</span>
           {role.active && (
-            <span className="shrink-0 rounded-full bg-emerald-500/15 px-1.5 py-px text-[9px] font-medium uppercase tracking-wide text-emerald-300">
+            <span className="shrink-0 rounded-full bg-[color-mix(in_oklch,var(--color-success)_15%,transparent)] px-1.5 py-px text-[9px] font-medium uppercase tracking-wide text-[var(--color-success)]">
               active
             </span>
           )}
@@ -889,7 +889,7 @@ function RoleCard({
         className={[
           "ml-auto shrink-0 rounded-md p-1.5 transition-colors disabled:opacity-40",
           role.active
-            ? "text-emerald-400 hover:bg-emerald-500/15"
+            ? "text-[var(--color-success)] hover:bg-[color-mix(in_oklch,var(--color-success)_15%,transparent)]"
             : "text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-secondary)]",
         ].join(" ")}
         title={role.active ? "Deactivate" : "Activate"}
@@ -1023,7 +1023,7 @@ function RoleOverview({
           <h3 className="min-w-0 truncate text-[14px] font-semibold text-[var(--text-primary)]">{role.name}</h3>
           <span className={[
             "rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide",
-            role.active ? "bg-emerald-500/15 text-emerald-300" : "bg-[var(--bg-elevated)] text-[var(--text-muted)]",
+            role.active ? "bg-[color-mix(in_oklch,var(--color-success)_15%,transparent)] text-[var(--color-success)]" : "bg-[var(--bg-elevated)] text-[var(--text-muted)]",
           ].join(" ")}>
             {role.active ? "active" : "available"}
           </span>
@@ -1121,9 +1121,9 @@ function RoleRelationItem({
       >
         <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${
           item.status === "connected" || item.status === "local" || item.status === "daemon"
-            ? "bg-emerald-400"
+            ? "bg-[var(--color-success)]"
             : item.status === "disabled"
-              ? "bg-amber-400"
+              ? "bg-[var(--color-warning)]"
               : "bg-[var(--text-muted)]/40"
         }`} />
         <p className="min-w-0 flex-1 truncate text-[11px] font-medium text-[var(--text-primary)]">{item.title}</p>
@@ -1254,10 +1254,10 @@ function WorkflowGrid({
       {items.map((wf) => (
         <div
           key={wf.id}
-          className="flex items-start gap-3 rounded-lg border border-border bg-[#050409] px-4 py-3 transition-colors hover:bg-[#111018]"
+          className="flex items-start gap-3 rounded-lg border border-border bg-[var(--bg-panel)] px-4 py-3 transition-colors hover:bg-[var(--bg-elevated)]"
         >
           {/* Icon swatch */}
-          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#111018]">
+          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--bg-elevated)]">
             <Icon name="ph:git-branch-bold" width={16} className="text-[var(--text-muted)]" />
           </div>
           <div className="min-w-0 flex-1">

@@ -83,9 +83,9 @@ const KIND_LABEL: Record<string, string> = {
 };
 
 const KIND_COLOR: Record<string, string> = {
-  pr: "text-emerald-400",
+  pr: "text-[var(--color-success)]",
   issue: "text-[var(--accent-presence)]",
-  review_request: "text-amber-400",
+  review_request: "text-[var(--color-warning)]",
   notification: "text-[var(--text-muted)]",
 };
 
@@ -197,7 +197,7 @@ function PatSetupModal({
         </div>
 
         {error && (
-          <p className="mb-3 text-[11px] text-rose-400">{error}</p>
+          <p className="mb-3 text-[11px] text-[var(--color-danger)]">{error}</p>
         )}
 
         <div className="flex items-center justify-between mt-4">
@@ -461,7 +461,7 @@ export function GitHubView() {
           </span>
         )}
         {activity?.authed === true && (
-          <span className="rounded-full border border-emerald-800/60 bg-emerald-950/40 px-2 py-0.5 text-[10px] text-emerald-400">
+          <span className="rounded-full border border-[color-mix(in_oklch,var(--color-success)_55%,transparent)] bg-[color-mix(in_oklch,var(--color-success)_40%,transparent)] px-2 py-0.5 text-[10px] text-[var(--color-success)]">
             authenticated
           </span>
         )}
@@ -557,7 +557,7 @@ export function GitHubView() {
 
         ) : error ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 px-8 text-center">
-            <p className="text-[12px] text-rose-400">{error}</p>
+            <p className="text-[12px] text-[var(--color-danger)]">{error}</p>
             <button
               type="button"
               onClick={() => void fetchActivity()}
@@ -598,7 +598,7 @@ export function GitHubView() {
               : "Public API — add a PAT for private repos + review requests"}
           </span>
           {activity.rateLimit && activity.rateLimit.remaining < 10 && (
-            <span className="text-amber-400">⚠ {activity.rateLimit.remaining} requests remaining</span>
+            <span className="text-[var(--color-warning)]">⚠ {activity.rateLimit.remaining} requests remaining</span>
           )}
         </footer>
       )}

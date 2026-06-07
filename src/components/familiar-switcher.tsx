@@ -56,12 +56,12 @@ export function FamiliarSwitcher({ familiar, familiars = [], onSelect }: Props) 
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="group flex items-center gap-2 rounded-lg px-2 py-1 -ml-2 transition-colors hover:bg-[var(--bg-raised)]/60"
+        className="focus-ring group flex items-center gap-2 rounded-lg px-2 py-1 -ml-2 transition-colors hover:bg-[var(--bg-raised)]/60"
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`Switch familiar from ${familiar.display_name}`}
       >
-        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md" style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.08)" }}>
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]">
           <FamiliarGlyph glyph={glyph} size="sm" />
         </span>
         <span className="text-[15px] font-semibold text-[var(--text-primary)]">
@@ -77,7 +77,7 @@ export function FamiliarSwitcher({ familiar, familiars = [], onSelect }: Props) 
       {open ? (
         <div
           role="menu"
-          className="absolute left-0 top-full z-40 mt-1.5 min-w-[200px] overflow-hidden rounded-xl border border-[var(--border-hairline)] bg-[#111018] shadow-2xl"
+          className="absolute left-0 top-full z-40 mt-1.5 min-w-[200px] overflow-hidden rounded-xl border border-[var(--border-strong)] bg-[var(--bg-elevated)] shadow-2xl"
         >
           <div className="px-2 py-1.5 text-[10px] uppercase tracking-wider text-[var(--text-muted)]">
             Switch familiar
@@ -96,16 +96,13 @@ export function FamiliarSwitcher({ familiar, familiars = [], onSelect }: Props) 
                   if (!isActive) onSelect?.(f.id);
                 }}
                 className={[
-                  "flex w-full items-center gap-2.5 px-2.5 py-2 text-left transition-colors",
+                  "focus-ring-inset flex w-full items-center gap-2.5 px-2.5 py-2 text-left transition-colors",
                   isActive
-                    ? "bg-[var(--accent-presence)]/10 text-[var(--text-primary)]"
-                    : "text-[var(--text-secondary)] hover:bg-[var(--bg-raised)]/60 hover:text-[var(--text-primary)]",
+                    ? "bg-[color-mix(in_oklch,var(--accent-presence)_14%,transparent)] text-[var(--text-primary)]"
+                    : "text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]",
                 ].join(" ")}
               >
-                <span
-                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md"
-                  style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.08)" }}
-                >
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]">
                   <FamiliarGlyph glyph={fGlyph} size="sm" />
                 </span>
                 <div className="min-w-0 flex-1">

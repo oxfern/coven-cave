@@ -516,7 +516,7 @@ export function MessageBubble({ role, content, timestamp, showTimestamp = true, 
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <div className={isError ? "text-amber-200" : ""}>
+      <div className={isError ? "text-[var(--color-warning)]" : ""}>
         <MarkdownContent text={content} pending={pending} />
       </div>
       {hovered && !pending && content && <CopyBubble text={content} />}

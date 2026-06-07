@@ -218,9 +218,9 @@ function BookmarkDetail({ item }: { item: LibraryBookmark }) {
 
 function statusStyle(status: ReadingStatus): React.CSSProperties {
   switch (status) {
-    case "reading":       return { background: "color-mix(in oklab, oklch(0.65 0.18 280) 14%, var(--bg-raised))", border: "1px solid color-mix(in oklab, oklch(0.65 0.18 280) 30%, transparent)" };
-    case "done":          return { background: "color-mix(in oklab, #34d399 14%, var(--bg-raised))", border: "1px solid color-mix(in oklab, #34d399 30%, transparent)" };
-    case "abandoned":     return { background: "color-mix(in oklab, #f87171 10%, var(--bg-raised))", border: "1px solid color-mix(in oklab, #f87171 25%, transparent)" };
+    case "reading":       return { background: "color-mix(in oklch, var(--accent-presence) 14%, var(--bg-raised))", border: "1px solid color-mix(in oklch, var(--accent-presence) 30%, transparent)" };
+    case "done":          return { background: "color-mix(in oklch, #34d399 14%, var(--bg-raised))", border: "1px solid color-mix(in oklch, #34d399 30%, transparent)" };
+    case "abandoned":     return { background: "color-mix(in oklch, var(--color-danger) 10%, var(--bg-raised))", border: "1px solid color-mix(in oklch, var(--color-danger) 25%, transparent)" };
     case "want-to-read":  return { background: "var(--bg-raised)", border: "1px solid var(--border-strong)" };
     default:              return {};
   }
@@ -278,7 +278,7 @@ function ReadingDetail({ item }: { item: LibraryReadingItem }) {
 }
 
 function GitHubDetail({ item }: { item: LibraryGitHubItem }) {
-  const stateColor = item.state === "open" ? "#34d399" : item.state === "merged" ? "oklch(0.65 0.18 280)" : item.state === "closed" ? "#f87171" : "var(--text-muted)";
+  const stateColor = item.state === "open" ? "var(--color-success)" : item.state === "merged" ? "var(--accent-presence)" : item.state === "closed" ? "var(--color-danger)" : "var(--text-muted)";
   return (
     <div className="library-preview">
       <div className="library-preview-header">

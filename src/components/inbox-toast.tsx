@@ -39,17 +39,21 @@ export function InboxToastStack({ toasts, onDismiss, onSnooze, onOpen }: Props) 
       {toasts.map((t) => (
         <div
           key={t.id}
-          className="pointer-events-auto rounded-xl border border-[var(--border-strong)] bg-[var(--bg-raised)] p-3 shadow-2xl"
+          role="status"
+          className="pointer-events-auto rounded-xl border border-[var(--border-strong)] bg-[var(--bg-elevated)] p-3 shadow-2xl"
+          style={{ animation: "ui-modal-enter var(--duration-base) var(--ease-decelerate)" }}
         >
           <div className="mb-1 flex items-start gap-2">
-            <Icon name="ph:alarm-fill" className="mt-0.5 shrink-0 text-amber-300" />
+            <span className="mt-0.5 shrink-0 text-[var(--color-warning)]" aria-hidden>
+              <Icon name="ph:alarm-fill" />
+            </span>
             <span className="flex-1 text-sm font-medium text-[var(--text-primary)]">{t.title}</span>
             <button
               onClick={() => onDismiss(t.id)}
-              className="grid h-5 w-5 place-items-center text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+              className="focus-ring grid h-5 w-5 place-items-center rounded text-[var(--text-muted)] hover:text-[var(--text-primary)]"
               aria-label="Dismiss"
             >
-              <Icon name="ph:x-bold" />
+              <Icon name="ph:x-bold" aria-hidden />
             </button>
           </div>
           {t.body ? (
@@ -58,7 +62,7 @@ export function InboxToastStack({ toasts, onDismiss, onSnooze, onOpen }: Props) 
           <div className="flex gap-1.5">
             <button
               onClick={() => onDismiss(t.id)}
-              className="rounded border border-[var(--border-strong)] px-2 py-0.5 text-[10px] text-[var(--text-secondary)] hover:bg-[var(--bg-raised)]"
+              className="focus-ring rounded border border-[var(--border-strong)] px-2 py-0.5 text-[10px] text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
             >
               Dismiss
             </button>
@@ -66,7 +70,7 @@ export function InboxToastStack({ toasts, onDismiss, onSnooze, onOpen }: Props) 
             {onOpen ? (
               <button
                 onClick={() => onOpen(t)}
-                className="rounded bg-rose-700 px-2 py-0.5 text-[10px] text-white hover:bg-rose-600"
+                className="focus-ring rounded bg-[var(--accent-presence)] px-2 py-0.5 text-[10px] font-semibold text-[var(--text-primary)] transition-colors hover:bg-[color-mix(in_oklch,var(--accent-presence)_85%,white)]"
               >
                 Open
               </button>

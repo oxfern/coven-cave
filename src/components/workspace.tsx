@@ -446,6 +446,16 @@ export function Workspace() {
     setTimeout(() => window.dispatchEvent(new CustomEvent("cave:agents-list")), 0);
   }, []);
 
+  const openFamiliarChatKnob = useCallback(() => {
+    setShellAgentPane("chat");
+    setStripLock("chat");
+    setMode("agents");
+    setTimeout(() => {
+      shellRef.current?.openAgent();
+      window.dispatchEvent(new CustomEvent("cave:agents-list"));
+    }, 0);
+  }, []);
+
   const openToastTarget = useCallback((toast: Toast) => {
     setToasts((prev) => prev.filter((t) => t.id !== toast.id));
     if (toast.sessionId) {
@@ -833,11 +843,13 @@ export function Workspace() {
             mode={isDaemonMode(mode) ? mode : "home"}
             onModeChange={setMode}
             onOpenSearch={() => setPaletteOpen(true)}
+            onOpenFamiliarChat={openFamiliarChatKnob}
             inboxBadgeCount={inboxBadgeCount}
             onRunningChange={setDaemonRunning}
             inboxItems={[]}
             inboxPrefs={inboxPrefs}
             familiars={familiars}
+            activeFamiliar={active}
             onPrefsChanged={refreshPrefs}
             onOpenInbox={() => setMode("inbox")}
             onOpenInboxItem={(item) => {

@@ -119,24 +119,28 @@ export function NotificationBell({
     <div ref={wrapRef} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className={`relative grid h-7 w-7 place-items-center rounded-md border transition-colors ${
+        className={`focus-ring relative grid h-7 w-7 place-items-center rounded-md border transition-colors ${
           displayBadgeCount > 0
-            ? "border-amber-500/60 bg-amber-500/10 text-amber-200 hover:bg-amber-500/20"
+            ? "border-[color-mix(in_oklch,var(--color-warning)_45%,var(--border-strong))] bg-[color-mix(in_oklch,var(--color-warning)_14%,transparent)] text-[var(--color-warning)] hover:bg-[color-mix(in_oklch,var(--color-warning)_22%,transparent)]"
             : "border-[var(--border-hairline)] text-[var(--text-secondary)] hover:bg-[var(--bg-raised)] hover:text-[var(--text-primary)]"
         }`}
         title={`${displayBadgeCount} unread`}
+        aria-label={`Notifications, ${displayBadgeCount} unread`}
       >
-        <Icon name="ph:bell-fill" aria-label="Notifications" />
+        <Icon name="ph:bell-fill" aria-hidden />
 
         {displayBadgeCount > 0 ? (
-          <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-rose-600 px-1 text-[9px] font-bold leading-none text-white">
+          <span
+            aria-hidden
+            className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[var(--color-danger)] px-1 text-[9px] font-bold leading-none text-[var(--text-primary)]"
+          >
             {displayBadgeCount > 9 ? "9+" : displayBadgeCount}
           </span>
         ) : null}
       </button>
 
       {open ? (
-        <div className="absolute right-0 top-full z-50 mt-1 w-[360px] rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-base)] shadow-2xl">
+        <div className="absolute right-0 top-full z-50 mt-1 w-[360px] rounded-xl border border-[var(--border-strong)] bg-[var(--bg-elevated)] shadow-2xl">
           <div className="flex items-center justify-between border-b border-[var(--border-hairline)] px-3 py-2">
             <span className="text-[10px] uppercase tracking-widest text-[var(--text-muted)]">
               Notifications
@@ -144,18 +148,18 @@ export function NotificationBell({
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setSettingsOpen((v) => !v)}
-                className="grid h-5 w-5 place-items-center text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                className="focus-ring grid h-5 w-5 place-items-center rounded text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                 title="Notification settings"
                 aria-label="Notification settings"
               >
-                <Icon name="ph:gear-six-bold" />
+                <Icon name="ph:gear-six-bold" aria-hidden />
               </button>
               <button
                 onClick={() => {
                   setOpen(false);
                   onOpenInbox();
                 }}
-                className="text-[10px] text-purple-300 hover:text-purple-200"
+                className="focus-ring rounded text-[10px] text-[var(--accent-presence)] hover:text-[var(--text-primary)]"
               >
                 open inbox →
               </button>
@@ -187,10 +191,10 @@ export function NotificationBell({
                       onClick={() =>
                         setSound(opt.mode, "name" in opt ? opt.name : undefined)
                       }
-                      className={`rounded border px-2 py-0.5 text-[10px] ${
+                      className={`focus-ring rounded border px-2 py-0.5 text-[10px] transition-colors ${
                         active
-                          ? "border-purple-500 bg-purple-500/20 text-purple-100"
-                          : "border-[var(--border-strong)] text-[var(--text-secondary)] hover:bg-[var(--bg-raised)]"
+                          ? "border-[color-mix(in_oklch,var(--accent-presence)_55%,transparent)] bg-[color-mix(in_oklch,var(--accent-presence)_20%,transparent)] text-[var(--text-primary)]"
+                          : "border-[var(--border-strong)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"
                       }`}
                     >
                       {opt.label}
@@ -213,10 +217,10 @@ export function NotificationBell({
                       <span className="truncate text-[var(--text-secondary)]">{f.display_name}</span>
                       <button
                         onClick={() => toggleMute(f.id)}
-                        className={`rounded border px-1.5 py-0.5 text-[10px] ${
+                        className={`focus-ring rounded border px-1.5 py-0.5 text-[10px] transition-colors ${
                           muted
-                            ? "border-amber-600 bg-amber-500/15 text-amber-200"
-                            : "border-[var(--border-strong)] text-[var(--text-secondary)] hover:bg-[var(--bg-raised)]"
+                            ? "border-[color-mix(in_oklch,var(--color-warning)_45%,transparent)] bg-[color-mix(in_oklch,var(--color-warning)_14%,transparent)] text-[var(--color-warning)]"
+                            : "border-[var(--border-strong)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"
                         }`}
                       >
                         {muted ? "muted" : "mute"}
@@ -311,7 +315,7 @@ function BellBtn({
   return (
     <button
       onClick={onClick}
-      className="rounded border border-[var(--border-hairline)] bg-[var(--bg-raised)] px-1.5 py-0.5 text-[10px] text-[var(--text-secondary)] hover:bg-[var(--bg-raised)]"
+      className="focus-ring rounded border border-[var(--border-hairline)] bg-[var(--bg-raised)] px-1.5 py-0.5 text-[10px] text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
     >
       {children}
     </button>

@@ -94,15 +94,15 @@ export function FamiliarRail({
 
       <ul className="flex-1 overflow-y-auto py-2">
         {familiars.length === 0 && !error ? (
-          <li className="mx-3 my-2 rounded-md border border-border bg-card px-3 py-2.5 text-xs text-foreground">
+          <li className="mx-3 my-2 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)] px-3 py-2.5 text-xs text-[var(--text-primary)]">
             <div className="font-medium">No familiars yet</div>
-            <div className="mt-0.5 text-[11px] text-muted-foreground">
+            <div className="mt-0.5 text-[11px] text-[var(--text-muted)]">
               Run setup to scaffold the canonical roster.
             </div>
             {onOpenOnboarding ? (
               <button
                 onClick={onOpenOnboarding}
-                className="mt-2 w-full rounded border border-border bg-muted px-2 py-1 text-[11px] text-foreground transition-colors hover:bg-card"
+                className="focus-ring mt-2 w-full rounded border border-[var(--border-hairline)] bg-[var(--bg-elevated)] px-2 py-1 text-[11px] text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-hover)]"
               >
                 Open setup →
               </button>
@@ -111,12 +111,12 @@ export function FamiliarRail({
         ) : null}
 
         {error ? (
-          <li className="mx-3 my-2 rounded-md border border-border bg-card px-3 py-2 text-xs text-muted-foreground">
+          <li className="mx-3 my-2 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)] px-3 py-2 text-xs text-[var(--text-muted)]">
             <div>Familiars unavailable: {error}</div>
             {onOpenOnboarding ? (
               <button
                 onClick={onOpenOnboarding}
-                className="mt-2 w-full rounded border border-border bg-muted px-2 py-1 text-[11px] text-foreground transition-colors hover:bg-card"
+                className="focus-ring mt-2 w-full rounded border border-[var(--border-hairline)] bg-[var(--bg-elevated)] px-2 py-1 text-[11px] text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-hover)]"
               >
                 Open setup →
               </button>
@@ -148,11 +148,12 @@ export function FamiliarRail({
                   e.preventDefault();
                   onEditGlyph(f);
                 }}
-                className={`flex w-full items-center gap-3 px-4 py-2 text-left transition-colors ${
+                className={`focus-ring-inset flex w-full items-center gap-3 px-4 py-2 text-left transition-colors ${
                   isActive
-                    ? "bg-muted text-foreground"
-                    : "text-muted-foreground hover:bg-card"
+                    ? "bg-[color-mix(in_oklch,var(--accent-presence)_12%,transparent)] text-[var(--text-primary)]"
+                    : "text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
                 }`}
+                aria-current={isActive ? "page" : undefined}
                 title={onEditGlyph ? "Right-click to change glyph" : undefined}
               >
                 <span

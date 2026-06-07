@@ -224,8 +224,8 @@
   height: 6px;
   border-radius: 50%;
 }
-.session-card-status-dot--running { background: #4ade80; box-shadow: 0 0 4px #4ade8080; }
-.session-card-status-dot--error   { background: #f87171; }
+.session-card-status-dot--running { background: var(--color-success); box-shadow: 0 0 4px var(--color-success)80; }
+.session-card-status-dot--error   { background: var(--color-danger); }
 .session-card-status-dot--idle    { background: var(--text-muted); opacity: 0.5; }
 
 .session-card-title {
@@ -527,12 +527,12 @@
 }
 
 .session-action-menu-item--danger {
-  color: #f87171;
+  color: var(--color-danger);
 }
 
 .session-action-menu-item--danger:hover {
-  background: color-mix(in oklch, #f87171 14%, transparent);
-  color: #fca5a5;
+  background: color-mix(in oklch, var(--color-danger) 14%, transparent);
+  color: var(--color-danger-soft);
 }
 
 .session-action-menu-divider {
@@ -646,9 +646,9 @@
   border-radius: 12px;
   display: grid;
   place-items: center;
-  color: #f87171;
-  background: color-mix(in oklch, #f87171 12%, transparent);
-  border: 1px solid color-mix(in oklch, #f87171 28%, transparent);
+  color: var(--color-danger);
+  background: color-mix(in oklch, var(--color-danger) 12%, transparent);
+  border: 1px solid color-mix(in oklch, var(--color-danger) 28%, transparent);
 }
 
 .session-sacrifice-heading {
@@ -711,11 +711,11 @@
 
 .session-sacrifice-btn--danger {
   color: #fff;
-  background: #ef4444;
-  border-color: #ef4444;
+  background: var(--color-danger);
+  border-color: var(--color-danger);
 }
 
 .session-sacrifice-btn--danger:hover {
-  background: #dc2626;
-  border-color: #dc2626;
+  background: var(--color-danger);
+  border-color: var(--color-danger);
 }

@@ -47,7 +47,7 @@ export function CovenFloor() {
     <div className="flex h-full flex-col bg-[var(--bg-base)]">
       {/* Error banner */}
       {error && (
-        <div className="border-b border-amber-700/40 bg-amber-900/20 px-5 py-1.5 text-[11px] text-amber-200">
+        <div className="border-b border-[color-mix(in_oklch,var(--color-warning)_45%,transparent)] bg-[color-mix(in_oklch,var(--color-warning)_18%,transparent)] px-5 py-1.5 text-[11px] text-[var(--color-warning)]">
           {error}
         </div>
       )}
@@ -59,8 +59,8 @@ export function CovenFloor() {
           {/* Live indicator */}
           <span className="flex items-center gap-1.5">
             <span className="relative inline-flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-success)] opacity-60" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--color-success)]" />
             </span>
             <span className="text-[10px] text-[var(--text-muted)]">live</span>
           </span>

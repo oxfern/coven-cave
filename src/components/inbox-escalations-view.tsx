@@ -217,7 +217,7 @@ export function InboxEscalationsView({ onOpenSource }: Props) {
 
       {error ? (
         <div
-          className="px-5 py-1.5 text-xs text-rose-200"
+          className="px-5 py-1.5 text-xs text-[var(--color-danger)]"
           style={{ background: "rgba(244,184,184,0.08)", borderBottom: "1px solid var(--border-hairline)" }}
         >
           {error}
@@ -303,9 +303,9 @@ function EscalationRow({
 }) {
   const sevColor =
     item.severity === "critical"
-      ? "text-rose-300 border-rose-500/40 bg-rose-500/10"
+      ? "text-[var(--color-danger)] border-[color-mix(in_oklch,var(--color-danger)_40%,transparent)] bg-[color-mix(in_oklch,var(--color-danger)_10%,transparent)]"
       : item.severity === "warn"
-        ? "text-amber-200 border-amber-500/40 bg-amber-500/10"
+        ? "text-[var(--color-warning)] border-[color-mix(in_oklch,var(--color-warning)_40%,transparent)] bg-[color-mix(in_oklch,var(--color-warning)_10%,transparent)]"
         : "text-muted-foreground border-border bg-card";
 
   return (

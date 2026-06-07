@@ -191,7 +191,7 @@ export function AgentsMemoryView({ familiars, activeFamiliar, onOpenMemoryFile }
             ))}
           </select>
         </div>
-        {error ? <div className="mt-2 text-[11px] text-amber-300">{error}</div> : null}
+        {error ? <div className="mt-2 text-[11px] text-[var(--color-warning)]">{error}</div> : null}
       </div>
 
       <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto p-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">

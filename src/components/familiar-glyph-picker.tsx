@@ -278,7 +278,7 @@ function GlyphButton({
       title={entry.name}
       className={`${cell} grid place-items-center rounded-md text-[var(--text-primary)] transition-colors ${
         active
-          ? "bg-purple-600/30 ring-1 ring-purple-400"
+          ? "bg-[color-mix(in_oklch,var(--accent-presence)_30%,transparent)] ring-1 ring-[var(--accent-presence)]"
           : "hover:bg-[var(--bg-raised)]/70"
       }`}
     >

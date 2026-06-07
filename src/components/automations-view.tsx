@@ -163,7 +163,7 @@ function StatusIcon({ item }: { item: InboxItem }) {
     // Filled purple circle — has fired before
     return (
       <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full"
-        style={{ background: "oklch(0.65 0.18 280)" }} />
+        style={{ background: "var(--accent-presence)" }} />
     );
   }
   // Hollow circle — active, never fired yet
@@ -277,7 +277,7 @@ function DetailPanel({
         style={{ borderColor: "var(--border-hairline)" }}>
         <button type="button" disabled={busy || paused} onClick={() => runNow(item.id)}
           className="w-full rounded-lg py-2 text-[12px] font-medium text-white transition-colors disabled:opacity-40"
-          style={{ background: "oklch(0.65 0.18 280)" }}>
+          style={{ background: "var(--accent-presence)" }}>
           Run now
         </button>
         <button type="button" disabled={busy} onClick={() => togglePaused(item)}
@@ -533,8 +533,8 @@ function CodexDetailPanel({
                         onClick={() => toggleDay(day)}
                         className="rounded-md border px-2 py-1 text-[11px] transition-colors"
                         style={{
-                          background: selected ? "oklch(0.65 0.18 280 / 0.18)" : "var(--bg-base)",
-                          borderColor: selected ? "oklch(0.65 0.18 280 / 0.5)" : "var(--border-hairline)",
+                          background: selected ? "color-mix(in oklch, var(--accent-presence) 18%, transparent)" : "var(--bg-base)",
+                          borderColor: selected ? "color-mix(in oklch, var(--accent-presence) 50%, transparent)" : "var(--border-hairline)",
                           color: selected ? "var(--text-primary)" : "var(--text-muted)",
                         }}
                       >
@@ -643,7 +643,7 @@ function CodexDetailPanel({
           disabled={!canSave}
           onClick={save}
           className="w-full rounded-lg py-2 text-[12px] font-medium text-white transition-colors disabled:opacity-40"
-          style={{ background: "oklch(0.65 0.18 280)" }}
+          style={{ background: "var(--accent-presence)" }}
         >
           {busy ? "Saving..." : "Save changes"}
         </button>
@@ -652,7 +652,7 @@ function CodexDetailPanel({
           disabled={busy}
           onClick={() => onToggle(auto)}
           className="w-full rounded-lg py-2 text-[12px] font-medium text-white transition-colors disabled:opacity-40"
-          style={{ background: isActive ? "oklch(0.45 0.12 20)" : "oklch(0.65 0.18 280)" }}
+          style={{ background: isActive ? "oklch(0.45 0.12 20)" : "var(--accent-presence)" }}
         >
           {busy ? (isActive ? "Pausing…" : "Activating…") : (isActive ? "Pause" : "Activate")}
         </button>
@@ -685,7 +685,7 @@ function CodexRow({
         {/* Status dot */}
         {isActive ? (
           <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full"
-            style={{ background: "oklch(0.65 0.18 280)" }} />
+            style={{ background: "var(--accent-presence)" }} />
         ) : (
           <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border"
             style={{ borderColor: "rgba(255,255,255,0.18)", color: "rgba(255,255,255,0.35)" }}>
@@ -958,7 +958,7 @@ export function AutomationsView({ familiars, onOpenSession, onNewReminder }: Pro
         </div>
 
         {error && (
-          <div className="mx-8 mb-3 rounded-lg border border-amber-700/40 bg-amber-900/20 px-4 py-2 text-[11px] text-amber-200">
+          <div className="mx-8 mb-3 rounded-lg border border-[color-mix(in_oklch,var(--color-warning)_40%,transparent)] bg-[color-mix(in_oklch,var(--color-warning)_20%,transparent)] px-4 py-2 text-[11px] text-[var(--color-warning)]">
             {error}
           </div>
         )}

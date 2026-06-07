@@ -61,9 +61,9 @@ function isClosed(s: SessionRow): boolean {
 
 /** Only show a pill for meaningful / attention-worthy statuses. */
 function statusPill(s: SessionRow): { label: string; cls: string } | null {
-  if (s.status === "running") return { label: "running", cls: "border-emerald-500/30 bg-emerald-500/15 text-emerald-300" };
+  if (s.status === "running") return { label: "running", cls: "border-[color-mix(in_oklch,var(--color-success)_30%,transparent)] bg-[color-mix(in_oklch,var(--color-success)_15%,transparent)] text-[var(--color-success)]" };
   if (s.status === "failed" || (s.exit_code !== null && s.exit_code !== 0))
-    return { label: "failed", cls: "border-rose-500/30 bg-rose-500/15 text-rose-300" };
+    return { label: "failed", cls: "border-[color-mix(in_oklch,var(--color-danger)_30%,transparent)] bg-[color-mix(in_oklch,var(--color-danger)_15%,transparent)] text-[var(--color-danger)]" };
   return null; // orphaned / created / idle = no pill
 }
 
@@ -498,16 +498,16 @@ export function AgentsView({
           /* Sessions list */
           <div className="flex min-h-0 flex-1 flex-col">
             {!daemonRunning && (
-              <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-amber-700/40 bg-amber-900/20 px-4 py-2 text-[11px] text-amber-200">
+              <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-[color-mix(in_oklch,var(--color-warning)_40%,transparent)] bg-[color-mix(in_oklch,var(--color-warning)_20%,transparent)] px-4 py-2 text-[11px] text-[var(--color-warning)]">
                 <span className="min-w-0 flex-1">
                   Daemon offline — existing sessions visible but new tasks may not start.
-                  {daemonStartError && <span className="ml-2 text-rose-300">{daemonStartError}</span>}
+                  {daemonStartError && <span className="ml-2 text-[var(--color-danger)]">{daemonStartError}</span>}
                 </span>
                 <button
                   type="button"
                   onClick={startDaemon}
                   disabled={startingDaemon}
-                  className="inline-flex h-7 items-center gap-1 rounded-md border border-amber-400/30 bg-amber-300/10 px-2.5 font-medium text-amber-100 hover:bg-amber-300/20 disabled:opacity-60"
+                  className="inline-flex h-7 items-center gap-1 rounded-md border border-[color-mix(in_oklch,var(--color-warning)_30%,transparent)] bg-[color-mix(in_oklch,var(--color-warning)_10%,transparent)] px-2.5 font-medium text-[var(--color-warning)] hover:bg-[color-mix(in_oklch,var(--color-warning)_20%,transparent)] disabled:opacity-60"
                   title="coven daemon start"
                 >
                   <Icon name="ph:rocket-launch-bold" width={12} />
@@ -607,7 +607,7 @@ export function AgentsView({
                                   await fetch(`/api/sessions/${session.id}`, { method: "DELETE" });
                                   onSessionStarted();
                                 }}
-                                className="rounded-md p-1.5 text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-rose-400"
+                                className="rounded-md p-1.5 text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--color-danger)]"
                               >
                                 <Icon name="ph:trash" width={14} />
                               </button>

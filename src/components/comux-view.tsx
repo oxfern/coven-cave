@@ -348,7 +348,7 @@ export function ComuxView({ view, sessions: daemonSessions, onOpenSession, onNew
                   <span className="min-w-0 flex-1 truncate">{project.name}</span>
                   {project.runningCount > 0 && (
                     <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-                      selectedProject?.root === project.root ? "bg-white/60" : "bg-emerald-400"
+                      selectedProject?.root === project.root ? "bg-white/60" : "bg-[var(--color-success)]"
                     }`} />
                   )}
                 </button>
@@ -431,7 +431,7 @@ export function ComuxView({ view, sessions: daemonSessions, onOpenSession, onNew
                                 className="flex w-full items-center gap-2 rounded py-[4px] pl-6 pr-2 text-left text-[11px] text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-raised)]"
                               >
                                 <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-                                  session.status === "running" ? "bg-emerald-400"
+                                  session.status === "running" ? "bg-[var(--color-success)]"
                                   : session.status === "failed" ? "bg-red-400"
                                   : "bg-[var(--border-strong)]"
                                 }`} />

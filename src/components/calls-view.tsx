@@ -85,16 +85,16 @@ function matchesQuery(trace: DelegationTrace, query: string, familiars: Map<stri
 }
 
 function statusTone(status: DelegationTrace["status"]): string {
-  if (status === "running") return "border-emerald-500/25 bg-emerald-500/15 text-emerald-300";
-  if (status === "failed") return "border-rose-500/25 bg-rose-500/15 text-rose-200";
-  if (status === "cancelled") return "border-amber-500/25 bg-amber-500/15 text-amber-200";
+  if (status === "running") return "border-[color-mix(in_oklch,var(--color-success)_25%,transparent)] bg-[color-mix(in_oklch,var(--color-success)_15%,transparent)] text-[var(--color-success)]";
+  if (status === "failed") return "border-[color-mix(in_oklch,var(--color-danger)_25%,transparent)] bg-[color-mix(in_oklch,var(--color-danger)_15%,transparent)] text-[var(--color-danger)]";
+  if (status === "cancelled") return "border-[color-mix(in_oklch,var(--color-warning)_25%,transparent)] bg-[color-mix(in_oklch,var(--color-warning)_15%,transparent)] text-[var(--color-warning)]";
   return "border-[var(--border-hairline)] bg-[var(--bg-raised)] text-[var(--text-secondary)]";
 }
 
 function sourceTone(source: DelegationTrace["source"] | "mixed"): string {
-  if (source === "explicit") return "border-[#8E3DFF]/30 bg-[#8E3DFF]/15 text-[#c7a7ff]";
-  if (source === "inferred") return "border-amber-500/30 bg-amber-500/15 text-amber-200";
-  return "border-sky-500/30 bg-sky-500/15 text-sky-200";
+  if (source === "explicit") return "border-[color-mix(in_oklch,var(--accent-presence)_30%,transparent)] bg-[color-mix(in_oklch,var(--accent-presence)_15%,transparent)] text-[var(--accent-presence)]";
+  if (source === "inferred") return "border-[color-mix(in_oklch,var(--color-warning)_30%,transparent)] bg-[color-mix(in_oklch,var(--color-warning)_15%,transparent)] text-[var(--color-warning)]";
+  return "border-[color-mix(in_oklch,var(--accent-presence-soft)_30%,transparent)] bg-[color-mix(in_oklch,var(--accent-presence-soft)_15%,transparent)] text-[var(--accent-presence-soft)]";
 }
 
 export function CallsView({ familiars, sessions, onOpenSession, initialTab = "floor", embedded = false }: Props) {
@@ -229,7 +229,7 @@ export function CallsView({ familiars, sessions, onOpenSession, initialTab = "fl
       ) : (
         <div className="flex min-h-0 flex-1 flex-col">
           {error ? (
-            <div className="border-b border-amber-700/40 bg-amber-900/20 px-5 py-1.5 text-[11px] text-amber-200">{error}</div>
+            <div className="border-b border-[color-mix(in_oklch,var(--color-warning)_40%,transparent)] bg-[color-mix(in_oklch,var(--color-warning)_20%,transparent)] px-5 py-1.5 text-[11px] text-[var(--color-warning)]">{error}</div>
           ) : null}
 
           <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-[var(--border-hairline)] px-5 py-3">
@@ -239,7 +239,7 @@ export function CallsView({ familiars, sessions, onOpenSession, initialTab = "fl
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search agent, request, status..."
-                className="h-8 w-full rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/40 pl-8 pr-3 text-[12px] text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] focus:border-[#8E3DFF]"
+                className="h-8 w-full rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/40 pl-8 pr-3 text-[12px] text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--accent-presence)]"
               />
             </div>
             <div className="flex items-center overflow-hidden rounded-md border border-[var(--border-hairline)]">
@@ -250,7 +250,7 @@ export function CallsView({ familiars, sessions, onOpenSession, initialTab = "fl
                   onClick={() => setTimeWindow(id)}
                   className={[
                     "h-8 px-3 text-[11px] transition-colors",
-                    timeWindow === id ? "bg-[#8E3DFF] text-white" : "text-[var(--text-secondary)] hover:bg-[var(--bg-raised)]",
+                    timeWindow === id ? "bg-[var(--accent-presence)] text-white" : "text-[var(--text-secondary)] hover:bg-[var(--bg-raised)]",
                   ].join(" ")}
                 >
                   {label}
@@ -258,7 +258,7 @@ export function CallsView({ familiars, sessions, onOpenSession, initialTab = "fl
               ))}
             </div>
             <label className="inline-flex h-8 items-center gap-2 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/40 px-3 text-[11px] text-[var(--text-secondary)]">
-              <input type="checkbox" checked={includeInferred} onChange={(e) => setIncludeInferred(e.target.checked)} className="accent-[#8E3DFF]" />
+              <input type="checkbox" checked={includeInferred} onChange={(e) => setIncludeInferred(e.target.checked)} className="accent-[var(--accent-presence)]" />
               Include inferred
             </label>
             <button type="button" onClick={() => void load()} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)] px-3 text-[11px] text-[var(--text-secondary)] transition-colors hover:text-[var(--text-primary)]">
@@ -269,10 +269,10 @@ export function CallsView({ familiars, sessions, onOpenSession, initialTab = "fl
           </div>
 
           <div className="grid shrink-0 grid-cols-2 gap-2 border-b border-[var(--border-hairline)] px-5 py-3 md:grid-cols-5">
-            <Metric label="Explicit" value={metrics.explicit} tone="text-[#c7a7ff]" />
-            <Metric label="Inferred" value={metrics.inferred} tone="text-amber-200" />
-            <Metric label="Running" value={metrics.running} tone="text-emerald-300" />
-            <Metric label="Failed" value={metrics.failed} tone="text-rose-200" />
+            <Metric label="Explicit" value={metrics.explicit} tone="text-[var(--accent-presence)]" />
+            <Metric label="Inferred" value={metrics.inferred} tone="text-[var(--color-warning)]" />
+            <Metric label="Running" value={metrics.running} tone="text-[var(--color-success)]" />
+            <Metric label="Failed" value={metrics.failed} tone="text-[var(--color-danger)]" />
             <Metric label="Agents" value={metrics.agents} tone="text-[var(--text-primary)]" />
           </div>
 
@@ -339,7 +339,7 @@ function TraceTimeline({
               onClick={() => onSelect(trace)}
               className={[
                 "grid w-full grid-cols-[92px_minmax(0,1fr)_auto] items-start gap-3 border-b border-[var(--border-hairline)] px-3 py-2 text-left text-[12px] transition-colors last:border-b-0",
-                selectedTraceId === trace.id ? "bg-[#8E3DFF]/10" : "hover:bg-[var(--bg-raised)]/40",
+                selectedTraceId === trace.id ? "bg-[color-mix(in_oklch,var(--accent-presence)_10%,transparent)]" : "hover:bg-[var(--bg-raised)]/40",
               ].join(" ")}
             >
               <span className="text-[10px] text-[var(--text-muted)]">{shortTime(trace.createdAt)}</span>
@@ -380,7 +380,7 @@ function TraceInspector({
         <InspectorTitle eyebrow="Trace event" title={`${familiarName(familiars, selectedTrace.callerFamiliarId)} -> ${familiarName(familiars, selectedTrace.calleeFamiliarId)}`} />
         <BadgeRow source={selectedTrace.source} status={selectedTrace.status} />
         <p className="mt-3 whitespace-pre-wrap text-[12px] leading-relaxed text-[var(--text-secondary)]">{selectedTrace.request}</p>
-        {selectedTrace.inferenceReason ? <div className="mt-3 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-100">{selectedTrace.inferenceReason}</div> : null}
+        {selectedTrace.inferenceReason ? <div className="mt-3 rounded-lg border border-[color-mix(in_oklch,var(--color-warning)_25%,transparent)] bg-[color-mix(in_oklch,var(--color-warning)_10%,transparent)] px-3 py-2 text-[11px] text-[var(--color-warning)]">{selectedTrace.inferenceReason}</div> : null}
         <InspectorMeta label="Seen" value={shortTime(selectedTrace.createdAt)} />
         {selectedTrace.linkedCardId ? <InspectorMeta label="Linked task" value={selectedTrace.linkedCardId} /> : null}
         {selectedTrace.sessionId ? (
@@ -400,8 +400,8 @@ function TraceInspector({
         <BadgeRow source={selectedEdge.source} status={selectedEdge.latestStatus} />
         <div className="mt-4 grid grid-cols-3 gap-2">
           <Metric label="Total" value={selectedEdge.count} tone="text-[var(--text-primary)]" />
-          <Metric label="Explicit" value={selectedEdge.explicitCount} tone="text-[#c7a7ff]" />
-          <Metric label="Inferred" value={selectedEdge.inferredCount} tone="text-amber-200" />
+          <Metric label="Explicit" value={selectedEdge.explicitCount} tone="text-[var(--accent-presence)]" />
+          <Metric label="Inferred" value={selectedEdge.inferredCount} tone="text-[var(--color-warning)]" />
         </div>
         <InspectorMeta label="Last seen" value={shortTime(selectedEdge.lastSeenAt)} />
         <p className="mt-3 text-[12px] leading-relaxed text-[var(--text-secondary)]">{selectedEdge.mostRecentRequest}</p>
@@ -416,8 +416,8 @@ function TraceInspector({
         <div className="mt-4 grid grid-cols-2 gap-2">
           <Metric label="Sent" value={selectedNode.sentCount} tone="text-[var(--text-primary)]" />
           <Metric label="Received" value={selectedNode.receivedCount} tone="text-[var(--text-primary)]" />
-          <Metric label="Explicit" value={selectedNode.sentExplicitCount + selectedNode.receivedExplicitCount} tone="text-[#c7a7ff]" />
-          <Metric label="Inferred" value={selectedNode.sentInferredCount + selectedNode.receivedInferredCount} tone="text-amber-200" />
+          <Metric label="Explicit" value={selectedNode.sentExplicitCount + selectedNode.receivedExplicitCount} tone="text-[var(--accent-presence)]" />
+          <Metric label="Inferred" value={selectedNode.sentInferredCount + selectedNode.receivedInferredCount} tone="text-[var(--color-warning)]" />
         </div>
         <InspectorMeta label="Last activity" value={selectedNode.lastSeenAt ? shortTime(selectedNode.lastSeenAt) : "none"} />
       </aside>

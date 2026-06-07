@@ -136,7 +136,7 @@ export function MemoryInspectorPanel({ familiar }: { familiar: Familiar | null }
   }
 
   if (error) {
-    return <p className="p-4 text-xs text-amber-300">Memory Inspector unavailable: {error}</p>;
+    return <p className="p-4 text-xs text-[var(--color-warning)]">Memory Inspector unavailable: {error}</p>;
   }
 
   if (!report) {
@@ -281,7 +281,7 @@ function FailureList({
             onClick={() => onSelect(entry.id)}
             className={`mb-1 w-full rounded-md border px-2 py-1.5 text-left transition-colors ${
               selectedId === entry.id
-                ? "border-purple-500/60 bg-purple-500/10"
+                ? "border-[color-mix(in_oklch,var(--accent-presence)_60%,transparent)] bg-[color-mix(in_oklch,var(--accent-presence)_10%,transparent)]"
                 : "border-[var(--border-hairline)] bg-[var(--bg-raised)]/30 hover:bg-[var(--bg-raised)]"
             }`}
           >
@@ -359,7 +359,7 @@ function WikilinkText({
         const target = resolveLink(match[1].trim());
         if (!target) {
           return (
-            <span key={index} className="text-purple-300">
+            <span key={index} className="text-[var(--accent-presence)]">
               {part}
             </span>
           );
@@ -369,7 +369,7 @@ function WikilinkText({
             key={index}
             type="button"
             onClick={() => onNavigate(target.id)}
-            className="text-purple-300 underline decoration-purple-300/40 underline-offset-2 hover:text-purple-200"
+            className="text-[var(--accent-presence)] underline decoration-[color-mix(in_oklch,var(--accent-presence)_40%,transparent)] underline-offset-2 hover:text-[var(--accent-presence)]"
           >
             {part}
           </button>

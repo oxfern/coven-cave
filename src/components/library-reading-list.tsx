@@ -58,9 +58,9 @@ function groupItems(items: LibraryReadingItem[], by: GroupBy): { key: string; la
 
 function statusBadgeStyle(status: ReadingStatus): React.CSSProperties {
   switch (status) {
-    case "reading":       return { background: "color-mix(in oklab, oklch(0.65 0.18 280) 14%, var(--bg-raised))", border: "1px solid color-mix(in oklab, oklch(0.65 0.18 280) 30%, transparent)" };
-    case "done":          return { background: "color-mix(in oklab, #34d399 14%, var(--bg-raised))", border: "1px solid color-mix(in oklab, #34d399 30%, transparent)" };
-    case "abandoned":     return { background: "color-mix(in oklab, #f87171 10%, var(--bg-raised))", border: "1px solid color-mix(in oklab, #f87171 25%, transparent)" };
+    case "reading":       return { background: "color-mix(in oklch, var(--accent-presence) 14%, var(--bg-raised))", border: "1px solid color-mix(in oklch, var(--accent-presence) 30%, transparent)" };
+    case "done":          return { background: "color-mix(in oklch, #34d399 14%, var(--bg-raised))", border: "1px solid color-mix(in oklch, #34d399 30%, transparent)" };
+    case "abandoned":     return { background: "color-mix(in oklch, var(--color-danger) 10%, var(--bg-raised))", border: "1px solid color-mix(in oklch, var(--color-danger) 25%, transparent)" };
     case "want-to-read":  return { background: "var(--bg-raised)", border: "1px solid var(--border-strong)" };
     default: return {};
   }
@@ -280,7 +280,7 @@ export function LibraryReadingList({ selectedId, onSelect, onDelete }: Props) {
                       </td>
                       <td>
                         {item.status === "done" ? (
-                          <span style={{ color: "#34d399", display:"inline-flex", alignItems:"center" }}><Icon name="ph:check" width={13} /></span>
+                          <span style={{ color: "var(--color-success)", display:"inline-flex", alignItems:"center" }}><Icon name="ph:check" width={13} /></span>
                         ) : item.status === "reading" && item.progress != null ? (
                           <div className="library-progress-bar">
                             <div className="library-progress-fill" style={{ width: `${item.progress}%` }} />

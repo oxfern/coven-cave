@@ -381,13 +381,13 @@ export function OnboardingOverlay({ open, onDismiss }: Props) {
       <div className="mx-auto flex min-h-full w-full max-w-[min(1680px,100vw)] flex-col px-4 py-5 sm:px-6 lg:px-8">
         <header className="flex flex-col gap-4 border-b border-[var(--border-hairline)] pb-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
-            <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-wider text-purple-300/80">
+            <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-wider text-[var(--accent-presence)]">
               <span>Welcome</span>
               <span className="rounded-full border border-[var(--border-hairline)] px-2 py-0.5 normal-case tracking-normal text-[var(--text-secondary)]">
                 {platformCopy.label}
               </span>
               {process.env.NEXT_PUBLIC_DEMO === "true" ? (
-                <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 normal-case tracking-normal text-amber-200">
+                <span className="rounded-full border border-[color-mix(in_oklch,var(--color-warning)_40%,transparent)] bg-[color-mix(in_oklch,var(--color-warning)_10%,transparent)] px-2 py-0.5 normal-case tracking-normal text-[var(--color-warning)]">
                   Demo mode
                 </span>
               ) : null}
@@ -414,9 +414,9 @@ export function OnboardingOverlay({ open, onDismiss }: Props) {
         </header>
 
         {platformCopy.warning ? (
-          <section className="mt-5 rounded-lg border border-amber-500/50 bg-amber-500/12 p-4 text-[13px] text-amber-100">
+          <section className="mt-5 rounded-lg border border-[color-mix(in_oklch,var(--color-warning)_50%,transparent)] bg-[color-mix(in_oklch,var(--color-warning)_12%,transparent)] p-4 text-[13px] text-[var(--color-warning)]">
             <div className="flex items-start gap-3">
-              <Icon name="ph:warning-fill" width={18} className="mt-0.5 shrink-0 text-amber-200" />
+              <Icon name="ph:warning-fill" width={18} className="mt-0.5 shrink-0 text-[var(--color-warning)]" />
               <div>
                 <div className="font-semibold">Windows download notice</div>
                 <p className="mt-1 leading-6">{platformCopy.warning}</p>
@@ -426,7 +426,7 @@ export function OnboardingOverlay({ open, onDismiss }: Props) {
         ) : null}
 
         {setupError ? (
-          <section className="mt-5 rounded-lg border border-rose-500/40 bg-rose-500/10 p-4 text-[13px] text-rose-200">
+          <section className="mt-5 rounded-lg border border-[color-mix(in_oklch,var(--color-danger)_40%,transparent)] bg-[color-mix(in_oklch,var(--color-danger)_10%,transparent)] p-4 text-[13px] text-[var(--color-danger)]">
             {setupError}
           </section>
         ) : null}
@@ -447,14 +447,14 @@ export function OnboardingOverlay({ open, onDismiss }: Props) {
                 <div
                   key={s.key}
                   className={`rounded-lg border p-3 ${
-                    s.ok ? "border-emerald-700/50 bg-emerald-950/20" : "border-[var(--border-hairline)] bg-[var(--bg-raised)]/30"
+                    s.ok ? "border-[color-mix(in_oklch,var(--color-success)_50%,transparent)] bg-[color-mix(in_oklch,var(--color-success)_20%,transparent)]" : "border-[var(--border-hairline)] bg-[var(--bg-raised)]/30"
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span
                       className={`grid h-7 w-7 place-items-center rounded-full border ${
                         s.ok
-                          ? "border-emerald-500/60 bg-emerald-500/15 text-emerald-200"
+                          ? "border-[color-mix(in_oklch,var(--color-success)_60%,transparent)] bg-[color-mix(in_oklch,var(--color-success)_15%,transparent)] text-[var(--color-success)]"
                           : "border-[var(--border-strong)] text-[var(--text-secondary)]"
                       }`}
                     >
@@ -524,7 +524,7 @@ export function OnboardingOverlay({ open, onDismiss }: Props) {
                     disabled={!adapter.installed}
                     className={`rounded-lg border p-3 text-left ${
                       active
-                        ? "border-purple-500/55 bg-purple-500/12 text-[var(--text-primary)]"
+                        ? "border-[color-mix(in_oklch,var(--accent-presence)_55%,transparent)] bg-[color-mix(in_oklch,var(--accent-presence)_12%,transparent)] text-[var(--text-primary)]"
                         : adapter.installed
                           ? "border-[var(--border-hairline)] bg-[var(--bg-base)]/45 text-[var(--text-secondary)] hover:border-[var(--border-strong)]"
                           : "border-[var(--border-hairline)] bg-[var(--bg-base)]/35 text-[var(--text-muted)] opacity-70"
@@ -532,7 +532,7 @@ export function OnboardingOverlay({ open, onDismiss }: Props) {
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="truncate text-[13px] font-medium">{adapter.label}</span>
-                      {active ? <Icon name="ph:check-bold" className="text-purple-200" /> : null}
+                      {active ? <Icon name="ph:check-bold" className="text-[var(--accent-presence)]" /> : null}
                     </div>
                     <div className="mt-1 truncate font-mono text-[11px]">{adapter.binary}</div>
                     <div className="mt-1 line-clamp-2 text-[11px] leading-4 text-[var(--text-muted)]">
@@ -545,7 +545,7 @@ export function OnboardingOverlay({ open, onDismiss }: Props) {
             <button
               onClick={createLocalFamiliar}
               disabled={picking !== null || !selectedHarnessId}
-              className="mt-3 inline-flex items-center gap-2 rounded-md bg-purple-600 px-4 py-2 text-[13px] font-medium text-white hover:bg-purple-500 disabled:opacity-50"
+              className="mt-3 inline-flex items-center gap-2 rounded-md bg-[var(--accent-presence)] px-4 py-2 text-[13px] font-medium text-white hover:bg-[var(--accent-presence)] disabled:opacity-50"
             >
               <Icon name="ph:terminal-window" />
               {picking === "local" ? "Creating..." : "Use local adapter"}
@@ -569,7 +569,7 @@ export function OnboardingOverlay({ open, onDismiss }: Props) {
               </button>
             </div>
             {agentsError ? (
-              <div className="rounded border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[12px] text-rose-200">
+              <div className="rounded border border-[color-mix(in_oklch,var(--color-danger)_30%,transparent)] bg-[color-mix(in_oklch,var(--color-danger)_10%,transparent)] px-3 py-2 text-[12px] text-[var(--color-danger)]">
                 {agentsError}
               </div>
             ) : openclawAgents.length === 0 ? (
@@ -591,13 +591,13 @@ export function OnboardingOverlay({ open, onDismiss }: Props) {
                       }}
                       className={`rounded-lg border p-3 text-left ${
                         active
-                          ? "border-purple-500/55 bg-purple-500/12 text-[var(--text-primary)]"
+                          ? "border-[color-mix(in_oklch,var(--accent-presence)_55%,transparent)] bg-[color-mix(in_oklch,var(--accent-presence)_12%,transparent)] text-[var(--text-primary)]"
                           : "border-[var(--border-hairline)] bg-[var(--bg-base)]/45 text-[var(--text-secondary)] hover:border-[var(--border-strong)]"
                       }`}
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className="truncate text-[13px] font-medium">{agent.displayName}</span>
-                        {active ? <Icon name="ph:check-bold" className="text-purple-200" /> : null}
+                        {active ? <Icon name="ph:check-bold" className="text-[var(--accent-presence)]" /> : null}
                       </div>
                       <div className="mt-1 truncate font-mono text-[11px]">{agent.id}</div>
                       <div className="mt-1 line-clamp-2 text-[11px] leading-4 text-[var(--text-muted)]">{agent.role}</div>
@@ -668,7 +668,7 @@ export function OnboardingOverlay({ open, onDismiss }: Props) {
               <button
                 onClick={createFamiliar}
                 disabled={picking !== null || !selectedAgentId || familiarName.trim().length === 0}
-                className="inline-flex items-center gap-2 rounded-md bg-purple-600 px-4 py-2 text-[13px] font-medium text-white hover:bg-purple-500 disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-md bg-[var(--accent-presence)] px-4 py-2 text-[13px] font-medium text-white hover:bg-[var(--accent-presence)] disabled:opacity-50"
               >
                 <Icon name="ph:sparkle" />
                 {picking === "familiar" ? "Connecting..." : "Connect as familiar"}
@@ -720,7 +720,7 @@ export function OnboardingOverlay({ open, onDismiss }: Props) {
           {status?.complete ? (
             <button
               onClick={onDismiss}
-              className="rounded-md bg-emerald-500/90 px-4 py-2 text-[13px] font-medium text-white hover:bg-emerald-400"
+              className="rounded-md bg-[color-mix(in_oklch,var(--color-success)_90%,transparent)] px-4 py-2 text-[13px] font-medium text-white hover:bg-[color-mix(in_oklch,var(--color-success)_85%,white)]"
             >
               Open Cave
             </button>
@@ -780,7 +780,7 @@ function MaintenancePanel({
           ) : "pruned" in prune ? (
             `Done. ${prune.pruned} session${prune.pruned === 1 ? "" : "s"} removed.`
           ) : "error" in prune ? (
-            <span className="text-rose-300">{prune.error}</span>
+            <span className="text-[var(--color-danger)]">{prune.error}</span>
           ) : null}
         </div>
         <div className="flex shrink-0 gap-2">
@@ -829,7 +829,7 @@ function MaintenancePanel({
                       setPrune({ error: err instanceof Error ? err.message : "fetch failed" });
                     }
                   }}
-                  className="rounded bg-rose-600/80 px-2.5 py-1 text-[11px] text-white hover:bg-rose-500"
+                  className="rounded bg-[color-mix(in_oklch,var(--color-danger)_80%,transparent)] px-2.5 py-1 text-[11px] text-white hover:bg-[color-mix(in_oklch,var(--color-danger)_85%,white)]"
                 >
                   Delete {prune.count}
                 </button>

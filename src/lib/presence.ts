@@ -28,13 +28,13 @@ export type Presence = {
 export const REMOTE_HARNESSES = new Set(["openclaw", "telegram", "signal", "whatsapp"]);
 
 const PRESETS: Record<PresenceState, Pick<Presence, "label" | "pill" | "dot">> = {
-  focused: { label: "focused", pill: "bg-emerald-500/15 text-emerald-300", dot: "bg-emerald-400" },
-  blocked: { label: "needs reply", pill: "bg-amber-500/20 text-amber-200", dot: "bg-amber-400" },
-  dreaming: { label: "dreaming", pill: "bg-purple-500/15 text-purple-200", dot: "bg-purple-400" },
-  failed: { label: "failed", pill: "bg-rose-500/20 text-rose-200", dot: "bg-rose-400" },
+  focused: { label: "focused", pill: "bg-[color-mix(in_oklch,var(--color-success)_15%,transparent)] text-[var(--color-success)]", dot: "bg-[var(--color-success)]" },
+  blocked: { label: "needs reply", pill: "bg-[color-mix(in_oklch,var(--color-warning)_20%,transparent)] text-[var(--color-warning)]", dot: "bg-[var(--color-warning)]" },
+  dreaming: { label: "dreaming", pill: "bg-[color-mix(in_oklch,var(--accent-presence)_15%,transparent)] text-[var(--accent-presence)]", dot: "bg-[var(--accent-presence)]" },
+  failed: { label: "failed", pill: "bg-[color-mix(in_oklch,var(--color-danger)_20%,transparent)] text-[var(--color-danger)]", dot: "bg-[var(--color-danger)]" },
   offline: { label: "offline", pill: "bg-[var(--bg-raised)]/60 text-[var(--text-secondary)]", dot: "bg-[var(--text-muted)]" },
-  remote:  { label: "remote",  pill: "bg-sky-900/40 text-sky-400",  dot: "bg-sky-600" },
-  missing: { label: "missing", pill: "bg-rose-700/30 text-rose-200", dot: "bg-rose-500" },
+  remote:  { label: "remote",  pill: "bg-[color-mix(in_oklch,var(--accent-presence-soft)_30%,transparent)] text-[var(--accent-presence-soft)]",  dot: "bg-[var(--accent-presence-soft)]" },
+  missing: { label: "missing", pill: "bg-[color-mix(in_oklch,var(--color-danger)_30%,transparent)] text-[var(--color-danger)]", dot: "bg-[var(--color-danger)]" },
   idle: { label: "idle", pill: "bg-[var(--bg-raised)] text-[var(--text-secondary)]", dot: "bg-[var(--text-muted)]" },
 };
 

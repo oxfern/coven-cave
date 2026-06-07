@@ -610,7 +610,7 @@ export function TraceGraph3D({ graph, familiars, selection, onSelect, memoryCoun
         ))}
       </div>
       {sceneModel.policy.detail !== "full" ? (
-        <div className="pointer-events-none absolute right-3 top-16 max-w-[280px] rounded-lg border border-amber-400/20 bg-amber-950/45 px-3 py-2 text-[10px] text-amber-100/80 shadow-2xl backdrop-blur">
+        <div className="pointer-events-none absolute right-3 top-16 max-w-[280px] rounded-lg border border-[color-mix(in_oklch,var(--color-warning)_25%,transparent)] bg-[color-mix(in_oklch,var(--color-warning)_18%,transparent)] px-3 py-2 text-[10px] text-[var(--color-warning)] shadow-2xl backdrop-blur">
           Dense graph mode: showing strongest routes first.
         </div>
       ) : null}

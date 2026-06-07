@@ -104,7 +104,7 @@ export function BrowserQuickOpen({ tabs, activeId, onSelect, onClose }: Props) {
       <div
         className="w-[420px] max-w-[92vw] overflow-hidden rounded-2xl shadow-2xl"
         style={{
-          background: "#131316",
+          background: "var(--bg-elevated)",
           border: "1px solid rgba(255,255,255,0.08)",
           boxShadow: "0 24px 64px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04)",
         }}

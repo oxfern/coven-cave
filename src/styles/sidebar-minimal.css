@@ -42,7 +42,7 @@
 }
 
 .sidebar-action-row--active {
-  background: oklch(0.65 0.18 280 / 12%);
+  background: color-mix(in oklch, var(--accent-presence) 12%, transparent);
   color: var(--text-primary);
 }
 
@@ -138,7 +138,7 @@
 }
 
 .sidebar-folder-row--active {
-  background: oklch(0.65 0.18 280 / 12%);
+  background: color-mix(in oklch, var(--accent-presence) 12%, transparent);
   color: var(--text-primary);
 }
 
@@ -163,8 +163,8 @@
   font-size: 10px;
   padding: 0.05em 0.45em;
   border-radius: 8px;
-  background: oklch(0.65 0.18 280 / 15%);
-  color: oklch(0.78 0.12 280);
+  background: color-mix(in oklch, var(--accent-presence) 15%, transparent);
+  color: var(--accent-presence);
   flex-shrink: 0;
   font-variant-numeric: tabular-nums;
 }
@@ -226,7 +226,7 @@
 }
 
 .sidebar-recent-row--active {
-  background: oklch(0.65 0.18 280 / 10%);
+  background: color-mix(in oklch, var(--accent-presence) 10%, transparent);
   color: var(--text-primary);
   font-weight: 500;
 }
@@ -329,9 +329,9 @@
 }
 
 .familiar-strip-avatar--active {
-  border-color: oklch(0.65 0.18 280);
-  box-shadow: 0 0 0 1px oklch(0.65 0.18 280 / 35%);
-  background: color-mix(in oklab, oklch(0.65 0.18 280) 12%, var(--bg-raised));
+  border-color: var(--accent-presence);
+  box-shadow: 0 0 0 1px color-mix(in oklch, var(--accent-presence) 35%, transparent);
+  background: color-mix(in oklch, var(--accent-presence) 12%, var(--bg-raised));
 }
 
 /* ── Familiars section (left nav) ────────────────────────────────────────── */
@@ -451,7 +451,7 @@
 }
 
 .sidebar-action-row--active {
-  background: color-mix(in oklab, oklch(0.65 0.18 280) 10%, transparent);
+  background: color-mix(in oklch, var(--accent-presence) 10%, transparent);
   color: var(--text-primary);
 }
 
@@ -533,7 +533,7 @@
 }
 
 .sidebar-folder-row--active {
-  background: color-mix(in oklab, oklch(0.65 0.18 280) 10%, transparent);
+  background: color-mix(in oklch, var(--accent-presence) 10%, transparent);
   color: var(--text-primary);
 }
 
@@ -558,8 +558,8 @@
   font-size: 10px;
   padding: 0.05em 0.45em;
   border-radius: 8px;
-  background: color-mix(in oklab, oklch(0.65 0.18 280) 18%, transparent);
-  color: oklch(0.75 0.12 280);
+  background: color-mix(in oklch, var(--accent-presence) 18%, transparent);
+  color: var(--accent-presence);
   flex-shrink: 0;
   font-variant-numeric: tabular-nums;
 }
@@ -621,7 +621,7 @@
 }
 
 .sidebar-recent-row--active {
-  background: color-mix(in oklab, oklch(0.65 0.18 280) 10%, transparent);
+  background: color-mix(in oklch, var(--accent-presence) 10%, transparent);
   color: var(--text-primary);
   font-weight: 500;
 }
@@ -709,9 +709,9 @@
 }
 
 .familiar-strip-avatar--active {
-  border-color: oklch(0.65 0.18 280);
-  box-shadow: 0 0 0 1px oklch(0.65 0.18 280 / 35%);
-  background: color-mix(in oklab, oklch(0.65 0.18 280) 12%, var(--bg-raised));
+  border-color: var(--accent-presence);
+  box-shadow: 0 0 0 1px color-mix(in oklch, var(--accent-presence) 35%, transparent);
+  background: color-mix(in oklch, var(--accent-presence) 12%, var(--bg-raised));
 }
 
 /* ── Familiars section (left nav, replaces emoji strip) ─────────────────── */
@@ -802,4 +802,32 @@
 .sidebar-familiar-row--active .sidebar-familiar-row-count {
   background: color-mix(in oklch, var(--accent-presence) 20%, transparent);
   color: var(--accent-presence);
+}
+
+/* ── Focus rings (keyboard-only) ─────────────────────────────────────────── */
+.sidebar-action-row,
+.sidebar-folder-row,
+.sidebar-recent-row,
+.sidebar-familiar-row,
+.sidebar-settings-row,
+.familiar-strip-avatar {
+  outline: none;
+}
+.sidebar-action-row:focus-visible,
+.sidebar-folder-row:focus-visible,
+.sidebar-recent-row:focus-visible,
+.sidebar-familiar-row:focus-visible,
+.sidebar-settings-row:focus-visible {
+  outline: var(--ring-width) solid var(--ring-focus);
+  outline-offset: -1px;
+}
+.familiar-strip-avatar:focus-visible {
+  outline: var(--ring-width) solid var(--ring-focus);
+  outline-offset: 2px;
+}
+
+/* ── Tighten the "Add-ins" section eyebrow ─────────────────────────────── */
+.sidebar-addins .sidebar-section-label {
+  padding-top: var(--space-2);
+  opacity: 0.7;
 }

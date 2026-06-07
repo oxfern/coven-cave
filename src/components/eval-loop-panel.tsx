@@ -62,8 +62,8 @@ function age(iso: string): string {
 }
 
 function deltaColor(delta: number): string {
-  if (delta > 0) return "text-emerald-400";
-  if (delta < 0) return "text-rose-400";
+  if (delta > 0) return "text-[var(--color-success)]";
+  if (delta < 0) return "text-[var(--color-danger)]";
   return "text-[var(--text-muted)]";
 }
 
@@ -148,12 +148,12 @@ export function EvalLoopPanel({ familiarId, familiarName }: Props) {
 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Icon name="ph:arrows-clockwise-bold" className="text-purple-400" width="0.85rem" />
+          <Icon name="ph:arrows-clockwise-bold" className="text-[var(--accent-presence)]" width="0.85rem" />
           <span className="text-[11px] font-medium uppercase tracking-widest text-[var(--text-secondary)]">
             eval-loop
           </span>
           {state?.running ? (
-            <span className="rounded-full bg-amber-500/20 px-1.5 py-px text-[9px] uppercase tracking-widest text-amber-300">
+            <span className="rounded-full bg-[color-mix(in_oklch,var(--color-warning)_20%,transparent)] px-1.5 py-px text-[9px] uppercase tracking-widest text-[var(--color-warning)]">
               running
             </span>
           ) : null}
@@ -180,8 +180,8 @@ export function EvalLoopPanel({ familiarId, familiarName }: Props) {
         <>
           {state ? (
             <div className="grid grid-cols-3 gap-2 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/40 px-3 py-2">
-              <Stat label="Accepted" value={state.total_accepted} accent="text-emerald-400" />
-              <Stat label="Reverted" value={state.total_reverted} accent="text-rose-400" />
+              <Stat label="Accepted" value={state.total_accepted} accent="text-[var(--color-success)]" />
+              <Stat label="Reverted" value={state.total_reverted} accent="text-[var(--color-danger)]" />
               <Stat label="Total" value={state.total_accepted + state.total_reverted} />
             </div>
           ) : null}
@@ -194,7 +194,7 @@ export function EvalLoopPanel({ familiarId, familiarName }: Props) {
                 className={
                   "rounded px-2 py-0.5 text-[10px] uppercase tracking-widest transition-colors " +
                   (activeTrack === t
-                    ? "bg-purple-600/80 text-white"
+                    ? "bg-[color-mix(in_oklch,var(--accent-presence)_80%,transparent)] text-white"
                     : "border border-[var(--border-strong)] text-[var(--text-secondary)] hover:bg-[var(--bg-raised)]")
                 }
               >
@@ -229,8 +229,8 @@ export function EvalLoopPanel({ familiarId, familiarName }: Props) {
                       className={
                         "shrink-0 rounded px-1 py-px text-[9px] uppercase tracking-widest " +
                         (it.outcome === "ACCEPT"
-                          ? "bg-emerald-500/20 text-emerald-300"
-                          : "bg-rose-500/20 text-rose-300")
+                          ? "bg-[color-mix(in_oklch,var(--color-success)_20%,transparent)] text-[var(--color-success)]"
+                          : "bg-[color-mix(in_oklch,var(--color-danger)_20%,transparent)] text-[var(--color-danger)]")
                       }
                     >
                       {it.outcome}

@@ -55,9 +55,9 @@ function kindIcon(kind: GitHubItemKind) {
 }
 
 function stateStyle(state?: LibraryGitHubItem["state"]): React.CSSProperties & { label: string } {
-  if (state === "open")   return { color: "#34d399", label: "open" };
-  if (state === "merged") return { color: "oklch(0.65 0.18 280)", label: "merged" };
-  if (state === "closed") return { color: "#f87171", label: "closed" };
+  if (state === "open")   return { color: "var(--color-success)", label: "open" };
+  if (state === "merged") return { color: "var(--accent-presence)", label: "merged" };
+  if (state === "closed") return { color: "var(--color-danger)", label: "closed" };
   return { color: "var(--text-muted)", label: "—" };
 }
 
@@ -182,7 +182,7 @@ function AttachTaskModal({
 
         {done ? (
           <div className="gh-modal-done">
-            <span style={{ color: "#34d399", display: "grid" }}><Icon name="ph:check-circle" width={18} /></span>
+            <span style={{ color: "var(--color-success)", display: "grid" }}><Icon name="ph:check-circle" width={18} /></span>
             <span>{done}</span>
             <button type="button" className="gh-modal-btn gh-modal-btn--primary" onClick={onClose}>Done</button>
           </div>
@@ -384,7 +384,7 @@ function HandoffModal({
 
         {done ? (
           <div className="gh-modal-done">
-            <span style={{ color: "#34d399", display: "grid" }}><Icon name="ph:check-circle" width={18} /></span>
+            <span style={{ color: "var(--color-success)", display: "grid" }}><Icon name="ph:check-circle" width={18} /></span>
             <div>
               <div style={{ fontWeight: 600 }}>Handed off to {done.familiar}</div>
               {done.session && (

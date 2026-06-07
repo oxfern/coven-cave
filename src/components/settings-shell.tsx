@@ -165,7 +165,7 @@ function DaemonSection() {
         <div className="flex flex-wrap items-center gap-3 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-card)] px-4 py-3">
           <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${
             loading ? "animate-pulse bg-[var(--text-muted)]"
-            : status?.running ? "bg-emerald-400"
+            : status?.running ? "bg-[var(--color-success)]"
             : "bg-red-400"
           }`} />
           <span className="text-[13px] font-medium">
@@ -196,7 +196,7 @@ function DaemonSection() {
             <Icon name="ph:arrow-clockwise" width={11} />
             Refresh
           </button>
-          {startError && <p className="basis-full text-[11px] text-rose-300">{startError}</p>}
+          {startError && <p className="basis-full text-[11px] text-[var(--color-danger)]">{startError}</p>}
         </div>
       </SettingsGroup>
 

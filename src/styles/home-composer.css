@@ -54,9 +54,9 @@
 }
 
 .home-composer-card:focus-within {
-  border-color: color-mix(in oklab, oklch(0.65 0.18 280) 50%, var(--border-strong));
+  border-color: color-mix(in oklch, var(--accent-presence) 50%, var(--border-strong));
   box-shadow: 0 8px 40px rgba(0, 0, 0, 0.22),
-              0 0 0 1px color-mix(in oklab, oklch(0.65 0.18 280) 20%, transparent);
+              0 0 0 1px color-mix(in oklch, var(--accent-presence) 20%, transparent);
 }
 
 /* ── Textarea ────────────────────────────────────────────────────────────── */
@@ -103,8 +103,8 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  background: color-mix(in oklab, oklch(0.65 0.18 280) 10%, var(--bg-base));
-  border: 1px solid color-mix(in oklab, oklch(0.65 0.18 280) 25%, transparent);
+  background: color-mix(in oklch, var(--accent-presence) 10%, var(--bg-base));
+  border: 1px solid color-mix(in oklch, var(--accent-presence) 25%, transparent);
   border-radius: 8px;
   padding: 3px 7px 3px 6px;
   flex-shrink: 0;
@@ -170,8 +170,8 @@
 }
 
 .hc-dest-pill.active {
-  background: color-mix(in oklab, oklch(0.65 0.18 280) 14%, var(--bg-base));
-  border-color: color-mix(in oklab, oklch(0.65 0.18 280) 40%, transparent);
+  background: color-mix(in oklch, var(--accent-presence) 14%, var(--bg-base));
+  border-color: color-mix(in oklch, var(--accent-presence) 40%, transparent);
   color: var(--text-primary);
   font-weight: 500;
 }
@@ -191,7 +191,7 @@
   height: 32px;
   border-radius: 6px;
   border: none;
-  background: oklch(0.65 0.18 280);
+  background: var(--accent-presence);
   color: #fff;
   cursor: pointer;
   flex-shrink: 0;
@@ -261,12 +261,47 @@
 }
 
 .hc-suggestion:hover {
-  background: color-mix(in oklab, oklch(0.65 0.18 280) 8%, var(--bg-raised));
-  border-color: color-mix(in oklab, oklch(0.65 0.18 280) 35%, transparent);
+  background: color-mix(in oklch, var(--accent-presence) 8%, var(--bg-raised));
+  border-color: color-mix(in oklch, var(--accent-presence) 35%, transparent);
   color: var(--text-primary);
 }
 
 .hc-suggestion-icon {
   flex-shrink: 0;
   opacity: 0.5;
+}
+
+/* ── Focus rings (keyboard-only) ─────────────────────────────────────────── */
+.hc-dest-pill,
+.hc-send-btn,
+.hc-suggestion,
+.hc-familiar-select {
+  outline: none;
+}
+.hc-dest-pill:focus-visible,
+.hc-send-btn:focus-visible,
+.hc-suggestion:focus-visible,
+.hc-familiar-select:focus-visible {
+  outline: var(--ring-width) solid var(--ring-focus);
+  outline-offset: var(--ring-offset);
+}
+
+/* ── Suggestions skeleton (during initial fetch) ─────────────────────────── */
+.hc-suggestion-skeleton {
+  height: 28px;
+  width: 100%;
+  max-width: 280px;
+  border-radius: 999px;
+  background:
+    linear-gradient(
+      90deg,
+      var(--bg-raised) 0%,
+      color-mix(in oklch, var(--bg-raised) 70%, var(--bg-elevated) 30%) 50%,
+      var(--bg-raised) 100%
+    );
+  background-size: 200% 100%;
+  animation: ui-skeleton-shimmer 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hc-suggestion-skeleton { animation: none; opacity: 0.65; }
 }

@@ -67,6 +67,7 @@ export function HomeComposer({
   const [familiarId, setFamiliarId] = useState<string | null>(activeFamiliarId);
   const [sending, setSending] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(true);
   const [history, setHistory] = useState<string[]>([]);
   const [historyIdx, setHistoryIdx] = useState<number>(-1);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -84,6 +85,8 @@ export function HomeComposer({
 
   // Build suggestions from recent sessions + inbox
   useEffect(() => {
+    let cancelled = false;
+    setSuggestionsLoading(true);
     void (async () => {
       const lines: string[] = [];
       const recentTitles = sessions
@@ -98,13 +101,17 @@ export function HomeComposer({
           const json = (await res.json()) as { ok: boolean; items: InboxItem[] };
           if (json.ok) lines.push(...json.items.slice(0, 3 - lines.length).map((i) => i.title));
         }
-      } catch { /* silent */ }
+      } catch { /* silent — falls back to seeds below */ }
       while (lines.length < 3) {
         const seed = SEED_SUGGESTIONS[lines.length % SEED_SUGGESTIONS.length];
         if (seed && !lines.includes(seed)) lines.push(seed); else break;
       }
-      setSuggestions(lines.slice(0, 3));
+      if (!cancelled) {
+        setSuggestions(lines.slice(0, 3));
+        setSuggestionsLoading(false);
+      }
     })();
+    return () => { cancelled = true; };
   }, [sessions]);
 
   // Auto-grow textarea
@@ -309,7 +316,13 @@ export function HomeComposer({
       </div>
 
       {/* Suggestions */}
-      {suggestions.length > 0 && (
+      {suggestionsLoading ? (
+        <div className="home-composer-suggestions" aria-hidden>
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="hc-suggestion-skeleton" />
+          ))}
+        </div>
+      ) : suggestions.length > 0 ? (
         <div className="home-composer-suggestions">
           {suggestions.map((s, i) => (
             <button
@@ -323,7 +336,7 @@ export function HomeComposer({
             </button>
           ))}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

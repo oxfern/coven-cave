@@ -460,7 +460,7 @@ export function BrowserPane({ label = "default" }: { label?: string }) {
   }, []);
 
   return (
-    <div ref={paneRef} className="flex h-full flex-row" style={{ background: "#0c0c0e" }}>
+    <div ref={paneRef} className="flex h-full flex-row" style={{ background: "var(--bg-base)" }}>
       {/* ── Vertical tab rail (auto-hide) ─────────────────────── */}
       {/* Collapsed by default to a 6px edge handle so the page gets the
          full viewport width; expands to 48px on hover or keyboard focus.
@@ -469,7 +469,7 @@ export function BrowserPane({ label = "default" }: { label?: string }) {
          Cmd+K (handled below) remains the primary tab-switcher. */}
       <div
         className={[
-          "browser-tab-rail group/rail relative flex flex-col items-center bg-[#080809] py-1.5",
+          "browser-tab-rail group/rail relative flex flex-col items-center bg-[var(--bg-panel)] py-1.5",
           "transition-[width] duration-150 ease-out",
           "w-1.5 hover:w-12 focus-within:w-12",
           railExpanded ? "!w-12" : "",
@@ -534,8 +534,8 @@ export function BrowserPane({ label = "default" }: { label?: string }) {
               className={[
                 "browser-tab group relative flex flex-col items-center justify-center gap-0.5 w-full cursor-pointer select-none transition-colors py-2.5",
                 isActive
-                  ? "bg-[#14141a] text-[var(--fg-base)]"
-                  : "text-[var(--fg-muted)] hover:bg-[#0f0f13] hover:text-[var(--fg-base)]",
+                  ? "bg-[var(--bg-elevated)] text-[var(--fg-base)]"
+                  : "text-[var(--fg-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--fg-base)]",
               ].join(" ")}
             >
               {/* Active indicator bar */}
@@ -656,7 +656,7 @@ export function BrowserPane({ label = "default" }: { label?: string }) {
       )}
 
       {/* ── Viewport (webview overlay target) ─────────────────────── */}
-      <div className="relative min-h-0 flex-1 overflow-hidden" style={{ background: "#0c0c0e" }}>
+      <div className="relative min-h-0 flex-1 overflow-hidden" style={{ background: "var(--bg-base)" }}>
         {quickOpen && (
           <BrowserQuickOpen
             tabs={tabs}
@@ -669,7 +669,7 @@ export function BrowserPane({ label = "default" }: { label?: string }) {
           <iframe
             src={activeUrl}
             title="Browser"
-            className="absolute inset-0 h-full w-full border-0 bg-[#0c0c0e]"
+            className="absolute inset-0 h-full w-full border-0 bg-[var(--bg-base)]"
             sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation"
           />
         ) : (

@@ -24,13 +24,13 @@ function avatar(f: Familiar | undefined): string {
 function statusPill(status: CovenCall["status"]): string {
   switch (status) {
     case "running":
-      return "bg-emerald-500/15 text-emerald-300";
+      return "bg-[color-mix(in_oklch,var(--color-success)_15%,transparent)] text-[var(--color-success)]";
     case "completed":
       return "bg-[var(--bg-raised)] text-[var(--text-secondary)]";
     case "failed":
-      return "bg-rose-500/20 text-rose-200";
+      return "bg-[color-mix(in_oklch,var(--color-danger)_20%,transparent)] text-[var(--color-danger)]";
     case "cancelled":
-      return "bg-amber-500/20 text-amber-200";
+      return "bg-[color-mix(in_oklch,var(--color-warning)_20%,transparent)] text-[var(--color-warning)]";
   }
 }
 

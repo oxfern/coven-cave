@@ -298,11 +298,17 @@ export function CommandPalette({
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 backdrop-blur-sm"
+      role="presentation"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-[var(--backdrop-scrim)] backdrop-blur-sm"
+      style={{ animation: "ui-modal-fade-in var(--duration-fast) var(--ease-decelerate)" }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="mt-[12vh] w-[640px] max-w-[92vw] overflow-hidden rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-base)] shadow-2xl"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Command palette"
+        className="mt-[12vh] w-[640px] max-w-[92vw] overflow-hidden rounded-2xl border border-[var(--border-strong)] bg-[var(--bg-elevated)] shadow-2xl"
+        style={{ animation: "ui-modal-enter var(--duration-base) var(--ease-decelerate)" }}
       >
         <input
           ref={inputRef}
@@ -326,8 +332,11 @@ export function CommandPalette({
                 <button
                   onMouseEnter={() => setActiveIdx(i)}
                   onClick={() => fire(row)}
-                  className={`flex w-full items-center gap-3 px-4 py-2 text-left text-sm transition-colors ${
-                    active ? "bg-[var(--bg-raised)]/60" : "hover:bg-[var(--bg-raised)]/50"
+                  aria-current={active ? "true" : undefined}
+                  className={`focus-ring-inset flex w-full items-center gap-3 border-l-2 px-4 py-2 text-left text-sm transition-colors ${
+                    active
+                      ? "border-l-[var(--accent-presence)] bg-[var(--bg-hover)]"
+                      : "border-l-transparent hover:bg-[var(--bg-hover)]"
                   }`}
                 >
                   {row.kind === "familiar" ? (
