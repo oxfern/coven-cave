@@ -86,6 +86,7 @@ async function loadTauri(): Promise<TauriBridge | null> {
 
 const HOME_URL = "https://opencoven.ai";
 const LOCALHOST_PORTS = [3000, 3001, 5173, 8080, 4000, 4321];
+const NATIVE_BROWSER_LABEL_PREFIX = "cave-browser-";
 const PINNED_STORAGE_KEY = "cave.browser.pinnedTabs.v1";
 
 export type BrowserTab = {
@@ -185,6 +186,10 @@ export function BrowserPane({ label = "default" }: { label?: string }) {
     return `${label}-tab-${tabId}`;
   }
 
+  function nativeTabLabelPrefix() {
+    return `${NATIVE_BROWSER_LABEL_PREFIX}${label}-tab-`;
+  }
+
   // ── Tauri bridge ──────────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
@@ -208,8 +213,9 @@ export function BrowserPane({ label = "default" }: { label?: string }) {
       (e) => {
         const { label: evLabel, url: evUrl, phase } = e.payload;
         // Match any of our tab labels
-        if (!evLabel.startsWith(`${label}-tab-`)) return;
-        const tabId = evLabel.slice(`${label}-tab-`.length);
+        const eventPrefix = nativeTabLabelPrefix();
+        if (!evLabel.startsWith(eventPrefix)) return;
+        const tabId = evLabel.slice(eventPrefix.length);
         if (phase === "started") {
           if (tabId === activeTabId) setLoading(true);
         } else {
@@ -235,8 +241,9 @@ export function BrowserPane({ label = "default" }: { label?: string }) {
       "browser:title",
       (e) => {
         const { label: evLabel, title, url: evUrl } = e.payload;
-        if (!evLabel.startsWith(`${label}-tab-`)) return;
-        const tabId = evLabel.slice(`${label}-tab-`.length);
+        const eventPrefix = nativeTabLabelPrefix();
+        if (!evLabel.startsWith(eventPrefix)) return;
+        const tabId = evLabel.slice(eventPrefix.length);
         setTabTitles((prev) => ({ ...prev, [tabId]: title }));
         if (tabId === activeTabId) setAddressBar(evUrl);
       },

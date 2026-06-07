@@ -112,7 +112,7 @@ export function BottomTerminal({
         lineHeight: 1.2,
         cursorBlink: true,
         theme: {
-          background: "#16131f",
+          background: "#0c0c0e",
           foreground: "#e6e6f0",
           cursor: "#9a8ecd",
           selectionBackground: "rgba(154,142,205,0.35)",
@@ -243,7 +243,7 @@ export function BottomTerminal({
     <div
       ref={wrapRef}
       className="h-full w-full overflow-hidden"
-      style={{ background: "#16131f", padding: "6px 8px" }}
+      style={{ background: "#0c0c0e", padding: "6px 8px" }}
       // Clicking anywhere in the terminal area refocuses xterm so keyboard
       // input is routed correctly without the user having to click exactly
       // on the cursor.
