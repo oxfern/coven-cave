@@ -45,6 +45,12 @@ function titleFromReadingPath(url: URL): string {
 }
 
 export async function routeLinkHandler(body: RouteLinkInput): Promise<RouteLinkResult> {
+  // FAMILIAR-FALLBACK: The Tier-5 classifier returns `familiar-fallback`;
+  // classifyWithFamiliar() (src/lib/familiar-classify.ts) is ready to use
+  // but the repo does not yet expose a non-streaming "ask familiar" helper.
+  // Until that lands, Tier 5 hosts (twitter.com, x.com, news.ycombinator.com,
+  // reddit.com) default to bookmarks. See src/lib/familiar-classify.ts for
+  // the finished helper.
   let parsed: URL;
   try { parsed = new URL(body.url); } catch { return { ok: false, error: "invalid_url" }; }
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
