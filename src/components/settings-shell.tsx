@@ -349,6 +349,8 @@ function PluginsSection() {
   return (
     <PluginsView
       familiars={[]}
+      tabs={["plugins", "skills"]}
+      initialTab="plugins"
       onOpenChat={() => {
         // Navigate to workspace home; user can select a familiar and start a chat
         window.location.href = "/";

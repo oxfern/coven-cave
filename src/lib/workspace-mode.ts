@@ -9,4 +9,5 @@ export type WorkspaceMode =
   | "browser"
   | "terminal"
   | "github"
+  | "roles"
   | "capabilities";

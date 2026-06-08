@@ -48,6 +48,18 @@ try {
     sessionArchived: {},
     sessionSacrificed: { "session-1": sacrificedAt },
   });
+
+  const installedAt = await config.installMarketplacePlugin("github", "0.1.0", "catalog");
+  assert.ok(Number.isFinite(Date.parse(installedAt)));
+
+  let cfg = await config.loadConfig();
+  assert.equal(cfg.marketplace.installed.github.version, "0.1.0");
+  assert.equal(cfg.marketplace.installed.github.source, "catalog");
+  assert.equal(cfg.marketplace.installed.github.installedAt, installedAt);
+
+  await config.uninstallMarketplacePlugin("github");
+  cfg = await config.loadConfig();
+  assert.deepEqual(cfg.marketplace.installed, {});
 } finally {
   if (previousHome === undefined) delete process.env.HOME;
   else process.env.HOME = previousHome;

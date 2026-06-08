@@ -4,7 +4,7 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { loadConfig, saveConfig } from "@/lib/cave-config";
 
-const ALLOWED_TOP_LEVEL_KEYS = new Set(["addons", "defaults", "familiars", "roles"]);
+const ALLOWED_TOP_LEVEL_KEYS = new Set(["addons", "defaults", "familiars", "roles", "marketplace"]);
 
 export async function GET() {
   try {
