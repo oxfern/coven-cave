@@ -3135,7 +3135,7 @@ body {
   font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 .settings-familiars-panel__dl {
@@ -3183,6 +3183,10 @@ body {
   cursor: pointer;
 }
 .settings-familiars-panel__edit:hover { color: var(--text-primary); background: var(--bg-raised); }
+.settings-familiars-panel__edit:focus-visible {
+  outline: var(--ring-width) solid var(--ring-focus);
+  outline-offset: 1px;
+}
 
 /* ────────────────────────────────────────────────
    Familiar Studio drawer
