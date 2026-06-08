@@ -15,6 +15,8 @@ import { InboxToastStack, toastFromItem, type Toast } from "@/components/inbox-t
 import { FamiliarGlyphPicker } from "@/components/familiar-glyph-picker";
 import { Shell, type ShellHandle } from "@/components/shell";
 import { FamiliarAvatarRail } from "@/components/familiar-avatar-rail";
+import { FamiliarStudioProvider } from "@/lib/familiar-studio-context";
+import { FamiliarStudio } from "@/components/familiar-studio";
 import { CompanionRail, type CompanionTab } from "@/components/companion-rail";
 import { RailInspector } from "@/components/inspector-pane";
 import { RailMemoryList } from "@/components/agents-memory-view";
@@ -991,7 +993,7 @@ export function Workspace() {
   );
 
   return (
-    <>
+    <FamiliarStudioProvider>
       <Shell
         ref={shellRef}
         topBar={
@@ -1147,6 +1149,7 @@ export function Workspace() {
         }}
       />
 
-    </>
+      <FamiliarStudio familiars={familiars} />
+    </FamiliarStudioProvider>
   );
 }
