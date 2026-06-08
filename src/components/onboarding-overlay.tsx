@@ -269,9 +269,17 @@ export function OnboardingOverlay({ open, onDismiss }: Props) {
     await copyText(
       JSON.stringify(
         {
+          capturedAt: new Date().toISOString(),
           platform,
           setupComplete: status?.complete ?? false,
           steps: status?.steps ?? null,
+          // Number of consecutive /api/onboarding/status failures at capture
+          // time. Non-zero here narrows "setup stuck" to "Cave can't reach
+          // the local status endpoint" (vs the daemon being healthy but the
+          // user hitting an unmet step).
+          statusFailures,
+          setupError,
+          agentsError,
           harnesses: harnesses.map((adapter) => ({
             id: adapter.id,
             label: adapter.label,
