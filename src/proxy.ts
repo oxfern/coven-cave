@@ -124,13 +124,13 @@ export function proxy(req: NextRequest) {
     return NextResponse.next();
   }
 
-  const token = process.env.COVEN_CAVE_AUTH_TOKEN;
-  if (!token) {
-    return process.env.COVEN_CAVE_BUNDLE === "1"
-      ? jsonError(500, "missing sidecar auth token")
-      : NextResponse.next();
-  }
-
+  // CSRF / cross-origin guards always apply to /api/ requests, regardless of
+  // whether a sidecar auth token is configured. Plain `pnpm dev` (no token)
+  // historically returned NextResponse.next() before these checks ran, which
+  // would have left every workspace-driving route open to non-loopback
+  // callers if the dev server were ever bound to anything other than
+  // 127.0.0.1. The token equality check below is the only thing
+  // legitimately optional in browser-dev mode.
   const expectedOrigin = req.nextUrl.origin;
   if (!isLoopbackHost(req.headers.get("host"))) {
     return jsonError(403, "forbidden host");
@@ -143,6 +143,13 @@ export function proxy(req: NextRequest) {
   }
   if (!hasSafeContentType(req)) {
     return jsonError(415, "unsupported content-type");
+  }
+
+  const token = process.env.COVEN_CAVE_AUTH_TOKEN;
+  if (!token) {
+    return process.env.COVEN_CAVE_BUNDLE === "1"
+      ? jsonError(500, "missing sidecar auth token")
+      : NextResponse.next();
   }
 
   const supplied =
