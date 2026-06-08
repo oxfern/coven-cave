@@ -7,6 +7,9 @@ import { Icon } from "@/lib/icon";
 import { useKeySymbols } from "@/lib/platform-keys";
 import { OriginChip } from "@/components/ui/origin-chip";
 import { FamiliarSwitcher } from "@/components/familiar-switcher";
+import { FamiliarGlyph } from "@/components/familiar-glyph";
+import { resolveFamiliarGlyph } from "@/lib/familiar-glyph";
+import { useGlyphOverrides } from "@/lib/cave-glyph-overrides";
 
 type Props = {
   familiar: Familiar;
@@ -63,6 +66,7 @@ export function ChatList({ familiar, familiars = [], sessions, daemonRunning, on
   const [activeId, setActiveId] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const keys = useKeySymbols();
+  const glyphOverrides = useGlyphOverrides();
 
   // Focus search on Cmd+F / Ctrl+F
   useEffect(() => {
@@ -144,62 +148,89 @@ export function ChatList({ familiar, familiars = [], sessions, daemonRunning, on
     <section className="flex h-full flex-col bg-[var(--bg-base)] text-[var(--text-primary)]">
 
       {/* ── Agent dossier + command strip ── */}
-      <header className="agent-panel-dossier border-b border-[var(--border-hairline)] bg-[var(--bg-base)] px-4 py-3">
-        <div className="flex min-w-0 items-start gap-3">
-          <div className="min-w-0 flex-1">
-            <div className="flex min-w-0 items-center gap-2">
-              <FamiliarSwitcher familiar={familiar} familiars={familiars} onSelect={onFamiliarSelect} />
+      <header className="agent-panel-dossier border-b border-[var(--border-hairline)] bg-[var(--bg-base)]">
+        {/* Brand accent bar */}
+        <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-[var(--accent-presence)]/50 to-transparent" />
+
+        {/* Identity row */}
+        <div className="px-4 pb-0 pt-4">
+          <div className="flex min-w-0 items-start gap-3">
+            {/* Avatar — larger + glyph-forward */}
+            <div className="relative shrink-0">
+              <div className="grid h-11 w-11 place-items-center rounded-xl border border-[var(--accent-presence)]/30 bg-[color-mix(in_oklch,var(--accent-presence)_12%,var(--bg-raised))] shadow-[0_0_12px_color-mix(in_oklch,var(--accent-presence)_18%,transparent)]">
+                <FamiliarGlyph glyph={resolveFamiliarGlyph(familiar, glyphOverrides)} size="md" />
+              </div>
+              {/* Online/offline dot */}
               <span
-                className={`flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${daemonRunning
-                  ? "bg-[color-mix(in_oklch,var(--color-success)_60%,transparent)] text-[var(--color-success)]"
-                  : "bg-[color-mix(in_oklch,var(--color-danger)_60%,transparent)] text-[var(--color-danger)]"
-                  }`}
-              >
-                <span className={`inline-block h-1.5 w-1.5 rounded-full ${daemonRunning ? "bg-[var(--color-success)] animate-pulse" : "bg-[var(--color-danger)]"}`} />
-                {daemonRunning ? "online" : "offline"}
-              </span>
+                className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-[var(--bg-base)] ${daemonRunning ? "bg-[var(--color-success)]" : "bg-[var(--text-muted)]"}`}
+                title={daemonRunning ? "online" : "offline"}
+              />
             </div>
-            <p className="mt-1 truncate text-[11px] text-[var(--text-muted)]">
-              Agent runtime{" "}
-              <span className="font-mono text-[var(--text-secondary)]">
-                {familiar.harness ?? "unknown"} / {familiar.model ?? "unknown"}
-              </span>
-            </p>
+
+            {/* Name + subtitle */}
+            <div className="min-w-0 flex-1 pt-0.5">
+              <div className="flex min-w-0 items-center gap-2">
+                <FamiliarSwitcher familiar={familiar} familiars={familiars} onSelect={onFamiliarSelect} />
+              </div>
+              <p className="mt-0.5 truncate text-[11px] leading-snug text-[var(--text-muted)]">
+                {familiar.role ? (
+                  <>
+                    <span className="text-[var(--text-secondary)]">{familiar.role}</span>
+                    {" · "}
+                  </>
+                ) : null}
+                Agent runtime{" "}
+                <span className="font-mono">{familiar.harness ?? "codex"}</span>
+              </p>
+            </div>
+
+            {/* + Chat CTA */}
+            <button
+              type="button"
+              onClick={() => onNewChat()}
+              className="mt-0.5 flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-[var(--accent-presence)] px-3 text-[12px] font-semibold text-white shadow-[0_1px_8px_color-mix(in_oklch,var(--accent-presence)_35%,transparent)] transition-all hover:opacity-90 hover:shadow-[0_2px_12px_color-mix(in_oklch,var(--accent-presence)_50%,transparent)] active:scale-95"
+            >
+              <Icon name="ph:plus-bold" width={11} />
+              Chat
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => onNewChat()}
-            className="flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-[var(--accent-presence)] px-3 text-[12px] font-medium text-white transition-opacity hover:opacity-85 active:scale-95"
-          >
-            <Icon name="ph:plus-bold" width={12} />
-            <span>Chat</span>
-          </button>
         </div>
 
-        <div className="mt-3 grid grid-cols-3 gap-1.5">
-          <div className="rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/40 px-2 py-1.5">
-            <p className="text-[9px] font-medium uppercase tracking-[0.08em] text-[var(--text-muted)]">Chats</p>
-            <p className="mt-0.5 font-mono text-[13px] text-[var(--text-primary)]">{mine.length}</p>
+        {/* Stats row */}
+        <div className="mt-3 grid grid-cols-3 gap-1.5 px-4">
+          <div className="group rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-raised)]/30 px-2.5 py-2 transition-colors hover:border-[var(--accent-presence)]/25 hover:bg-[var(--bg-raised)]/60">
+            <div className="flex items-center gap-1.5">
+              <Icon name="ph:chats" width={11} className="text-[var(--text-muted)]" />
+              <p className="text-[9px] font-medium uppercase tracking-[0.1em] text-[var(--text-muted)]">Chats</p>
+            </div>
+            <p className="mt-1 font-mono text-[15px] font-semibold text-[var(--text-primary)]">{mine.length}</p>
           </div>
-          <div className="rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/40 px-2 py-1.5">
-            <p className="text-[9px] font-medium uppercase tracking-[0.08em] text-[var(--text-muted)]">Live</p>
-            <p className="mt-0.5 font-mono text-[13px] text-[var(--text-primary)]">{runningCount}</p>
+          <div className="group rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-raised)]/30 px-2.5 py-2 transition-colors hover:border-[var(--accent-presence)]/25 hover:bg-[var(--bg-raised)]/60">
+            <div className="flex items-center gap-1.5">
+              <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${runningCount > 0 ? "animate-pulse bg-[var(--color-success)]" : "bg-[var(--text-muted)]"}`} />
+              <p className="text-[9px] font-medium uppercase tracking-[0.1em] text-[var(--text-muted)]">Live</p>
+            </div>
+            <p className={`mt-1 font-mono text-[15px] font-semibold ${runningCount > 0 ? "text-[var(--color-success)]" : "text-[var(--text-primary)]"}`}>{runningCount}</p>
           </div>
-          <div className="rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/40 px-2 py-1.5">
-            <p className="text-[9px] font-medium uppercase tracking-[0.08em] text-[var(--text-muted)]">Projects</p>
-            <p className="mt-0.5 font-mono text-[13px] text-[var(--text-primary)]">{projectCount}</p>
+          <div className="group rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-raised)]/30 px-2.5 py-2 transition-colors hover:border-[var(--accent-presence)]/25 hover:bg-[var(--bg-raised)]/60">
+            <div className="flex items-center gap-1.5">
+              <Icon name="ph:folder" width={11} className="text-[var(--text-muted)]" />
+              <p className="text-[9px] font-medium uppercase tracking-[0.1em] text-[var(--text-muted)]">Projects</p>
+            </div>
+            <p className="mt-1 font-mono text-[15px] font-semibold text-[var(--text-primary)]">{projectCount}</p>
           </div>
         </div>
 
-        <div className="mt-3 flex items-center gap-2">
-          <label className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)] px-2.5 focus-within:border-[var(--accent-presence)]/60 transition-colors">
+        {/* Search + filter row */}
+        <div className="mt-3 flex items-center gap-2 px-4 pb-3">
+          <label className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-raised)]/60 px-2.5 transition-colors focus-within:border-[var(--accent-presence)]/50 focus-within:bg-[var(--bg-raised)]">
             <Icon name="ph:magnifying-glass" width={13} className="shrink-0 text-[var(--text-muted)]" />
             <input
               ref={searchRef}
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search chats..."
+              placeholder="Search chats…"
               className="min-w-0 flex-1 bg-transparent text-[12px] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none"
             />
             {search && (
@@ -218,13 +249,15 @@ export function ChatList({ familiar, familiars = [], sessions, daemonRunning, on
             type="button"
             onClick={() => setUnreadsOnly((v) => !v)}
             className={[
-              "flex h-8 shrink-0 items-center gap-1.5 rounded-md border px-2.5 text-[11px] font-medium transition-colors",
+              "flex h-8 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 text-[11px] font-medium transition-colors",
               unreadsOnly
-                ? "border-[color-mix(in_oklch,var(--color-success)_40%,transparent)] bg-[color-mix(in_oklch,var(--color-success)_40%,transparent)] text-[var(--color-success)]"
-                : "border-[var(--border-hairline)] text-[var(--text-muted)] hover:border-[var(--text-muted)] hover:text-[var(--text-secondary)]",
+                ? "border-[color-mix(in_oklch,var(--color-success)_40%,transparent)] bg-[color-mix(in_oklch,var(--color-success)_15%,transparent)] text-[var(--color-success)]"
+                : "border-[var(--border-hairline)] text-[var(--text-muted)] hover:border-[var(--border-strong)] hover:text-[var(--text-secondary)]",
             ].join(" ")}
           >
-            <Icon name={unreadsOnly ? "ph:circle-fill" : "ph:circle"} width={12} />
+            {unreadsOnly
+              ? <span className="h-2 w-2 rounded-full bg-[var(--color-success)]" />
+              : <Icon name="ph:circle" width={12} />}
             Unreads
           </button>
         </div>
