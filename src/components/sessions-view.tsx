@@ -672,8 +672,33 @@ export function SessionsView({
   const [pendingSacrifice, setPendingSacrifice] = useState<SessionRow | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const [archivedSessions, setArchivedSessions] = useState<SessionRow[]>([]);
+  // Local per-familiar filter — defaults to null (show all). Takes precedence
+  // over the workspace's activeFamiliarId so the Sessions view always lands on
+  // "All sessions" regardless of which familiar is currently active elsewhere.
+  const [filterFamiliarId, setFilterFamiliarId] = useState<string | null>(null);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const filterRef = useRef<HTMLDivElement>(null);
 
-  const activeFamiliar = familiars.find((f) => f.id === activeFamiliarId) ?? null;
+  const effectiveFilterId = filterFamiliarId ?? activeFamiliarId;
+  const activeFamiliar = familiars.find((f) => f.id === effectiveFilterId) ?? null;
+
+  useEffect(() => {
+    if (!filterOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setFilterOpen(false);
+    };
+    const onMouse = (e: MouseEvent) => {
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
+        setFilterOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("mousedown", onMouse);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("mousedown", onMouse);
+    };
+  }, [filterOpen]);
 
   // Mutations
 
@@ -765,23 +790,23 @@ export function SessionsView({
 
   const filtered = useMemo(
     () =>
-      activeFamiliarId
-        ? sorted.filter((s) => s.familiarId === activeFamiliarId)
+      effectiveFilterId
+        ? sorted.filter((s) => s.familiarId === effectiveFilterId)
         : sorted,
-    [sorted, activeFamiliarId]
+    [sorted, effectiveFilterId]
   );
 
   const archivedFiltered = useMemo(() => {
     const sortedArch = [...archivedSessions].sort((a, b) =>
       a.updated_at < b.updated_at ? 1 : -1,
     );
-    return activeFamiliarId
-      ? sortedArch.filter((s) => s.familiarId === activeFamiliarId)
+    return effectiveFilterId
+      ? sortedArch.filter((s) => s.familiarId === effectiveFilterId)
       : sortedArch;
-  }, [archivedSessions, activeFamiliarId]);
+  }, [archivedSessions, effectiveFilterId]);
 
   const groups = useMemo<Map<string | null, SessionRow[]> | null>(() => {
-    if (activeFamiliarId) return null;
+    if (effectiveFilterId) return null;
     const map = new Map<string | null, SessionRow[]>();
     for (const s of filtered) {
       const key = s.familiarId ?? null;
@@ -789,7 +814,7 @@ export function SessionsView({
       map.get(key)!.push(s);
     }
     return map;
-  }, [filtered, activeFamiliarId]);
+  }, [filtered, effectiveFilterId]);
 
   const title = activeFamiliar
     ? `${activeFamiliar.display_name} — Sessions`
@@ -807,6 +832,97 @@ export function SessionsView({
           {subtitle && <span className="sessions-view-subtitle">{subtitle}</span>}
         </div>
         <div className="sessions-view-actions">
+          {familiars.length > 0 && (
+            <div ref={filterRef} className="relative inline-block">
+              <button
+                type="button"
+                onClick={() => setFilterOpen((v) => !v)}
+                className="focus-ring group inline-flex h-7 min-w-0 items-center gap-1.5 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/20 px-2 transition-colors hover:bg-[var(--bg-raised)]/60"
+                aria-haspopup="menu"
+                aria-expanded={filterOpen}
+                aria-label="Filter sessions by familiar"
+                title="Filter sessions by familiar"
+              >
+                <span className="min-w-0 truncate max-w-[140px] text-[12px] font-medium text-[var(--text-primary)]">
+                  {activeFamiliar ? activeFamiliar.display_name : "All sessions"}
+                </span>
+                <Icon
+                  name="ph:caret-up-down-bold"
+                  width={10}
+                  className="shrink-0 text-[var(--text-muted)] opacity-60 transition-opacity group-hover:opacity-100"
+                />
+              </button>
+              {filterOpen ? (
+                <div
+                  role="menu"
+                  className="absolute right-0 top-full z-40 mt-1.5 min-w-[220px] overflow-hidden rounded-xl border border-[var(--border-strong)] bg-[var(--bg-elevated)] shadow-2xl"
+                >
+                  <div className="px-2 py-1.5 text-[10px] uppercase tracking-wider text-[var(--text-muted)]">
+                    Filter sessions
+                  </div>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    aria-current={filterFamiliarId === null ? "true" : undefined}
+                    onClick={() => {
+                      setFilterOpen(false);
+                      setFilterFamiliarId(null);
+                    }}
+                    className={[
+                      "focus-ring-inset flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors",
+                      filterFamiliarId === null
+                        ? "bg-[color-mix(in_oklch,var(--accent-presence)_14%,transparent)] text-[var(--text-primary)]"
+                        : "text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]",
+                    ].join(" ")}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-[13px] font-medium leading-tight">All sessions</div>
+                      <div className="truncate text-[11px] text-[var(--text-muted)]">
+                        Across every familiar
+                      </div>
+                    </div>
+                    {filterFamiliarId === null ? (
+                      <Icon name="ph:check-bold" width={11} className="shrink-0 text-[var(--accent-presence)]" />
+                    ) : null}
+                  </button>
+                  <div className="my-1 border-t border-[var(--border-hairline)]" />
+                  {familiars.map((f) => {
+                    const isActive = f.id === filterFamiliarId;
+                    return (
+                      <button
+                        key={f.id}
+                        role="menuitem"
+                        aria-current={isActive ? "true" : undefined}
+                        type="button"
+                        onClick={() => {
+                          setFilterOpen(false);
+                          setFilterFamiliarId(f.id);
+                        }}
+                        className={[
+                          "focus-ring-inset flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors",
+                          isActive
+                            ? "bg-[color-mix(in_oklch,var(--accent-presence)_14%,transparent)] text-[var(--text-primary)]"
+                            : "text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]",
+                        ].join(" ")}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-[13px] font-medium leading-tight">
+                            {f.display_name}
+                          </div>
+                          {f.role ? (
+                            <div className="truncate text-[11px] text-[var(--text-muted)]">{f.role}</div>
+                          ) : null}
+                        </div>
+                        {isActive ? (
+                          <Icon name="ph:check-bold" width={11} className="shrink-0 text-[var(--accent-presence)]" />
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </div>
+          )}
           <button
             type="button"
             className={`sessions-view-archive-toggle${
@@ -823,7 +939,7 @@ export function SessionsView({
           <button
             type="button"
             className="sessions-view-new-btn"
-            onClick={() => onNewChat(activeFamiliarId ?? undefined)}
+            onClick={() => onNewChat(effectiveFilterId ?? undefined)}
           >
             <Icon name="ph:plus" width={12} />
             New chat
@@ -858,20 +974,20 @@ export function SessionsView({
             <button
               type="button"
               className="sessions-empty-cta"
-              onClick={() => onNewChat(activeFamiliarId ?? undefined)}
+              onClick={() => onNewChat(effectiveFilterId ?? undefined)}
             >
               <Icon name="ph:plus" width={12} />
               Start a chat
             </button>
           </div>
-        ) : activeFamiliarId ? (
+        ) : effectiveFilterId ? (
           <>
             <SessionGroup
               familiar={activeFamiliar ?? undefined}
               sessions={filtered}
               activeSessionId={activeSessionId}
               onOpenSession={onOpenSession}
-              onNewChat={() => onNewChat(activeFamiliarId)}
+              onNewChat={() => onNewChat(effectiveFilterId)}
               showNewChat
               layoutMode={layoutMode}
               openMenuId={openMenuId}
@@ -893,7 +1009,7 @@ export function SessionsView({
                   sessions={archivedFiltered}
                   activeSessionId={activeSessionId}
                   onOpenSession={onOpenSession}
-                  onNewChat={() => onNewChat(activeFamiliarId)}
+                  onNewChat={() => onNewChat(effectiveFilterId)}
                   showNewChat={false}
                   layoutMode={layoutMode}
                   openMenuId={openMenuId}

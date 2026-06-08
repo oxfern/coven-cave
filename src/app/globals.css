@@ -2144,25 +2144,27 @@ body {
    ============================================================ */
 
 [data-theme="midnight"] {
-  --background: oklch(0.10 0.004 293);
-  --card: oklch(0.13 0.005 293);
-  --muted: oklch(0.18 0.005 293);
+  /* Slightly less dark than previous (each surface +~0.02 L) so the deepest
+     theme keeps its mood without crushing UI contrast. */
+  --background: oklch(0.12 0.004 293);
+  --card: oklch(0.15 0.005 293);
+  --muted: oklch(0.20 0.005 293);
   --accent-presence: #7B73BD;
 
   /* Keep aliases in sync */
   --bg-base: var(--background);
   --bg-raised: var(--card);
-  --bg-panel: oklch(0.09 0.004 293);
-  --bg-elevated: oklch(0.20 0.006 293);
-  --bg-hover: oklch(0.23 0.006 293);
-  --secondary: oklch(0.20 0.005 293);
+  --bg-panel: oklch(0.11 0.004 293);
+  --bg-elevated: oklch(0.22 0.006 293);
+  --bg-hover: oklch(0.25 0.006 293);
+  --secondary: oklch(0.22 0.005 293);
   --secondary-foreground: oklch(0.985 0 0);
-  --accent: oklch(0.20 0.005 293);
-  --popover: oklch(0.13 0.005 293);
-  --muted-foreground: oklch(0.62 0.012 293);
+  --accent: oklch(0.22 0.005 293);
+  --popover: oklch(0.15 0.005 293);
+  --muted-foreground: oklch(0.64 0.012 293);
   --border: oklch(1 0 0 / 5%);
   --border-strong: oklch(1 0 0 / 9%);
-  --ring: oklch(0.50 0.07 293);
+  --ring: oklch(0.52 0.07 293);
   --ring-focus: color-mix(in oklch, #7B73BD 55%, transparent);
   --brand: var(--accent-presence);
 }
