@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Icon, type IconName } from "@/lib/icon";
 import type { TimelineEntry } from "@/app/api/library/all/route";
 import type { Familiar } from "@/lib/types";
@@ -8,26 +9,6 @@ function listIcon(list: TimelineEntry["list"]): IconName {
   if (list === "github") return "ph:github-logo";
   if (list === "reading") return "ph:book-open";
   return "ph:bookmark-simple";
-}
-
-function ruleLabel(entry: TimelineEntry, familiars: Familiar[]): string {
-  const rule = entry.item.capture?.classifier?.rule;
-  if (!rule) return "manual";
-  if (rule === "familiar-fallback") {
-    const fam = familiars.find((f) => f.id === entry.familiar);
-    return `${fam?.display_name ?? "Familiar"} guessed`;
-  }
-  return rule;
-}
-
-function sourcePillText(entry: TimelineEntry): string | null {
-  const s = entry.source;
-  if (!s) return null;
-  if (s.kind === "chat") return `chat "${s.chatTitle}"`;
-  if (s.kind === "browser") return "Save button";
-  if (s.kind === "slash") return s.originSessionId ? "/save in chat" : "/save";
-  if (s.kind === "feed") return `RSS · ${s.feedTitle}`;
-  return null;
 }
 
 function relTime(iso: string): string {
@@ -44,6 +25,36 @@ function relTime(iso: string): string {
   return `${Math.floor(d / 7)}w`;
 }
 
+function EntryIcon({ entry }: { entry: TimelineEntry }) {
+  const [imgFailed, setImgFailed] = useState(false);
+  const favicon = (entry.item as { favicon?: string }).favicon;
+  const url = (entry.item as { url?: string }).url;
+  const faviconSrc = favicon ||
+    (url ? (() => { try { return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(new URL(url).hostname)}&sz=32`; } catch { return null; } })() : null);
+
+  if (faviconSrc && !imgFailed) {
+    return (
+      <img
+        src={faviconSrc}
+        alt=""
+        width={16}
+        height={16}
+        className="h-4 w-4 rounded-sm object-contain"
+        onError={() => setImgFailed(true)}
+      />
+    );
+  }
+
+  return (
+    <Icon
+      name={listIcon(entry.list)}
+      width={15}
+      className="text-[var(--text-muted)]"
+      aria-hidden
+    />
+  );
+}
+
 export function LibraryTimelineRow({
   entry,
   familiars,
@@ -56,41 +67,38 @@ export function LibraryTimelineRow({
   onSelect: () => void;
 }) {
   const fam = familiars.find((f) => f.id === entry.familiar);
-  const pill = sourcePillText(entry);
+  const title = entry.item.title || (entry.item as { url?: string }).url || "Untitled";
+
   return (
     <button
       type="button"
       onClick={onSelect}
-      className={`focus-ring-inset grid w-full grid-cols-[24px_1fr_auto_auto] items-center gap-3 border-l-2 px-3 py-2 text-left text-[12px] transition-colors ${
+      className={`focus-ring-inset flex w-full items-center gap-3 border-l-2 px-3 py-2.5 text-left transition-colors ${
         selected
           ? "border-l-[var(--accent-presence)] bg-[var(--bg-hover)]"
           : "border-l-transparent hover:bg-[var(--bg-hover)]"
       }`}
       aria-current={selected ? "true" : undefined}
     >
-      <span className="flex h-5 w-5 items-center justify-center rounded text-[var(--text-primary)]">
-        <Icon name={listIcon(entry.list)} width={14} aria-hidden />
+      {/* icon / favicon */}
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center">
+        <EntryIcon entry={entry} />
       </span>
-      <span className="min-w-0">
-        <span className="block truncate text-[var(--text-primary)]">
-          {entry.item.title || entry.item.url}
+
+      {/* title + familiar */}
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[13px] text-[var(--text-primary)]">
+          {title}
         </span>
-        <span className="mt-0.5 flex items-center gap-1.5 text-[10px] text-[var(--text-muted)]">
-          {fam ? <span>{fam.display_name}</span> : null}
-          {pill ? (
-            <>
-              {fam ? <span aria-hidden>·</span> : null}
-              <span className="rounded bg-[var(--bg-raised)] px-1.5 py-0.5 text-[var(--accent-presence)]">
-                {pill}
-              </span>
-            </>
-          ) : null}
-        </span>
+        {fam && (
+          <span className="block truncate text-[11px] text-[var(--text-muted)]">
+            {fam.display_name}
+          </span>
+        )}
       </span>
-      <span className="rounded border border-[var(--border-hairline)] px-1.5 py-0.5 text-[9px] text-[var(--text-muted)]">
-        {ruleLabel(entry, familiars)}
-      </span>
-      <span className="text-[10px] tabular-nums text-[var(--text-muted)]">
+
+      {/* recency */}
+      <span className="shrink-0 text-[11px] tabular-nums text-[var(--text-muted)]">
         {relTime(entry.capturedAt)}
       </span>
     </button>

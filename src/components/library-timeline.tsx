@@ -145,8 +145,9 @@ export function LibraryTimeline({
         ) : (
           groups.map((g) => (
             <div key={g.label}>
-              <div className="border-b border-[var(--border-hairline)] bg-[var(--bg-panel)] px-3 py-1.5 text-[10px] uppercase tracking-wider text-[var(--text-muted)]">
-                {g.label} <span className="ml-2 normal-case text-[var(--text-muted)]">{g.items.length} link{g.items.length === 1 ? "" : "s"}</span>
+              <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-[var(--border-hairline)] bg-[var(--bg-panel)] px-3 py-1.5">
+                <span className="text-[10px] font-medium uppercase tracking-widest text-[var(--text-muted)]">{g.label}</span>
+                <span className="rounded-full bg-[var(--bg-raised)] px-1.5 py-0.5 text-[9px] tabular-nums text-[var(--text-muted)]">{g.items.length}</span>
               </div>
               {g.items.map((e) => (
                 <LibraryTimelineRow
