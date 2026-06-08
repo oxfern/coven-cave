@@ -2952,3 +2952,16 @@ body {
 .familiar-studio-brain__input:focus { outline: none; border-color: var(--border-strong); }
 .familiar-studio-brain__toast { font-size: 11px; color: var(--accent-warning, #f59e0b); margin: 0; }
 .familiar-studio-identity__reset:disabled { opacity: 0.3; cursor: not-allowed; }
+.familiar-studio-lifecycle { display: flex; flex-direction: column; gap: 18px; }
+.familiar-studio-lifecycle__section { display: flex; flex-direction: column; gap: 6px; }
+.familiar-studio-lifecycle__heading { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin: 0; }
+.familiar-studio-lifecycle__hint { font-size: 12px; color: var(--text-muted); line-height: 1.4; margin: 0; }
+.familiar-studio-lifecycle__btn { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; background: var(--bg-raised); border: 1px solid var(--border-hairline); border-radius: 6px; padding: 6px 10px; color: var(--text-primary); font-size: 12px; cursor: pointer; }
+.familiar-studio-lifecycle__btn:hover { background: color-mix(in oklch, var(--text-primary) 8%, var(--bg-raised)); }
+.familiar-studio-lifecycle__btn--danger { color: var(--accent-danger, #ef4444); }
+.familiar-studio-lifecycle__btn--confirm { background: var(--accent-danger, #ef4444); color: var(--bg-base); border-color: transparent; }
+.familiar-studio-lifecycle__row { display: flex; gap: 4px; padding: 4px; border-radius: 6px; }
+.familiar-studio-lifecycle__row:hover { background: var(--bg-raised); }
+.familiar-studio-lifecycle__row-main { display: flex; gap: 8px; align-items: center; flex: 1; background: transparent; border: none; padding: 4px 6px; cursor: pointer; color: var(--text-primary); font-size: 13px; }
+.familiar-studio-lifecycle__row-action { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 4px; background: transparent; border: none; color: var(--text-secondary); cursor: pointer; }
+.familiar-studio-lifecycle__row-action:hover { color: var(--text-primary); background: var(--bg-base); }

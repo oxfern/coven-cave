@@ -8,6 +8,7 @@ import { useResolvedFamiliars } from "@/lib/familiar-resolve";
 import { FamiliarStudioIdentityTab } from "./familiar-studio-identity-tab";
 import { FamiliarStudioLookTab } from "./familiar-studio-look-tab";
 import { FamiliarStudioBrainTab } from "./familiar-studio-brain-tab";
+import { FamiliarStudioLifecycleTab } from "./familiar-studio-lifecycle-tab";
 import type { Familiar } from "@/lib/types";
 
 type Props = {
@@ -140,7 +141,9 @@ export function FamiliarStudio({ familiars }: Props) {
           ) : null}
           {activeTab === "look" && familiar ? <FamiliarStudioLookTab familiar={familiar} /> : null}
           {activeTab === "brain" && familiar ? <FamiliarStudioBrainTab familiar={familiar} /> : null}
-          {activeTab === "lifecycle" ? <div data-testid="lifecycle-tab" /> : null}
+          {activeTab === "lifecycle" ? (
+            <FamiliarStudioLifecycleTab familiar={familiar} allResolved={resolved} />
+          ) : null}
         </div>
 
         <footer className="familiar-studio__footer">
