@@ -4,6 +4,7 @@ import { useEffect, useMemo } from "react";
 import { Icon } from "@/lib/icon";
 import { FamiliarAvatar } from "@/components/familiar-avatar";
 import { computePresence, REMOTE_HARNESSES } from "@/lib/presence";
+import { useFamiliarStudio } from "@/lib/familiar-studio-context";
 import type { ResolvedFamiliar } from "@/lib/familiar-resolve";
 import type { SessionRow } from "@/lib/types";
 
@@ -28,6 +29,7 @@ export function FamiliarAvatarRail({
   onAddFamiliar,
   onToggleSidebar,
 }: Props) {
+  const { openFamiliarStudio } = useFamiliarStudio();
 
   useEffect(() => {
     if (!activeId) return;
@@ -64,20 +66,22 @@ export function FamiliarAvatarRail({
           });
           const liveCount = liveCounts.get(f.id) ?? 0;
           return (
-            <li key={f.id}>
+            <li
+              key={f.id}
+              className="familiar-avatar-rail__item"
+            >
               <button
                 type="button"
                 data-id={f.id}
                 className={`familiar-avatar-rail__avatar${active ? " familiar-avatar-rail__avatar--active" : ""}`}
+                style={{ "--familiar-accent": f.color } as React.CSSProperties}
                 aria-label={`${f.display_name}${needsReply ? ` — reply needed` : ""}${liveCount ? ` — ${liveCount} live` : ""}`}
                 aria-pressed={active}
                 title={`${f.display_name} · ${presence.label}`}
                 onClick={() => onSelect(f.id)}
+                onContextMenu={(e) => { e.preventDefault(); openFamiliarStudio(f.id, "identity"); }}
               >
-                <FamiliarAvatar
-                  familiar={f}
-                  size="sm"
-                />
+                <FamiliarAvatar familiar={f} size="sm" />
                 <span
                   className={`familiar-avatar-rail__presence ${presence.dot}`}
                   aria-hidden
@@ -88,6 +92,15 @@ export function FamiliarAvatarRail({
                     aria-hidden
                   />
                 ) : null}
+              </button>
+              <button
+                type="button"
+                className="familiar-avatar-rail__edit"
+                aria-label={`Customize ${f.display_name}`}
+                title="Customize"
+                onClick={(e) => { e.stopPropagation(); openFamiliarStudio(f.id, "identity"); }}
+              >
+                <Icon name="ph:dots-three-bold" width={10} />
               </button>
             </li>
           );

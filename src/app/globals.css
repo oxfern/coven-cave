@@ -2276,7 +2276,7 @@ body {
   bottom: 6px;
   width: 3px;
   border-radius: 3px;
-  background: var(--accent-presence);
+  background: var(--familiar-accent, var(--accent-presence));
 }
 
 .familiar-avatar-rail__presence {
@@ -2298,6 +2298,43 @@ body {
   border-radius: 50%;
   background: var(--color-danger);
   border: 2px solid var(--bg-panel);
+}
+
+.familiar-avatar-rail__item {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.familiar-avatar-rail__edit {
+  position: absolute;
+  top: -4px;
+  right: 6px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  background: var(--bg-raised);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-hairline);
+  cursor: pointer;
+  z-index: 1;
+}
+
+.familiar-avatar-rail__item:hover .familiar-avatar-rail__edit,
+.familiar-avatar-rail__item:focus-within .familiar-avatar-rail__edit {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.familiar-avatar-rail__edit:hover {
+  color: var(--text-primary);
+  background: color-mix(in oklch, var(--familiar-accent, var(--accent-presence)) 18%, var(--bg-raised));
 }
 
 .familiar-avatar-rail__add,
