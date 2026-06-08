@@ -5,6 +5,7 @@ import type { Familiar, SessionRow } from "@/lib/types";
 import { SLASH_COMMANDS } from "@/lib/slash-commands";
 import { Icon } from "@/lib/icon";
 import { platformizeHint, useKeySymbols } from "@/lib/platform-keys";
+import { useFocusTrap } from "@/lib/use-focus-trap";
 
 type PaletteIntent =
   | { kind: "switch-familiar"; familiarId: string }
@@ -84,7 +85,10 @@ export function CommandPalette({
   const [covenMemory, setCovenMemory] = useState<CovenMemoryEntry[]>([]);
   const [fsMemory, setFsMemory] = useState<FsMemoryEntry[]>([]);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
   const keys = useKeySymbols();
+
+  useFocusTrap(open, dialogRef, { onEscape: onClose });
 
   // Fetch the searchable corpora once on first open. Cheap calls; refreshed
   // every time the palette opens so the index doesn't go stale.
@@ -114,18 +118,6 @@ export function CommandPalette({
 
     return () => clearTimeout(t);
   }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
 
   const rows: Row[] = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -303,10 +295,12 @@ export function CommandPalette({
       style={{ animation: "ui-modal-fade-in var(--duration-fast) var(--ease-decelerate)" }}
     >
       <div
+        ref={dialogRef}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-label="Command palette"
+        tabIndex={-1}
         className="mt-[12vh] w-[640px] max-w-[92vw] overflow-hidden rounded-2xl border border-[var(--border-strong)] bg-[var(--bg-elevated)] shadow-2xl"
         style={{ animation: "ui-modal-enter var(--duration-base) var(--ease-decelerate)" }}
       >
@@ -319,20 +313,35 @@ export function CommandPalette({
           }}
           onKeyDown={onComposerKey}
           placeholder="Search familiars · chats · cards · memory · commands…"
+          aria-label="Search and jump to anything"
+          aria-controls="command-palette-listbox"
+          aria-activedescendant={
+            rows.length > 0 ? `command-palette-option-${activeIdx}` : undefined
+          }
           className="focus-ring-inset w-full border-b border-[var(--border-hairline)] bg-transparent px-4 py-3 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
         />
-        <ul className="max-h-[60vh] overflow-y-auto py-1">
+        <ul
+          id="command-palette-listbox"
+          role="listbox"
+          className="max-h-[60vh] overflow-y-auto py-1"
+        >
           {rows.length === 0 ? (
-            <li className="px-4 py-6 text-center text-xs text-[var(--text-muted)]">No matches.</li>
+            <li role="presentation" className="px-4 py-6 text-center text-xs text-[var(--text-muted)]">No matches.</li>
           ) : null}
           {rows.map((row, i) => {
             const active = i === activeIdx;
             return (
-              <li key={row.id}>
+              <li
+                key={row.id}
+                role="option"
+                id={`command-palette-option-${i}`}
+                aria-selected={active}
+              >
                 <button
+                  type="button"
+                  tabIndex={-1}
                   onMouseEnter={() => setActiveIdx(i)}
                   onClick={() => fire(row)}
-                  aria-current={active ? "true" : undefined}
                   className={`focus-ring-inset flex w-full items-center gap-3 border-l-2 px-4 py-2 text-left text-sm transition-colors ${
                     active
                       ? "border-l-[var(--accent-presence)] bg-[var(--bg-hover)]"

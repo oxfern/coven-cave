@@ -77,10 +77,10 @@ export function SalemWidget() {
   if (docked) return null;
 
   return (
-    <div className="salem-perch" onClick={open} role="button" tabIndex={0} aria-label="Open Salem docs familiar" onKeyDown={(e) => e.key === "Enter" && open()}>
+    <button type="button" className="salem-perch" onClick={open} aria-label="Open Salem docs familiar">
       <SalemCat3D mood={mood} size={88} />
       <span className="salem-perch__label">Salem</span>
-    </div>
+    </button>
   );
 }
 
@@ -207,6 +207,7 @@ export function SalemChatPanel() {
           onChange={(e) => { setInput(e.target.value); if (e.target.value) setMood("listening"); else setMood("idle"); }}
           disabled={loading}
           autoFocus
+          aria-label="Search Salem docs"
         />
         <button type="submit" className="salem-panel__send salem-panel__send--label" disabled={loading || !input.trim()} aria-label="Send">
           <span className="salem-panel__send-text">SALEM</span>
