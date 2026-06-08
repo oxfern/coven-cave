@@ -5,15 +5,7 @@ import { Icon } from "@/lib/icon";
 import type { Familiar } from "@/lib/types";
 import { MemoryGraph3D } from "@/components/memory-graph-3d";
 import { buildMemoryGraphModel, resolveMemoryFamiliarFilter } from "@/lib/memory-graph-3d-model";
-
-type CovenMemoryEntry = {
-  id: string;
-  familiar_id: string;
-  title: string;
-  path: string;
-  updated_at: string;
-  excerpt?: string;
-};
+import type { CovenMemoryEntry } from "@/components/agents-view-stats";
 
 type FileMemoryEntry = {
   root: string;

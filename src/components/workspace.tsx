@@ -662,10 +662,7 @@ export function Workspace() {
       return;
     }
     if (intent.kind === "open-memory-file") {
-      // Switch to Agents view (memory inspector lives in the right pane), and
-      // surface the path via a hash that InspectorPane can wire to in a
-      // follow-up commit; for now this is a no-op visual placeholder.
-      setMode("chat");
+      setMode("agents");
       window.location.hash = `memory:${encodeURIComponent(intent.path)}`;
       return;
     }
@@ -1076,7 +1073,8 @@ export function Workspace() {
               memorySlot={
                 <RailMemoryList
                   familiar={active}
-                  onOpenFullView={() => setMode("memory" as WorkspaceMode)}
+                  familiars={familiars}
+                  onOpenFullView={() => setMode("agents")}
                 />
               }
             />
