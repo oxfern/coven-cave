@@ -171,6 +171,14 @@ export function AgentsView({
           <div className="flex items-center gap-2">
             <button
               type="button"
+              onClick={() => setViewMode("global-memory")}
+              className="inline-flex h-7 items-center gap-1.5 rounded-md border border-[var(--border-hairline)] bg-[var(--accent-presence)]/10 px-2.5 text-[11px] text-[var(--accent-presence)] hover:bg-[var(--accent-presence)]/15"
+            >
+              <Icon name="ph:graph" width={12} />
+              Memory across all agents
+            </button>
+            <button
+              type="button"
               onClick={() => void loadMemory()}
               className="inline-flex h-7 items-center gap-1.5 rounded-md border border-[var(--border-hairline)] px-2.5 text-[11px] text-[var(--text-secondary)] hover:bg-[var(--bg-raised)]"
             >
@@ -253,6 +261,13 @@ export function AgentsView({
           </div>
         )}
       </div>
+      {viewMode === "global-memory" ? (
+        <GlobalMemoryOverlay
+          familiars={familiars}
+          onClose={() => setViewMode(selectedFamiliarId ? "detail" : "roster")}
+          onOpenMemoryFile={onOpenMemoryFile}
+        />
+      ) : null}
     </div>
   );
 }
@@ -380,6 +395,60 @@ function AgentRosterCard({
         )}
       </div>
     </button>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// GlobalMemoryOverlay — modal-style full-screen overlay for all-agent memory
+// ────────────────────────────────────────────────────────────────────────────
+
+type GlobalMemoryOverlayProps = {
+  familiars: Familiar[];
+  onClose: () => void;
+  onOpenMemoryFile: (path: string) => void;
+};
+
+function GlobalMemoryOverlay({ familiars, onClose, onOpenMemoryFile }: GlobalMemoryOverlayProps) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div
+      className="agents-view__overlay fixed inset-0 z-50 grid place-items-center bg-black/40 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Memory across all agents"
+      onClick={onClose}
+    >
+      <div
+        className="agents-view__overlay-panel relative flex h-[85vh] w-[90vw] max-w-[1280px] flex-col overflow-hidden rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-base)] shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-3 top-3 z-10 inline-flex h-7 items-center gap-1 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)] px-2 text-[11px] text-[var(--text-secondary)] hover:bg-[var(--bg-raised)]/80"
+          aria-label="Close"
+        >
+          <Icon name="ph:x" width={12} />
+          Close
+        </button>
+        <AgentsMemoryView
+          familiars={familiars}
+          activeFamiliar={null}
+          mode="graph"
+          onOpenMemoryFile={onOpenMemoryFile}
+        />
+      </div>
+    </div>
   );
 }
 
