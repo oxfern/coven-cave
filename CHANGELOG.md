@@ -139,10 +139,25 @@ internal audit.
 
 ### Known limitations
 
-- `release/` still ships only `CovenCave-v0.0.48.dmg`. Tagging the
-  next release requires rebuilt `.dmg` / `.msi` / `.AppImage`
-  artifacts plus a `SHA256SUMS` file. Owned by the release pipeline,
-  not this branch.
+- The currently published GitHub Release is still v0.0.48; the next
+  tag push will trigger `.github/workflows/release.yml` to build all
+  three OS artifacts and publish a `SHA256SUMS` asset alongside them.
+  The script + workflow plumbing for that is done; the actual rebuild
+  needs a tag push by someone with repo-secret access for the Apple
+  signing/notarization credentials.
+
+### Pre-existing artifact checksum
+
+For verifiability while v0.0.49 is in flight, the SHA-256 of the
+currently shipped macOS DMG (`CovenCave-v0.0.48.dmg`) is:
+
+```
+70bea2f0f0f81a655f356bf4502c19c573449393d1d8653c58be677a6f2f568a  CovenCave-v0.0.48.dmg
+```
+
+Verify with `shasum -a 256 -c` against a one-line file containing that
+entry. Future releases will ship this aggregated in `SHA256SUMS` via
+the workflow.
 
 ---
 
