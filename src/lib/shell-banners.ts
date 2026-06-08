@@ -1,6 +1,6 @@
 "use client";
 
-import { createElement, createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createElement, createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 
 export type BannerSeverity = "error" | "warning" | "info";
 
@@ -24,20 +24,28 @@ const SEVERITY_RANK: Record<BannerSeverity, number> = { error: 0, warning: 1, in
 export function ShellBannersProvider({ children }: { children: ReactNode }) {
   const [banners, setBanners] = useState<ShellBanner[]>([]);
 
-  const value = useMemo<Ctx>(() => ({
-    banners: [...banners].sort(
+  const pushBanner = useCallback((b: ShellBanner) => {
+    setBanners((prev) => {
+      const without = prev.filter((p) => p.id !== b.id);
+      return [...without, b];
+    });
+  }, []);
+
+  const dismissBanner = useCallback((id: string) => {
+    setBanners((prev) => prev.filter((p) => p.id !== id));
+  }, []);
+
+  const sortedBanners = useMemo(
+    () => [...banners].sort(
       (a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity],
     ),
-    pushBanner: (b) => {
-      setBanners((prev) => {
-        const without = prev.filter((p) => p.id !== b.id);
-        return [...without, b];
-      });
-    },
-    dismissBanner: (id) => {
-      setBanners((prev) => prev.filter((p) => p.id !== id));
-    },
-  }), [banners]);
+    [banners],
+  );
+
+  const value = useMemo<Ctx>(
+    () => ({ banners: sortedBanners, pushBanner, dismissBanner }),
+    [sortedBanners, pushBanner, dismissBanner],
+  );
 
   return createElement(ShellBannersContext.Provider, { value }, children);
 }
