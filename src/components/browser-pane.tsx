@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle } from "react";
 import { Icon } from "@/lib/icon";
 import { IconButton } from "@/components/ui/icon-button";
 import { BrowserQuickOpen } from "@/components/browser-quick-open";
@@ -200,7 +200,12 @@ function SaveToLibraryButton({
   );
 }
 
-export function BrowserPane({ label = "default", activeFamiliarId = null }: { label?: string; activeFamiliarId?: string | null }) {
+
+export type BrowserPaneHandle = {
+  navigateTo: (url: string) => void;
+};
+
+export const BrowserPane = forwardRef<BrowserPaneHandle, { label?: string; activeFamiliarId?: string | null }>(function BrowserPane({ label = "default", activeFamiliarId = null }: { label?: string; activeFamiliarId?: string | null }, ref: React.Ref<BrowserPaneHandle>) {
   const surfaceRef = useRef<HTMLDivElement | null>(null);
   const paneRef = useRef<HTMLDivElement | null>(null);
   const [bridge, setBridge] = useState<TauriBridge | null>(null);
@@ -452,7 +457,9 @@ export function BrowserPane({ label = "default", activeFamiliarId = null }: { la
     setAddressBar(next);
 
     if (!bridge) {
-      const h = historyRef.current[activeTabId] ?? { stack: [activeUrl], idx: 0 };
+      useImperativeHandle(ref, () => ({ navigateTo }), [navigateTo]);
+
+  const h = historyRef.current[activeTabId] ?? { stack: [activeUrl], idx: 0 };
       if (h.stack[h.idx] !== next) {
         const stack = [...h.stack.slice(0, h.idx + 1), next];
         historyRef.current[activeTabId] = { stack, idx: stack.length - 1 };
@@ -464,6 +471,8 @@ export function BrowserPane({ label = "default", activeFamiliarId = null }: { la
       savePinnedTabs(nextTabs.filter((t) => t.kind === "pinned"));
     }
   };
+
+  useImperativeHandle(ref, () => ({ navigateTo }), [navigateTo]);
 
   const h = historyRef.current[activeTabId] ?? { stack: [activeUrl], idx: 0 };
   const canBack = h.idx > 0;
@@ -728,4 +737,4 @@ export function BrowserPane({ label = "default", activeFamiliarId = null }: { la
       </div>{/* end main area */}
     </div>
   );
-}
+});

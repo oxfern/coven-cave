@@ -18,7 +18,7 @@ import { FamiliarGlyphPicker } from "@/components/familiar-glyph-picker";
 import { Shell, type ShellHandle } from "@/components/shell";
 import { ChooserModal, type ChooserOption } from "@/components/ui/chooser-modal";
 import { AgentPanel } from "@/components/agent-panel";
-import { BrowserPane } from "@/components/browser-pane";
+import { BrowserPane, type BrowserPaneHandle } from "@/components/browser-pane";
 import { AutomationsView } from "@/components/automations-view";
 import { ComuxView } from "@/components/comux-view";
 import { GitHubView } from "@/components/github-view";
@@ -85,6 +85,7 @@ export function Workspace() {
   const [responseNeeded, setResponseNeeded] = useState<Set<string>>(new Set());
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [mode, setMode] = useState<WorkspaceMode>("home");
+  const browserPaneRef = useRef<BrowserPaneHandle>(null);
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [rightPanel, setRightPanel] = useState<"inspector" | "chat" | null>(null);
   const [shellAgentPane, setShellAgentPane] = useState<"browser" | "chat">("browser");
@@ -766,7 +767,11 @@ export function Workspace() {
         onOpenMode={(nextMode) => setMode(nextMode as WorkspaceMode)}
       />
     ) : mode === "library" ? (
-      <LibraryView />
+      <LibraryView onOpenUrl={(url) => {
+        setMode("browser");
+        // Give the pane one frame to mount/become active, then navigate
+        requestAnimationFrame(() => browserPaneRef.current?.navigateTo(url));
+      }} />
     ) : mode === "board" ? (
       <BoardView
         familiars={familiars}
@@ -795,7 +800,7 @@ export function Workspace() {
         }}
       />
     ) : mode === "browser" ? (
-      <BrowserPane label="main" activeFamiliarId={active?.id ?? null} />
+      <BrowserPane ref={browserPaneRef} label="main" activeFamiliarId={active?.id ?? null} />
     ) : mode === "terminal" ? (
       <ComuxView
         view="terminal"

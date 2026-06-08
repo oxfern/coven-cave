@@ -22,7 +22,7 @@ import type {
   LibrarySectionKind,
 } from "@/lib/library-types";
 
-export function LibraryView() {
+export function LibraryView({ onOpenUrl }: { onOpenUrl?: (url: string) => void } = {}) {
   const [activeSection, setActiveSection] = useState<LibrarySectionKind>("all");
   const [activeCollection, setActiveCollection] = useState("all");
   const [collections, setCollections] = useState<LibraryCollection[]>([]);
@@ -173,21 +173,30 @@ export function LibraryView() {
           {activeSection === "bookmarks" && (
             <LibraryBookmarksList
               selectedId={selectedBmId}
-              onSelect={(item: LibraryBookmark) => setSelectedItem({ kind: "bookmark", item })}
+              onSelect={(item: LibraryBookmark) => {
+                if (onOpenUrl && item.url) { onOpenUrl(item.url); return; }
+                setSelectedItem({ kind: "bookmark", item });
+              }}
               onDelete={(id) => { if (selectedBmId === id) setSelectedItem(null); }}
             />
           )}
           {activeSection === "reading" && (
             <LibraryReadingList
               selectedId={selectedReadId}
-              onSelect={(item: LibraryReadingItem) => setSelectedItem({ kind: "reading", item })}
+              onSelect={(item: LibraryReadingItem) => {
+                if (onOpenUrl && item.url) { onOpenUrl(item.url); return; }
+                setSelectedItem({ kind: "reading", item });
+              }}
               onDelete={(id) => { if (selectedReadId === id) setSelectedItem(null); }}
             />
           )}
           {activeSection === "github" && (
             <LibraryGitHubList
               selectedId={selectedGhId}
-              onSelect={(item: LibraryGitHubItem) => setSelectedItem({ kind: "github", item })}
+              onSelect={(item: LibraryGitHubItem) => {
+                if (onOpenUrl && item.url) { onOpenUrl(item.url); return; }
+                setSelectedItem({ kind: "github", item });
+              }}
               onDelete={(id) => { if (selectedGhId === id) setSelectedItem(null); }}
             />
           )}

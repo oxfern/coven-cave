@@ -46,6 +46,51 @@ function groupItems(items: LibraryBookmark[], by: GroupBy): { key: string; label
     .map(([key, items]) => ({ key, label: key, items }));
 }
 
+
+// ── Favicon ───────────────────────────────────────────────────────────────
+
+const INITIAL_COLORS = [
+  "#5b5bd6", "#7c3aed", "#db2777", "#ea580c",
+  "#16a34a", "#0891b2", "#4f46e5", "#0d9488",
+];
+
+function initialColor(seed: string): string {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
+  return INITIAL_COLORS[Math.abs(h) % INITIAL_COLORS.length];
+}
+
+function googleFavicon(url: string): string {
+  try { return `https://www.google.com/s2/favicons?domain=${new URL(url).hostname}&sz=32`; }
+  catch { return ""; }
+}
+
+function ItemFavicon({ url, title }: { url: string; title: string }) {
+  const [failed, setFailed] = React.useState(false);
+  const src = googleFavicon(url);
+  if (!src || failed) {
+    const letter = (title || url).trim().slice(0, 1).toUpperCase() || "?";
+    return (
+      <span
+        className="library-favicon-initial"
+        style={{ background: initialColor(title || url) }}
+      >
+        {letter}
+      </span>
+    );
+  }
+  return (
+    <img
+      src={src}
+      alt=""
+      width={14}
+      height={14}
+      className="library-favicon"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 // ── Add form ───────────────────────────────────────────────────────────────
 
 function AddBookmarkForm({ onAdd, onCancel }: { onAdd: (url: string, title: string, tags: string[]) => void; onCancel: () => void }) {
@@ -232,18 +277,7 @@ export function LibraryBookmarksList({ selectedId, onSelect, onDelete }: Props) 
                       onClick={() => onSelect(item)}>
                       <td>
                         <span className="board-table-title library-title-cell">
-                          {item.favicon ? (
-                            <img
-                              src={item.favicon}
-                              alt=""
-                              width={14}
-                              height={14}
-                              className="library-favicon"
-                              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                            />
-                          ) : (
-                            <Icon name="ph:link-simple" width={13} className="library-favicon-fallback" />
-                          )}
+                          <ItemFavicon url={item.url} title={item.title} />
                           <a
                             href={item.url}
                             target="_blank"

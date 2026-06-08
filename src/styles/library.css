@@ -1463,3 +1463,17 @@ tr:hover .library-row-delete,
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+
+.library-favicon-initial {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1;
+}

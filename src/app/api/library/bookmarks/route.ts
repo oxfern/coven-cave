@@ -11,8 +11,8 @@ function domainFrom(url: string): string {
 
 function faviconUrl(url: string): string {
   try {
-    const { protocol, hostname } = new URL(url);
-    return `${protocol}//${hostname}/favicon.ico`;
+    const { hostname } = new URL(url);
+    return `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`;
   } catch { return ""; }
 }
 
