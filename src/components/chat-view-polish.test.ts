@@ -80,8 +80,20 @@ assert.match(
 
 assert.match(
   source,
-  /<header className="cave-chat-workbench-header"/,
-  "Chat header should use the full-width workbench header",
+  /<header className="cave-chat-linear-header"/,
+  "Chat header should use the dense linear session header",
+);
+
+assert.match(
+  turnRow,
+  /const turnNumber = String\(index \+ 1\)\.padStart\(2, "0"\)/,
+  "Chat turns should expose stable turn numbers for dense review",
+);
+
+assert.match(
+  turnRow,
+  /cave-linear-turn[\s\S]*cave-linear-turn-index[\s\S]*cave-linear-turn-content/,
+  "Chat turns should use the dense linear transcript anatomy",
 );
 
 assert.doesNotMatch(

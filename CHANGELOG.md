@@ -7,12 +7,31 @@ breaking config changes; patch releases stay additive.
 
 ## [Unreleased]
 
-This release rolls up the Familiar Studio work, the shell IA redesign that
-preceded it on `main`, and a sweep of production-readiness fixes from the
-internal audit.
+## [0.0.50] — 2026-06-08
+
+Agents page, light/dark themes, full UI polish pass, memory constellation
+with per-familiar file coverage, reader improvements, chat surface controls
+cleanup, and a handful of chat rendering fixes.
 
 ### Added
 
+- **Agents page.** New default landing surface with a roster grid of all
+  familiars, in-place drill-in with Memory / Files / Sessions tabs, and a
+  "Memory across all agents" overlay. Sidebar gains an Agents folder;
+  ⌘1–⌘8 shortcuts shift accordingly.
+- **Light / dark mode + 8 themes.** Full `prefers-color-scheme` aware
+  theme system with curated Midnight, Dusk, Slate, Moss, Sky, Dawn, Latte,
+  and Storm presets. All hardcoded `rgba(255,…)` color literals replaced
+  with `var(--text-*)` / `var(--bg-*)` / `var(--border-*)` tokens.
+- **Memory constellation — per-familiar file coverage.** `/api/memory`
+  now scans `~/.openclaw/workspace/<familiarId>/memory/` for every agent
+  and tags each entry with `familiarId`. The 3-D graph model renders them
+  as a files sub-hub connected to each familiar's hub node (~1 200 entries
+  across all familiars vs 1 before).
+- **Research Library reader polish.** Lora font imported, modal widened
+  from 780 → 820 px, airy header and body padding, Lora prose at 16 px /
+  1.85 line-height.
+- **Cave marketplace (tier 0).** Preserve tier-0 marketplace surface.
 - **Familiar Studio drawer.** Per-familiar Cave-local customization with four
   tabs: Identity (display name, role, pronouns, description), Look (glyph
   picker, accent color, uploaded image avatar), Brain (harness / model / note
@@ -32,6 +51,19 @@ internal audit.
 
 ### Changed
 
+- **Chat surface controls.** Session toggle renamed Open/Closed → Active/Done
+  with status icons; group-by option renamed None → Flat; rows icon prefixed
+  to the group-by segment for visual context.
+- **Chat workbench.** `cave-chat-workbench`, `cave-chat-workbench-header`,
+  `cave-chat-thread`, `cave-chat-empty` CSS classes replace inline style
+  attributes. ToolGroup summary label changed "Tool use" → "Tool activity".
+- **UI polish sweep.** Sidebar, header, banner, rail, board, inbox, and
+  library all received focus-ring corrections, light-mode theming, and
+  contrast improvements.
+- **Library timeline.** Stable `timelineEntryKey()` prevents `key=undefined`
+  React warnings on legacy entries missing `.id`.
+- **Session list controls.** Session filter tab and group-by toggle visual
+  improvements; `.gitignore` updated to exclude `.playwright-cli/` dumps.
 - **`callDaemon`** normalizes socket errors. ENOENT/ECONNREFUSED →
   `"daemon offline"`, EACCES/EPERM → `"socket exists but not readable"`,
   timeouts → `"daemon timeout"`. Other errors have absolute paths redacted
@@ -58,6 +90,16 @@ internal audit.
 
 ### Fixed
 
+- **Chat markdown rendering.** Re-attached `lang:filename` label, corrected
+  multi-block render, stripped lang suffix before parse, surfaced render
+  errors with aligned HTML escape.
+- **Chat history.** Preserved history and context across session transitions.
+- **Superpowers skill bodies.** Hidden leaked skill body content from chat;
+  plugin row padding deduplicated.
+- **Title enricher.** Stopped arbitrary server-side URL fetches that could
+  leak internal paths.
+- **Agents memory routes.** Wired memory routes correctly to the Agents
+  surface.
 - **CSRF gate ordering.** `src/proxy.ts` previously short-circuited to
   `NextResponse.next()` the moment `COVEN_CAVE_AUTH_TOKEN` was unset
   (the typical `pnpm dev` state). That early return ran *before* the

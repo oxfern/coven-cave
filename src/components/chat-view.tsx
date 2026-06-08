@@ -834,10 +834,10 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
   );
 
   return (
-    <section className="cave-chat-messenger flex h-full flex-col bg-[var(--bg-base)] text-[var(--text-primary)]">
-      <header className="cave-chat-messenger-header">
+    <section className="cave-chat-linear flex h-full flex-col bg-[var(--bg-base)] text-[var(--text-primary)]">
+      <header className="cave-chat-linear-header">
         <div className="flex min-w-0 items-start gap-3">
-          <div className="cave-agent-avatar" aria-hidden>
+          <div className="cave-agent-marker" aria-hidden>
             <Icon name="ph:sparkle-bold" width={15} />
           </div>
           <div className="min-w-0 flex-1">
@@ -869,8 +869,8 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
           </div>
           <div className="ml-auto hidden items-center gap-2 md:flex">
             <span className="cave-header-stat">
-              <Icon name="ph:chats" width={12} aria-hidden />
-              conversation
+              <Icon name="ph:list-bullets" width={12} aria-hidden />
+              linear session
             </span>
           </div>
         </div>
@@ -908,7 +908,7 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
               return prev.role !== t.role;
             })();
             return (
-              <TurnRow key={t.id} turn={t} familiar={familiar} showTimestamp={showTimestamp} />
+              <TurnRow key={t.id} turn={t} familiar={familiar} showTimestamp={showTimestamp} index={i} />
             );
           })}
           <div ref={tailRef} />
@@ -1101,27 +1101,36 @@ function TurnRow({
   turn,
   familiar,
   showTimestamp = true,
+  index,
 }: {
   turn: Turn;
   familiar: Familiar;
   showTimestamp?: boolean;
+  index: number;
 }) {
+  const turnNumber = String(index + 1).padStart(2, "0");
+
   if (turn.role === "system" || turn.role === "user") {
     return (
-      <div className={turn.role === "user" ? "cave-turn-user" : "cave-turn-system"}>
-        <div className="cave-turn-user-meta">
-          <span>{turn.role === "user" ? "You" : "System"}</span>
-          {showTimestamp && turn.createdAt ? <span>{fmtTime(turn.createdAt)}</span> : null}
-          {turn.attachments?.length ? <span>{turn.attachments.length} files</span> : null}
+      <div className={`cave-linear-turn cave-linear-turn--${turn.role}`}>
+        <aside className="cave-linear-turn-index" aria-label={`Turn ${turnNumber}`}>
+          {turnNumber}
+        </aside>
+        <div className="cave-linear-turn-content">
+          <div className="cave-linear-turn-meta">
+            <span>{turn.role === "user" ? "You" : "System"}</span>
+            {showTimestamp && turn.createdAt ? <span>{fmtTime(turn.createdAt)}</span> : null}
+            {turn.attachments?.length ? <span>{turn.attachments.length} files</span> : null}
+          </div>
+          <MessageBubble
+            role={turn.role}
+            content={turn.text || (turn.attachments?.length ? "Attached files" : "")}
+            timestamp={turn.createdAt}
+            showTimestamp={false}
+            pending={turn.pending}
+          />
+          {turn.attachments?.length ? <AttachmentList attachments={turn.attachments} /> : null}
         </div>
-        <MessageBubble
-          role={turn.role}
-          content={turn.text || (turn.attachments?.length ? "Attached files" : "")}
-          timestamp={turn.createdAt}
-          showTimestamp={showTimestamp}
-          pending={turn.pending}
-        />
-        {turn.attachments?.length ? <AttachmentList attachments={turn.attachments} /> : null}
       </div>
     );
   }
@@ -1132,15 +1141,13 @@ function TurnRow({
   const turnStatus = turn.error ? "error" : turn.pending ? "running" : "complete";
 
   return (
-    <div className="cave-turn-assistant">
-      <aside className="cave-turn-avatar" aria-hidden>
-        <div className="cave-turn-avatar-ring">
-          <Icon name="ph:sparkle-bold" width={14} />
-        </div>
+    <div className="cave-linear-turn cave-linear-turn--assistant">
+      <aside className="cave-linear-turn-index" aria-label={`Turn ${turnNumber}`}>
+        {turnNumber}
       </aside>
 
-      <div className="cave-turn-content text-[14px] leading-relaxed text-[var(--text-primary)] group/turn">
-        <div className="cave-turn-assistant-meta">
+      <div className="cave-linear-turn-content text-[14px] leading-relaxed text-[var(--text-primary)] group/turn">
+        <div className="cave-linear-turn-meta">
           <span className="truncate text-[13px] font-semibold text-[var(--text-primary)]">{familiar.display_name}</span>
           <span className={`cave-turn-status cave-turn-status--${turnStatus}`}>
             {turnStatus}
@@ -1151,7 +1158,7 @@ function TurnRow({
           {reasoning ? <span>reasoning</span> : null}
         </div>
 
-        <div className="cave-turn-assistant-bubble">
+        <div className="cave-linear-turn-body">
           {turn.pending && !visible ? (
             <ThinkingIndicator since={turn.createdAt} />
           ) : (

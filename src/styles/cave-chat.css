@@ -766,8 +766,129 @@
   font-size: 11px;
 }
 
+/* Dense linear session view */
+.cave-chat-linear {
+  background:
+    linear-gradient(to bottom, color-mix(in oklch, var(--bg-raised) 18%, transparent), transparent 150px),
+    var(--bg-base);
+}
+
+.cave-chat-linear-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  border-bottom: 1px solid var(--border-hairline);
+  background: color-mix(in oklch, var(--bg-panel) 76%, transparent);
+  padding: 12px 18px 10px;
+  box-shadow: 0 1px 0 color-mix(in oklch, var(--foreground) 4%, transparent) inset;
+}
+
+.cave-agent-marker {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid color-mix(in oklch, var(--accent-presence) 28%, transparent);
+  border-radius: 7px;
+  background: color-mix(in oklch, var(--accent-presence) 9%, var(--bg-raised));
+  color: var(--accent-presence);
+}
+
+.cave-chat-linear .cave-chat-transcript {
+  padding: 18px clamp(16px, 3vw, 34px) 22px;
+}
+
+.cave-chat-linear .cave-chat-thread {
+  gap: 0;
+  width: min(100%, 1180px);
+}
+
+.cave-linear-turn {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 12px;
+  border-bottom: 1px solid color-mix(in oklch, var(--foreground) 6%, transparent);
+  padding: 13px 0;
+}
+
+.cave-linear-turn:hover {
+  background: color-mix(in oklch, var(--foreground) 2%, transparent);
+}
+
+.cave-linear-turn-index {
+  padding-top: 2px;
+  color: color-mix(in oklch, var(--text-muted) 78%, transparent);
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11px;
+  line-height: 20px;
+  text-align: right;
+  user-select: none;
+}
+
+.cave-linear-turn-content {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.cave-linear-turn-meta {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  min-height: 20px;
+  margin-bottom: 4px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.cave-linear-turn-body {
+  min-width: 0;
+  border-left: 1px solid color-mix(in oklch, var(--accent-presence) 22%, transparent);
+  padding-left: 12px;
+}
+
+.cave-chat-linear .cave-bubble-user {
+  width: 100%;
+  max-width: 100%;
+  border: 0;
+  border-left: 1px solid color-mix(in oklch, var(--accent-presence) 28%, transparent);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0 0 0 12px;
+}
+
+.cave-chat-linear .cave-bubble-assistant {
+  width: 100%;
+}
+
+.cave-chat-linear .cave-bubble-timestamp {
+  display: none;
+}
+
+.cave-chat-linear .cave-reasoning-block,
+.cave-chat-linear .cave-tool-group {
+  border-radius: 7px;
+  background: color-mix(in oklch, var(--bg-panel) 26%, transparent);
+  padding: 8px 9px;
+}
+
+.cave-chat-linear .cave-composer-dock {
+  padding: 10px clamp(16px, 3vw, 34px) 16px;
+}
+
+.cave-chat-linear .cave-composer-panel {
+  border-radius: 8px;
+  box-shadow:
+    0 8px 26px oklch(0 0 0 / 18%),
+    inset 0 1px 0 color-mix(in oklch, var(--foreground) 5%, transparent);
+}
+
 @media (max-width: 720px) {
-  .cave-chat-workbench-header {
+  .cave-chat-workbench-header,
+  .cave-chat-linear-header {
     padding: 12px 14px 10px;
   }
 
@@ -781,6 +902,11 @@
 
   .cave-turn-rail {
     display: none;
+  }
+
+  .cave-linear-turn {
+    grid-template-columns: 32px minmax(0, 1fr);
+    gap: 8px;
   }
 
   .cave-turn-content,
