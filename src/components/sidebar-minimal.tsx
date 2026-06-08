@@ -19,6 +19,7 @@ import type { InboxItem } from "@/lib/cave-inbox";
 import type { InboxPrefs } from "@/lib/cave-inbox-prefs";
 
 export type FolderMode =
+  | "agents"
   | "home"
   | "chat"
   | "board"
@@ -64,16 +65,17 @@ const FOLDER_MODES: Array<{
   kbd?: string;
 }> = [
   // Work
-  { id: "home", label: "Home", iconName: "ph:house-bold", group: "work", kbd: "⌘1" },
-  { id: "chat", label: "Chat", iconName: "ph:chats", group: "work", kbd: "⌘2" },
-  { id: "board", label: "Board", iconName: "ph:kanban", group: "work", kbd: "⌘3" },
-  { id: "calendar", label: "Calendar", iconName: "ph:calendar-blank", group: "work", kbd: "⌘4" },
-  { id: "inbox", label: "Inbox", iconName: "ph:tray", group: "work", kbd: "⌘5" },
+  { id: "agents", label: "Agents", iconName: "ph:users-three", group: "work", kbd: "⌘1" },
+  { id: "home", label: "Home", iconName: "ph:house-bold", group: "work", kbd: "⌘2" },
+  { id: "chat", label: "Chat", iconName: "ph:chats", group: "work", kbd: "⌘3" },
+  { id: "board", label: "Board", iconName: "ph:kanban", group: "work", kbd: "⌘4" },
+  { id: "calendar", label: "Calendar", iconName: "ph:calendar-blank", group: "work", kbd: "⌘5" },
+  { id: "inbox", label: "Inbox", iconName: "ph:tray", group: "work", kbd: "⌘6" },
   // Knowledge
-  { id: "library", label: "Library", iconName: "ph:books", group: "knowledge", kbd: "⌘6" },
+  { id: "library", label: "Library", iconName: "ph:books", group: "knowledge", kbd: "⌘7" },
   // Tools
-  { id: "browser", label: "Browser", iconName: "ph:globe", group: "tools", kbd: "⌘7" },
-  { id: "terminal", label: "Terminal", iconName: "ph:terminal-window", group: "tools", kbd: "⌘8" },
+  { id: "browser", label: "Browser", iconName: "ph:globe", group: "tools", kbd: "⌘8" },
+  { id: "terminal", label: "Terminal", iconName: "ph:terminal-window", group: "tools" },
   { id: "capabilities", label: "Capabilities", iconName: "ph:lightning-bold", group: "tools" },
   // Add-ons (gated)
   { id: "github", label: "GitHub", iconName: "ph:github-logo", group: "addons" },
