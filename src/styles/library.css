@@ -1,7 +1,8 @@
-/* TODO: light-mode-audit — this file ships hardcoded dark-mode color
-   literals (oklch(1 0 0 / N%) / rgba(255,...)) that need migrating to
-   color-mix(in oklch, var(--foreground) N%, transparent) for a clean
-   light-mode appearance. Tracked in the light-mode pass-2 follow-up. */
+/* Light-mode notes: the only remaining hardcoded color literals are
+ * intentional rgba(0,0,0,...) backdrops/shadows for modal overlays —
+ * dark backdrops are the cross-theme convention for focus modes and
+ * stay legible in both themes. All white-on-dark borders/text from
+ * the original dark-only build have been replaced with theme tokens. */
 
 @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&display=swap');
 
@@ -39,7 +40,7 @@
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   padding: 0 14px 8px;
 }
 
@@ -70,6 +71,11 @@
 .library-rail-item:hover {
   background: var(--bg-hover);
   color: var(--text-primary);
+}
+
+.library-rail-item:focus-visible {
+  outline: var(--ring-width) solid var(--ring-focus);
+  outline-offset: -2px;
 }
 
 .library-rail-item--active {
@@ -147,6 +153,10 @@
   color: var(--text-primary);
   background: var(--bg-hover);
 }
+.library-list-toggle-btn:focus-visible {
+  outline: var(--ring-width) solid var(--ring-focus);
+  outline-offset: 1px;
+}
 .library-list-panel--open .library-list-toggle-btn {
   color: var(--text-secondary);
 }
@@ -210,6 +220,11 @@
   color: var(--text-primary);
 }
 
+.library-doclist-search-clear:focus-visible {
+  outline: var(--ring-width) solid var(--ring-focus);
+  outline-offset: 1px;
+}
+
 .library-doclist-items {
   flex: 1;
   overflow-y: auto;
@@ -247,8 +262,14 @@
   background: var(--bg-hover);
 }
 
+.library-doclist-item:focus-visible {
+  outline: var(--ring-width) solid var(--ring-focus);
+  outline-offset: -2px;
+}
+
 .library-doclist-item--active {
-  background: color-mix(in oklch, var(--accent-presence) 12%, var(--bg-base));
+  background: color-mix(in oklch, var(--accent-presence) 14%, var(--bg-base));
+  box-shadow: inset 3px 0 0 var(--accent-presence);
 }
 
 .library-doclist-item-header {
@@ -437,6 +458,21 @@
   color: var(--text-primary);
 }
 
+.library-preview-action-btn:focus-visible {
+  outline: var(--ring-width) solid var(--ring-focus);
+  outline-offset: 1px;
+}
+
+.library-preview-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.library-preview-action-btn:disabled:hover {
+  background: var(--bg-base);
+  color: var(--text-secondary);
+}
+
 .library-preview-body {
   flex: 1;
   overflow-y: auto;
@@ -455,12 +491,18 @@
   padding: 2px;
   transition: opacity 0.1s, color 0.1s;
 }
-tr:hover .library-row-delete {
+tr:hover .library-row-delete,
+tr:focus-within .library-row-delete {
   opacity: 1;
 }
 .library-row-delete:hover {
   color: var(--text-primary);
   background: var(--bg-hover);
+}
+.library-row-delete:focus-visible {
+  opacity: 1;
+  outline: var(--ring-width) solid var(--ring-focus);
+  outline-offset: 1px;
 }
 
 /* ── rail icon wrap ───────────────────────────────────────────── */
@@ -487,7 +529,7 @@ tr:hover .library-row-delete {
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 .library-field-val {
   font-size: 13px;
@@ -905,7 +947,6 @@ tr:hover .library-row-delete,
   letter-spacing: 0.05em;
   color: var(--text-muted);
   flex-shrink: 0;
-  opacity: 0.7;
 }
 
 /* ── Reader mode ──────────────────────────────────────────────────────────── */
@@ -937,9 +978,9 @@ tr:hover .library-row-delete,
   max-width: 820px;
   max-height: calc(100vh - 64px);
   background: var(--bg-base);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-hairline);
   border-radius: 14px;
-  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255,255,255,0.05);
+  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--border-hairline);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -957,7 +998,7 @@ tr:hover .library-row-delete,
   flex-direction: column;
   gap: 4px;
   padding: 28px 32px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--border-hairline);
   background: var(--bg-panel);
   flex-shrink: 0;
   position: relative;
@@ -991,15 +1032,20 @@ tr:hover .library-row-delete,
   width: 28px;
   height: 28px;
   border-radius: 7px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.04);
-  color: rgba(255, 255, 255, 0.4);
+  border: 1px solid var(--border-hairline);
+  background: var(--bg-raised);
+  color: var(--text-muted);
   cursor: pointer;
-  transition: color 0.12s, background 0.12s;
+  transition: color 0.12s, background 0.12s, border-color 0.12s;
 }
 .library-reader-close:hover {
-  color: rgba(255, 255, 255, 0.9);
-  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+  background: var(--bg-hover);
+  border-color: var(--border-strong);
+}
+.library-reader-close:focus-visible {
+  outline: var(--ring-width) solid var(--ring-focus);
+  outline-offset: 1px;
 }
 
 /* Scrollable body */
@@ -1020,7 +1066,7 @@ tr:hover .library-row-delete,
 /* Footer action bar */
 .library-reader-footer {
   flex-shrink: 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid var(--border-hairline);
   background: var(--bg-panel);
 }
 .library-reader-footer .library-preview-actions--bar {
@@ -1044,8 +1090,8 @@ tr:hover .library-row-delete,
   background: transparent;
 }
 .board-table tbody tr.gh-row-action-strip-row.selected {
-  background: color-mix(in oklch, var(--accent-presence) 8%, var(--bg-base));
-  box-shadow: inset 2px 0 0 var(--accent-presence);
+  background: color-mix(in oklch, var(--accent-presence) 14%, var(--bg-base));
+  box-shadow: inset 3px 0 0 var(--accent-presence);
 }
 .gh-row-action-strip-row td {
   padding: 0 10px 9px;
@@ -1077,6 +1123,11 @@ tr:hover .library-row-delete,
   color: var(--text-primary);
   background: var(--bg-hover);
   border-color: var(--border-strong);
+}
+
+.gh-row-action-btn:focus-visible {
+  outline: var(--ring-width) solid var(--ring-focus);
+  outline-offset: 1px;
 }
 
 /* ── GitHub modals (shared shell) ─────────────────────────────── */
@@ -1286,12 +1337,13 @@ tr:hover .library-row-delete,
   transition: color 0.1s, background 0.1s;
 }
 .gh-modal-btn:hover { color: var(--text-primary); background: var(--bg-hover); }
+.gh-modal-btn:focus-visible { outline: var(--ring-width) solid var(--ring-focus); outline-offset: 1px; }
 .gh-modal-btn--primary {
   background: var(--accent-presence);
   border-color: var(--accent-presence);
-  color: #fff;
+  color: var(--text-primary);
 }
-.gh-modal-btn--primary:hover { background: color-mix(in oklch, var(--accent-presence) 88%, white); border-color: color-mix(in oklch, var(--accent-presence) 88%, white); }
+.gh-modal-btn--primary:hover { background: color-mix(in oklch, var(--accent-presence) 85%, #000); border-color: color-mix(in oklch, var(--accent-presence) 85%, #000); }
 .gh-modal-btn--primary:disabled { opacity: 0.5; cursor: default; }
 
 .gh-modal-done {
@@ -1321,7 +1373,7 @@ tr:hover .library-row-delete,
   font-weight: 600;
   letter-spacing: 0.07em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   margin-bottom: 10px;
 }
 
@@ -1352,6 +1404,12 @@ tr:hover .library-row-delete,
 
 .library-toc-item:hover {
   color: var(--text-secondary);
+}
+
+.library-toc-item:focus-visible {
+  outline: var(--ring-width) solid var(--ring-focus);
+  outline-offset: 1px;
+  border-radius: 4px;
 }
 
 .library-toc-item--active {
