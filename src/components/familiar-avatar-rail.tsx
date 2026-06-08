@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Icon } from "@/lib/icon";
 import { FamiliarAvatar } from "@/components/familiar-avatar";
 import { computePresence, REMOTE_HARNESSES } from "@/lib/presence";
 import { useFamiliarStudio } from "@/lib/familiar-studio-context";
+import { setFamiliarOrder } from "@/lib/cave-familiar-order";
 import type { ResolvedFamiliar } from "@/lib/familiar-resolve";
 import type { SessionRow } from "@/lib/types";
 
@@ -30,6 +31,47 @@ export function FamiliarAvatarRail({
   onToggleSidebar,
 }: Props) {
   const { openFamiliarStudio } = useFamiliarStudio();
+
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+
+  function onDragStart(id: string) {
+    return (e: React.DragEvent) => {
+      setDraggingId(id);
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", id);
+    };
+  }
+
+  function onDragOver(id: string) {
+    return (e: React.DragEvent) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      if (id !== draggingId) setDropTargetId(id);
+    };
+  }
+
+  function onDrop(targetId: string) {
+    return (e: React.DragEvent) => {
+      e.preventDefault();
+      const sourceId = e.dataTransfer.getData("text/plain") || draggingId;
+      setDraggingId(null);
+      setDropTargetId(null);
+      if (!sourceId || sourceId === targetId) return;
+      const ids = familiars.map((f) => f.id);
+      const from = ids.indexOf(sourceId);
+      const to = ids.indexOf(targetId);
+      if (from < 0 || to < 0) return;
+      const [moved] = ids.splice(from, 1);
+      ids.splice(to, 0, moved);
+      setFamiliarOrder(ids);
+    };
+  }
+
+  function onDragEnd() {
+    setDraggingId(null);
+    setDropTargetId(null);
+  }
 
   useEffect(() => {
     if (!activeId) return;
@@ -69,6 +111,13 @@ export function FamiliarAvatarRail({
             <li
               key={f.id}
               className="familiar-avatar-rail__item"
+              draggable
+              onDragStart={onDragStart(f.id)}
+              onDragOver={onDragOver(f.id)}
+              onDrop={onDrop(f.id)}
+              onDragEnd={onDragEnd}
+              data-dragging={draggingId === f.id ? "true" : undefined}
+              data-drop-target={dropTargetId === f.id ? "true" : undefined}
             >
               <button
                 type="button"

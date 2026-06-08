@@ -74,3 +74,8 @@ assert.match(
   /useFamiliarStudio/,
   "Rail must call into the Familiar Studio context",
 );
+assert.match(source, /draggable/, "Avatars must be draggable for reorder");
+assert.match(source, /onDragStart/, "onDragStart handler must be present");
+assert.match(source, /onDragOver/, "onDragOver handler must be present");
+assert.match(source, /onDrop/, "onDrop handler must be present");
+assert.match(source, /setFamiliarOrder/, "Must call setFamiliarOrder on drop");
