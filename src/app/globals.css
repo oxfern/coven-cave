@@ -2899,7 +2899,9 @@ body {
 .familiar-studio__main { display: grid; grid-template-rows: auto 1fr auto; min-height: 0; }
 .familiar-studio__header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border-hairline); }
 .familiar-studio__heading { display: flex; flex-direction: column; min-width: 0; flex: 1; }
-.familiar-studio__name { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.familiar-studio__name { font-size: 14px; font-weight: 600; color: var(--text-primary); background: transparent; border: none; padding: 0; text-align: left; cursor: text; font-family: inherit; min-width: 0; }
+.familiar-studio__name:hover:not(.familiar-studio__name--editing) { background: var(--bg-raised); border-radius: 4px; padding: 0 4px; margin-left: -4px; }
+.familiar-studio__name--editing { background: var(--bg-raised); border: 1px solid var(--border-strong); border-radius: 4px; padding: 2px 6px; outline: none; }
 .familiar-studio__role { font-size: 11px; color: var(--text-muted); }
 .familiar-studio__title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
 .familiar-studio__close { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 6px; color: var(--text-secondary); background: transparent; border: none; cursor: pointer; }
