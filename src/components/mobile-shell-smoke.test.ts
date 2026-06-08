@@ -20,6 +20,6 @@ assert.match(
 
 assert.match(
   workspace,
-  /mode === "browser" \? undefined/,
-  "Browser mode should suppress the desktop agent pane on small browser surfaces",
+  /mode === "browser" \|\| mode === "agents" \? undefined/,
+  "Browser and Agents modes should suppress the desktop agent pane on small browser surfaces",
 );
