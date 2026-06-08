@@ -48,6 +48,7 @@ import type { PendingChatAction } from "@/lib/pending-chat-action";
 type WorkspaceMode = WorkspaceModeFromDaemon;
 
 const SURFACE_LABELS: Record<WorkspaceMode, string> = {
+  agents: "Agents",
   home: "Home",
   chat: "Chat",
   board: "Board",

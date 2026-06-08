@@ -1,4 +1,5 @@
 export type WorkspaceMode =
+  | "agents"
   | "home"
   | "chat"
   | "board"
