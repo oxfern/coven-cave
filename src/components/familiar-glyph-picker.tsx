@@ -21,10 +21,10 @@ import {
 } from "@/lib/cave-glyph-overrides";
 import {
   parseGlyphString,
-  resolveFamiliarGlyph,
   serializeGlyph,
   type FamiliarGlyph,
 } from "@/lib/familiar-glyph";
+import { useResolvedFamiliars } from "@/lib/familiar-resolve";
 import { FamiliarGlyph as GlyphView } from "@/components/familiar-glyph";
 import type { Familiar } from "@/lib/types";
 
@@ -35,6 +35,8 @@ type Props = {
 };
 
 export function FamiliarGlyphPicker({ open, familiar, onClose }: Props) {
+  const resolvedFamiliarList = useResolvedFamiliars(familiar ? [familiar] : []);
+  const resolvedFamiliar = resolvedFamiliarList[0] ?? null;
   const overrides = useGlyphOverrides();
   const recent = useRecentGlyphs();
   const [query, setQuery] = useState("");
@@ -66,10 +68,7 @@ export function FamiliarGlyphPicker({ open, familiar, onClose }: Props) {
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose, familiar]);
 
-  const currentGlyph: FamiliarGlyph | null = useMemo(() => {
-    if (!familiar) return null;
-    return resolveFamiliarGlyph(familiar, overrides);
-  }, [familiar, overrides]);
+  const currentGlyph: FamiliarGlyph | null = resolvedFamiliar?.glyph ?? null;
 
   const results = useMemo(() => {
     return searchGlyphs({ query }).slice(0, 800);

@@ -2,14 +2,13 @@
 
 import { useEffect, useMemo } from "react";
 import { Icon } from "@/lib/icon";
-import { FamiliarGlyph } from "@/components/familiar-glyph";
-import { resolveFamiliarGlyph } from "@/lib/familiar-glyph";
-import { useGlyphOverrides } from "@/lib/cave-glyph-overrides";
+import { FamiliarAvatar } from "@/components/familiar-avatar";
 import { computePresence, REMOTE_HARNESSES } from "@/lib/presence";
-import type { Familiar, SessionRow } from "@/lib/types";
+import type { ResolvedFamiliar } from "@/lib/familiar-resolve";
+import type { SessionRow } from "@/lib/types";
 
 type Props = {
-  familiars: Familiar[];
+  familiars: ResolvedFamiliar[];
   activeId: string | null;
   sessions: SessionRow[];
   responseNeeded: Set<string>;
@@ -29,7 +28,6 @@ export function FamiliarAvatarRail({
   onAddFamiliar,
   onToggleSidebar,
 }: Props) {
-  const overrides = useGlyphOverrides();
 
   useEffect(() => {
     if (!activeId) return;
@@ -76,8 +74,8 @@ export function FamiliarAvatarRail({
                 title={`${f.display_name} · ${presence.label}`}
                 onClick={() => onSelect(f.id)}
               >
-                <FamiliarGlyph
-                  glyph={resolveFamiliarGlyph(f, overrides)}
+                <FamiliarAvatar
+                  familiar={f}
                   size="sm"
                 />
                 <span
