@@ -8,6 +8,7 @@ import type { IconName } from "@/lib/icon";
 import { PluginCard } from "@/components/plugin-card";
 import { SkillCard } from "@/components/skill-card";
 import type { HarnessCapabilityManifest } from "@/components/capability-card";
+import type { MarketplacePluginWithState } from "@/lib/plugin-marketplace";
 import {
   SkillDetailDrawer,
   type SkillEntry as SkillEntryWithDetail,
@@ -24,6 +25,12 @@ type HarnessReport = {
   installed: boolean;
   path: string | null;
   version: string | null;
+};
+
+type MarketplaceResponse = {
+  ok: boolean;
+  plugins?: MarketplacePluginWithState[];
+  error?: string;
 };
 
 type SkillEntry = {
@@ -66,6 +73,8 @@ type Props = {
   onCreateSkill?: () => void;
   onCreatePlugin?: () => void;
   familiars?: FamiliarForSkill[];
+  tabs?: Tab[];
+  initialTab?: Tab;
 };
 
 const TAB_LABEL: Record<Tab, string> = {
@@ -76,7 +85,7 @@ const TAB_LABEL: Record<Tab, string> = {
 };
 
 const HERO_HEADLINE: Record<Tab, string> = {
-  plugins: "Make Cave work your way",
+  plugins: "Choose tools for your familiars",
   skills: "Harness your familiar's skills",
   workflows: "Automated sequences across your familiars",
   roles: "Shape how familiars show up",
@@ -90,18 +99,33 @@ const HERO_SEARCH_PLACEHOLDER: Record<Tab, string> = {
 };
 
 const SECTION_LABEL: Record<Tab, string> = {
-  plugins: "Harness plugins",
+  plugins: "Marketplace packages",
   skills: "Installed skills",
   workflows: "All workflows",
   roles: "Installed roles",
 };
 
-export function PluginsView({ onOpenChat, onCreateSkill, onCreatePlugin, familiars = [] }: Props) {
-  const [tab, setTab] = useState<Tab>("roles");
+export function PluginsView({
+  onOpenChat,
+  onCreateSkill,
+  onCreatePlugin,
+  familiars = [],
+  tabs = ["roles", "workflows", "plugins", "skills"],
+  initialTab,
+}: Props) {
+  const tabSet = useMemo(() => tabs, [tabs]);
+  const [tab, setTab] = useState<Tab>(() => {
+    if (initialTab && tabSet.includes(initialTab)) return initialTab;
+    return tabSet[0] ?? "plugins";
+  });
   const [query, setQuery] = useState("");
 
   const [harnesses, setHarnesses] = useState<HarnessReport[]>([]);
   const [harnessesLoaded, setHarnessesLoaded] = useState(false);
+  const [marketplacePlugins, setMarketplacePlugins] = useState<MarketplacePluginWithState[]>([]);
+  const [marketplaceLoaded, setMarketplaceLoaded] = useState(false);
+  const [marketplaceError, setMarketplaceError] = useState<string | null>(null);
+  const [marketplaceBusy, setMarketplaceBusy] = useState<string | null>(null);
   const [skills, setSkills] = useState<SkillEntry[]>([]);
   const [skillsLoaded, setSkillsLoaded] = useState(false);
   const [skillsError, setSkillsError] = useState<string | null>(null);
@@ -144,17 +168,64 @@ export function PluginsView({ onOpenChat, onCreateSkill, onCreatePlugin, familia
   };
 
   useEffect(() => {
-    if (tab === "plugins" && !harnessesLoaded) {
+    if (!tabSet.includes(tab)) {
+      setTab(tabSet[0] ?? "plugins");
+    }
+  }, [tab, tabSet]);
+
+  const handleMarketplaceInstall = async (plugin: MarketplacePluginWithState) => {
+    if (plugin.installed || marketplaceBusy) return;
+    setMarketplaceBusy(plugin.name);
+    try {
+      const res = await fetch("/api/marketplace", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "install", name: plugin.name }),
+      });
+      const json = await res.json() as MarketplaceResponse;
+      if (!res.ok || !json.ok) {
+        throw new Error(json.error ?? "failed to install marketplace plugin");
+      }
+      setMarketplacePlugins(json.plugins ?? marketplacePlugins);
+      setMarketplaceError(null);
+    } catch (err) {
+      setMarketplaceError(err instanceof Error ? err.message : "failed to install marketplace plugin");
+    } finally {
+      setMarketplaceBusy(null);
+    }
+  };
+
+  useEffect(() => {
+    if (tab === "plugins" && !marketplaceLoaded) {
       let cancelled = false;
       void (async () => {
         try {
-          const res = await fetch("/api/harnesses", { cache: "no-store" });
-          const json = await res.json();
-          if (!cancelled && json.ok) setHarnesses(json.harnesses ?? []);
-        } catch {
-          /* leave empty */
+          const [marketplaceRes, harnessesRes] = await Promise.allSettled([
+            fetch("/api/marketplace", { cache: "no-store" }).then((r) => r.json() as Promise<MarketplaceResponse>),
+            fetch("/api/harnesses", { cache: "no-store" }).then((r) => r.json()),
+          ]);
+          if (!cancelled) {
+            if (marketplaceRes.status === "fulfilled" && marketplaceRes.value.ok) {
+              setMarketplacePlugins(marketplaceRes.value.plugins ?? []);
+              setMarketplaceError(null);
+            } else {
+              setMarketplaceError(
+                marketplaceRes.status === "fulfilled"
+                  ? marketplaceRes.value.error ?? "failed to load marketplace"
+                  : marketplaceRes.reason instanceof Error
+                    ? marketplaceRes.reason.message
+                    : "failed to load marketplace",
+              );
+            }
+            if (harnessesRes.status === "fulfilled" && harnessesRes.value.ok) {
+              setHarnesses(harnessesRes.value.harnesses ?? []);
+              setHarnessesLoaded(true);
+            }
+          }
+        } catch (err) {
+          if (!cancelled) setMarketplaceError(err instanceof Error ? err.message : "fetch failed");
         } finally {
-          if (!cancelled) setHarnessesLoaded(true);
+          if (!cancelled) setMarketplaceLoaded(true);
         }
       })();
       return () => { cancelled = true; };
@@ -249,17 +320,26 @@ export function PluginsView({ onOpenChat, onCreateSkill, onCreatePlugin, familia
       })();
       return () => { cancelled = true; };
     }
-  }, [tab, harnessesLoaded, skillsLoaded, rolesLoaded, capabilitiesLoaded]);
+  }, [tab, marketplaceLoaded, skillsLoaded, rolesLoaded, capabilitiesLoaded]);
 
-  const filteredHarnesses = useMemo(() => {
+  const filteredMarketplacePlugins = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return harnesses;
-    return harnesses.filter(
-      (h) =>
-        h.label.toLowerCase().includes(q) ||
-        h.id.toLowerCase().includes(q),
-    );
-  }, [harnesses, query]);
+    if (!q) return marketplacePlugins;
+    return marketplacePlugins.filter((plugin) => {
+      const affinity = plugin.roleAffinity
+        .flatMap((entry) => [entry.familiar, ...entry.roles])
+        .join(" ");
+      return [
+        plugin.name,
+        plugin.displayName,
+        plugin.description,
+        plugin.category,
+        plugin.trust,
+        ...plugin.keywords,
+        affinity,
+      ].some((value) => value.toLowerCase().includes(q));
+    });
+  }, [marketplacePlugins, query]);
 
   const filteredSkills = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -322,9 +402,9 @@ export function PluginsView({ onOpenChat, onCreateSkill, onCreatePlugin, familia
   const installedHarnessCount = harnesses.filter((h) => h.installed).length;
   const pageMeta =
     tab === "plugins"
-      ? harnessesLoaded
-        ? `${installedHarnessCount}/${harnesses.length} installed`
-        : "Loading plugins"
+      ? marketplaceLoaded && !marketplaceError
+        ? `${marketplacePlugins.length} available`
+        : "Loading marketplace"
       : tab === "skills"
         ? skillsLoaded && !skillsError
           ? `${skills.length} installed`
@@ -340,7 +420,7 @@ export function PluginsView({ onOpenChat, onCreateSkill, onCreatePlugin, familia
         <div className="flex h-12 items-center justify-between gap-4">
           {/* Tabs flush left — underline style */}
           <nav className="flex h-full items-end gap-1 overflow-x-auto" aria-label="View tabs">
-            {(["roles", "workflows", "plugins", "skills"] as const).map((t) => (
+            {tabSet.map((t) => (
               <button
                 key={t}
                 type="button"
@@ -408,13 +488,13 @@ export function PluginsView({ onOpenChat, onCreateSkill, onCreatePlugin, familia
                 <h1 className="text-[22px] font-semibold text-[var(--text-primary)]">
                   {HERO_HEADLINE[tab]}
                 </h1>
-                {tab === "plugins" && harnessesLoaded && installedHarnessCount === 0 ? (
+                {tab === "plugins" && marketplaceLoaded && marketplacePlugins.length === 0 ? (
                   <p className="mt-1 text-[12px] text-muted-foreground">
-                    No harnesses installed yet — install one to get started.
+                    No marketplace packages are available yet.
                   </p>
-                ) : tab === "plugins" && harnessesLoaded ? (
+                ) : tab === "plugins" && marketplaceLoaded ? (
                   <p className="mt-1 text-[12px] text-muted-foreground">
-                    {installedHarnessCount} of {harnesses.length} harnesses active
+                    {marketplacePlugins.length} packages seeded for MCP, Skills, and familiar role affinity
                   </p>
                 ) : (
                   <p className="mt-1 text-[12px] text-muted-foreground">
@@ -453,9 +533,9 @@ export function PluginsView({ onOpenChat, onCreateSkill, onCreatePlugin, familia
           <section>
             <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
               {SECTION_LABEL[tab]}
-              {tab === "plugins" && harnessesLoaded && (
+              {tab === "plugins" && marketplaceLoaded && !marketplaceError && (
                 <span className="ml-2 font-normal normal-case tracking-normal text-[var(--text-muted)]">
-                  {installedHarnessCount}/{harnesses.length} installed
+                  {marketplacePlugins.length} available
                 </span>
               )}
               {tab === "skills" && skillsLoaded && !skillsError && (
@@ -471,7 +551,13 @@ export function PluginsView({ onOpenChat, onCreateSkill, onCreatePlugin, familia
             </h2>
 
             {tab === "plugins" ? (
-              <PluginGrid items={filteredHarnesses} loaded={harnessesLoaded} onOpenChat={onOpenChat} />
+              <PluginGrid
+                items={filteredMarketplacePlugins}
+                loaded={marketplaceLoaded}
+                error={marketplaceError}
+                busy={marketplaceBusy}
+                onInstall={handleMarketplaceInstall}
+              />
             ) : tab === "skills" ? (
               <SkillGrid items={filteredSkills} loaded={skillsLoaded} error={skillsError} onSelect={(s) => setSelectedSkill(s)} />
             ) : tab === "workflows" ? (
@@ -512,14 +598,25 @@ export function PluginsView({ onOpenChat, onCreateSkill, onCreatePlugin, familia
 function PluginGrid({
   items,
   loaded,
-  onOpenChat,
+  error,
+  busy,
+  onInstall,
 }: {
-  items: HarnessReport[];
+  items: MarketplacePluginWithState[];
   loaded: boolean;
-  onOpenChat: () => void;
+  error: string | null;
+  busy: string | null;
+  onInstall: (plugin: MarketplacePluginWithState) => void;
 }) {
   if (!loaded) {
     return <GridSkeleton />;
+  }
+  if (error) {
+    return (
+      <p className="rounded-lg border border-border bg-card px-4 py-3 text-[12px] text-muted-foreground">
+        Marketplace unavailable: {error}
+      </p>
+    );
   }
   if (items.length === 0) {
     return (
@@ -529,36 +626,32 @@ function PluginGrid({
     );
   }
 
-  const installed = items.filter((h) => h.installed);
-  const notInstalled = items.filter((h) => !h.installed);
-  const showHeaders = installed.length > 0 && notInstalled.length > 0;
+  const groups = new Map<string, MarketplacePluginWithState[]>();
+  for (const plugin of items) {
+    const list = groups.get(plugin.category) ?? [];
+    list.push(plugin);
+    groups.set(plugin.category, list);
+  }
 
   return (
-    <div className="flex flex-col">
-      {showHeaders && installed.length > 0 && (
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-[var(--text-muted)] mb-1 mt-0">
-          Installed
-        </p>
-      )}
-      {installed.length > 0 && (
-        <div className="flex flex-col">
-          {installed.map((h) => (
-            <PluginCard key={h.id} harness={h} onClick={onOpenChat} />
-          ))}
+    <div className="space-y-4">
+      {[...groups.entries()].map(([category, plugins]) => (
+        <div key={category}>
+          <p className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+            {category}
+          </p>
+          <div className="flex flex-col">
+            {plugins.map((plugin) => (
+              <PluginCard
+                key={plugin.name}
+                plugin={plugin}
+                busy={busy === plugin.name}
+                onClick={() => onInstall(plugin)}
+              />
+            ))}
+          </div>
         </div>
-      )}
-      {showHeaders && notInstalled.length > 0 && (
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-[var(--text-muted)] mb-1 mt-4">
-          Available
-        </p>
-      )}
-      {notInstalled.length > 0 && (
-        <div className="flex flex-col">
-          {notInstalled.map((h) => (
-            <PluginCard key={h.id} harness={h} onClick={onOpenChat} />
-          ))}
-        </div>
-      )}
+      ))}
     </div>
   );
 }

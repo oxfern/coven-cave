@@ -11,6 +11,7 @@ const DEFAULT_CONFIG: CaveConfig = {
   familiars: {},
   roles: [],
   addons: { github: false, library: false },
+  marketplace: { installed: {} },
 };
 
 const DEFAULT_STATE: CaveState = {
@@ -19,6 +20,26 @@ const DEFAULT_STATE: CaveState = {
   sessionArchived: {},
   sessionSacrificed: {},
 };
+
+function defaultConfig(): CaveConfig {
+  return {
+    version: DEFAULT_CONFIG.version,
+    defaults: { ...DEFAULT_CONFIG.defaults },
+    familiars: {},
+    roles: [],
+    addons: { ...DEFAULT_CONFIG.addons },
+    marketplace: { installed: {} },
+  };
+}
+
+function defaultState(): CaveState {
+  return {
+    sessionFamiliar: {},
+    sessionTitles: {},
+    sessionArchived: {},
+    sessionSacrificed: {},
+  };
+}
 
 export type FamiliarBinding = {
   harness: string;
@@ -33,6 +54,12 @@ export type RoleConfigEntry = {
   activatedAt?: string;
 };
 
+export type MarketplaceInstallEntry = {
+  version: string;
+  source: string;
+  installedAt: string;
+};
+
 export type CaveConfig = {
   version: number;
   defaults: FamiliarBinding;
@@ -41,6 +68,9 @@ export type CaveConfig = {
   addons?: {
     github?: boolean;
     library?: boolean;
+  };
+  marketplace: {
+    installed: Record<string, MarketplaceInstallEntry>;
   };
 };
 
@@ -68,9 +98,12 @@ export async function loadConfig(): Promise<CaveConfig> {
         github: parsed.addons?.github ?? false,
         library: parsed.addons?.library ?? false,
       },
+      marketplace: {
+        installed: parsed.marketplace?.installed ?? {},
+      },
     };
   } catch {
-    return { ...DEFAULT_CONFIG };
+    return defaultConfig();
   }
 }
 
@@ -83,6 +116,12 @@ export async function saveConfig(patch: Partial<CaveConfig>): Promise<CaveConfig
     addons: {
       ...current.addons,
       ...(patch.addons ?? {}),
+    },
+    marketplace: {
+      installed: {
+        ...current.marketplace.installed,
+        ...(patch.marketplace?.installed ?? {}),
+      },
     },
     // Deep-merge defaults
     defaults: {
@@ -99,6 +138,39 @@ export async function saveConfig(patch: Partial<CaveConfig>): Promise<CaveConfig
   await mkdir(path.dirname(CONFIG_PATH), { recursive: true });
   await writeFile(CONFIG_PATH, JSON.stringify(updated, null, 2), "utf8");
   return updated;
+}
+
+export async function installMarketplacePlugin(
+  pluginName: string,
+  version: string,
+  source: string,
+): Promise<string> {
+  const cfg = await loadConfig();
+  const installedAt = new Date().toISOString();
+  const updated: CaveConfig = {
+    ...cfg,
+    marketplace: {
+      installed: {
+        ...cfg.marketplace.installed,
+        [pluginName]: { version, source, installedAt },
+      },
+    },
+  };
+  await mkdir(path.dirname(CONFIG_PATH), { recursive: true });
+  await writeFile(CONFIG_PATH, JSON.stringify(updated, null, 2), "utf8");
+  return installedAt;
+}
+
+export async function uninstallMarketplacePlugin(pluginName: string): Promise<void> {
+  const cfg = await loadConfig();
+  const installed = { ...cfg.marketplace.installed };
+  delete installed[pluginName];
+  const updated: CaveConfig = {
+    ...cfg,
+    marketplace: { installed },
+  };
+  await mkdir(path.dirname(CONFIG_PATH), { recursive: true });
+  await writeFile(CONFIG_PATH, JSON.stringify(updated, null, 2), "utf8");
 }
 
 export function bindingFor(config: CaveConfig, familiarId: string): FamiliarBinding {
@@ -121,7 +193,7 @@ export async function loadState(): Promise<CaveState> {
       sessionSacrificed: parsed.sessionSacrificed ?? {},
     };
   } catch {
-    return DEFAULT_STATE;
+    return defaultState();
   }
 }
 

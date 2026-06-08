@@ -2,89 +2,100 @@
 
 import { Icon } from "@/lib/icon";
 import type { IconName } from "@/lib/icon";
+import type { MarketplacePluginWithState } from "@/lib/plugin-marketplace";
 
-export type HarnessReport = {
-  id: string;
-  label: string;
-  binary: string;
-  chatSupported: boolean;
-  installed: boolean;
-  path: string | null;
-  version: string | null;
+const TRUST_LABEL: Record<MarketplacePluginWithState["trust"], string> = {
+  "official-remote": "Official remote",
+  "reference-local": "Reference local",
+  "preview-local": "Preview local",
+  "local-tool": "Local tool",
 };
 
-const HARNESS_TAGLINE: Record<string, string> = {
-  codex: "Run Codex sessions from this Cave",
-  claude: "Drive Claude Code from a familiar",
-  openclaw: "Bring OpenClaw into the Coven",
-  copilot: "Wire up GitHub Copilot CLI",
-  opencode: "Run OpenCode locally",
-  gemini: "Talk to Google Gemini CLI",
-  hermes: "Light a Hermes runtime",
-  openhands: "Open up OpenHands tasks",
-  aider: "Pair with Aider in-repo",
+const CATEGORY_ICON: Record<string, IconName> = {
+  "Developer Tools": "ph:code-bold",
+  Productivity: "ph:tray",
+  "Project Management": "ph:kanban-bold",
+  Design: "ph:paint-brush",
+  "Local Tools": "ph:terminal-window-bold",
+  Memory: "ph:brain-bold",
+  Reasoning: "ph:sparkle-bold",
+  Utility: "ph:wrench-bold",
 };
 
-const HARNESS_ICON: Record<string, IconName> = {
-  codex:     "ph:terminal-window-bold",
-  claude:    "ph:brain-bold",
-  openclaw:  "ph:paw-print-bold",
-  copilot:   "ph:git-branch-bold",
-  opencode:  "ph:code-bold",
-  gemini:    "ph:sparkle-bold",
-  hermes:    "ph:lightning-bold",
-  openhands: "ph:hand-bold",
-  aider:     "ph:wrench-bold",
-};
+function recommendedFor(plugin: MarketplacePluginWithState): string {
+  const familiars = plugin.roleAffinity.map((entry) => entry.familiar);
+  const unique = Array.from(new Set(familiars));
+  if (unique.length === 0) return "No role affinity yet";
+  const shown = unique.slice(0, 4).map((name) => name[0].toUpperCase() + name.slice(1));
+  return unique.length > shown.length
+    ? `${shown.join(", ")} +${unique.length - shown.length}`
+    : shown.join(", ");
+}
+
+function serverCount(plugin: MarketplacePluginWithState): number {
+  return Object.keys(plugin.mcpServers ?? {}).length;
+}
+
+function setupLabel(plugin: MarketplacePluginWithState): string {
+  if (Object.keys(plugin.userConfig ?? {}).length > 0) return "Setup";
+  if (serverCount(plugin) > 0) return "MCP";
+  return "Skill";
+}
 
 export function PluginCard({
-  harness,
+  plugin,
+  busy,
   onClick,
 }: {
-  harness: HarnessReport;
+  plugin: MarketplacePluginWithState;
+  busy?: boolean;
   onClick?: () => void;
 }) {
-  const tagline =
-    HARNESS_TAGLINE[harness.id] ?? `Run ${harness.label} from a familiar`;
-  const iconName = HARNESS_ICON[harness.id];
+  const iconName = CATEGORY_ICON[plugin.category] ?? "ph:plug-bold";
+  const count = serverCount(plugin);
+  const recommended = recommendedFor(plugin);
 
   const inner = (
     <>
-      {/* Icon */}
       <span
-        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--bg-elevated)] ${
-          harness.installed ? "text-muted-foreground" : "text-muted-foreground/40"
-        }`}
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--bg-elevated)] text-muted-foreground"
       >
-        {iconName ? (
-          <Icon name={iconName} width={16} height={16} />
-        ) : (
-          <span className="text-[13px] font-semibold text-foreground">
-            {(harness.label.match(/[a-z0-9]/i)?.[0] ?? "?").toUpperCase()}
-          </span>
-        )}
+        <Icon name={iconName} width={16} height={16} />
       </span>
 
-      {/* Name + tagline */}
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[13px] font-medium text-[var(--text-primary)]">
-          {harness.label}
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="truncate text-[13px] font-medium text-[var(--text-primary)]">
+            {plugin.displayName}
+          </span>
+          <span className="shrink-0 rounded-full bg-[var(--bg-elevated)] px-1.5 py-px text-[10px] text-[var(--text-muted)]">
+            {plugin.category}
+          </span>
         </span>
         <span className="block truncate text-[12px] text-[var(--text-muted)]">
-          {tagline}
+          {plugin.description}
+        </span>
+        <span className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-[var(--text-muted)]">
+          <span>{TRUST_LABEL[plugin.trust]}</span>
+          {count > 0 && <span>{count} MCP server{count === 1 ? "" : "s"}</span>}
+          <span>Recommended for {recommended}</span>
         </span>
       </span>
 
-      {/* Install status */}
-      {harness.installed ? (
-        <span className="flex items-center gap-1 text-[11px] text-[var(--text-muted)]">
+      {busy ? (
+        <span className="flex shrink-0 items-center gap-1 text-[11px] text-[var(--text-muted)]">
+          <Icon name="ph:arrows-clockwise" width={10} />
+          Updating
+        </span>
+      ) : plugin.installed ? (
+        <span className="flex shrink-0 items-center gap-1 text-[11px] text-[var(--text-muted)]">
           <Icon name="ph:check-bold" width={10} />
           Installed
         </span>
       ) : (
-        <span className="flex items-center gap-1 text-[11px] text-[oklch(0.65_0.18_280)]">
-          <Icon name="ph:arrow-down-bold" width={10} />
-          Install
+        <span className="flex shrink-0 items-center gap-1 text-[11px] text-[oklch(0.65_0.18_280)]">
+          <Icon name="ph:plug-bold" width={10} />
+          {setupLabel(plugin)}
         </span>
       )}
     </>
@@ -94,8 +105,9 @@ export function PluginCard({
     return (
       <button
         type="button"
+        disabled={busy || plugin.installed}
         onClick={onClick}
-        className="flex w-full items-center gap-4 px-0 py-3 border-b border-[var(--border-hairline)] last:border-b-0 transition-colors hover:bg-[var(--bg-raised)] text-left"
+        className="flex w-full items-center gap-4 px-0 py-3 border-b border-[var(--border-hairline)] last:border-b-0 transition-colors hover:bg-[var(--bg-raised)] disabled:cursor-default disabled:hover:bg-transparent text-left"
       >
         {inner}
       </button>

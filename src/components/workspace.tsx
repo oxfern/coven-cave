@@ -33,6 +33,7 @@ import { ComuxView } from "@/components/comux-view";
 import { GitHubView } from "@/components/github-view";
 import { LibraryView } from "@/components/library-view";
 import { CapabilitiesViewSurface } from "@/components/capabilities-view";
+import { PluginsView } from "@/components/plugins-view";
 import { HomeComposer } from "@/components/home-composer";
 import { ChatSurface } from "@/components/chat-surface";
 import { nativeNotify } from "@/lib/native-notify";
@@ -56,6 +57,7 @@ const SURFACE_LABELS: Record<WorkspaceMode, string> = {
   browser: "Browser",
   terminal: "Terminal",
   github: "GitHub",
+  roles: "Roles",
   capabilities: "Capabilities",
 };
 
@@ -961,6 +963,15 @@ export function Workspace() {
       />
     ) : mode === "github" ? (
       <GitHubView />
+    ) : mode === "roles" ? (
+      <PluginsView
+        tabs={["roles", "workflows"]}
+        initialTab="roles"
+        familiars={resolvedFamiliars}
+        onOpenChat={() => setMode("chat")}
+        onCreateSkill={() => setMode("capabilities")}
+        onCreatePlugin={() => setMode("capabilities")}
+      />
     ) : mode === "capabilities" ? (
       <CapabilitiesViewSurface activeHarness={active?.harness ?? null} />
     ) : mode === "calendar" ? (
