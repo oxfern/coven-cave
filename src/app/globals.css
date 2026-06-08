@@ -2981,4 +2981,5 @@ body {
 .familiar-studio-lifecycle__row:hover { background: var(--bg-raised); }
 .familiar-studio-lifecycle__row-main { display: flex; gap: 8px; align-items: center; flex: 1; background: transparent; border: none; padding: 4px 6px; cursor: pointer; color: var(--text-primary); font-size: 13px; }
 .familiar-studio-lifecycle__row-action { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 4px; background: transparent; border: none; color: var(--text-secondary); cursor: pointer; }
-.familiar-studio-lifecycle__row-action:hover { color: var(--text-primary); background: var(--bg-base); }
+.familiar-studio-lifecycle__row-action:hover:not(:disabled) { color: var(--text-primary); background: var(--bg-base); }
+.familiar-studio-lifecycle__row-action:disabled { opacity: 0.25; cursor: not-allowed; }

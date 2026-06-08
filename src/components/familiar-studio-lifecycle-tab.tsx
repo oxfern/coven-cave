@@ -11,6 +11,7 @@ import {
 import { clearAllFamiliarOverrides } from "@/lib/cave-familiar-overrides";
 import { clearGlyphOverride } from "@/lib/cave-glyph-overrides";
 import { clearFamiliarImage } from "@/lib/cave-familiar-images";
+import { setFamiliarOrder } from "@/lib/cave-familiar-order";
 import { useFamiliarStudio } from "@/lib/familiar-studio-context";
 import type { ResolvedFamiliar } from "@/lib/familiar-resolve";
 
@@ -27,18 +28,36 @@ export function FamiliarStudioLifecycleTab({ familiar, allResolved }: Props) {
   if (listView) {
     const active = allResolved.filter((f) => !(f.id in archived));
     const archivedList = allResolved.filter((f) => f.id in archived);
+
+    function move(id: string, direction: "up" | "down") {
+      const ids = allResolved.map((f) => f.id);
+      const idx = ids.indexOf(id);
+      if (idx < 0) return;
+      const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+      if (swapIdx < 0 || swapIdx >= ids.length) return;
+      // Only swap within the active group — refuse to move past an archived neighbor.
+      const swapId = ids[swapIdx];
+      if (swapId in archived) return;
+      [ids[idx], ids[swapIdx]] = [ids[swapIdx], ids[idx]];
+      setFamiliarOrder(ids);
+    }
+
     return (
       <div className="familiar-studio-lifecycle">
         <section>
           <h3 className="familiar-studio-lifecycle__heading">Active</h3>
-          {active.map((f) => (
+          {active.map((f, i) => (
             <FamiliarRow
               key={f.id}
               familiar={f}
               isArchived={false}
+              canMoveUp={i > 0}
+              canMoveDown={i < active.length - 1}
               onSelect={() => openFamiliarStudio(f.id, "identity")}
               onArchive={() => archiveFamiliar(f.id)}
               onUnarchive={() => unarchiveFamiliar(f.id)}
+              onMoveUp={() => move(f.id, "up")}
+              onMoveDown={() => move(f.id, "down")}
             />
           ))}
         </section>
@@ -50,9 +69,13 @@ export function FamiliarStudioLifecycleTab({ familiar, allResolved }: Props) {
                 key={f.id}
                 familiar={f}
                 isArchived={true}
+                canMoveUp={false}
+                canMoveDown={false}
                 onSelect={() => openFamiliarStudio(f.id, "identity")}
                 onArchive={() => archiveFamiliar(f.id)}
                 onUnarchive={() => unarchiveFamiliar(f.id)}
+                onMoveUp={() => { /* no-op */ }}
+                onMoveDown={() => { /* no-op */ }}
               />
             ))}
           </section>
@@ -121,15 +144,23 @@ export function FamiliarStudioLifecycleTab({ familiar, allResolved }: Props) {
 function FamiliarRow({
   familiar,
   isArchived,
+  canMoveUp,
+  canMoveDown,
   onSelect,
   onArchive,
   onUnarchive,
+  onMoveUp,
+  onMoveDown,
 }: {
   familiar: ResolvedFamiliar;
   isArchived: boolean;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
   onSelect: () => void;
   onArchive: () => void;
   onUnarchive: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
 }) {
   return (
     <div className="familiar-studio-lifecycle__row">
@@ -137,6 +168,26 @@ function FamiliarRow({
         <FamiliarAvatar familiar={familiar} size="sm" />
         <span>{familiar.display_name}</span>
       </button>
+      {!isArchived ? (
+        <>
+          <button
+            onClick={onMoveUp}
+            disabled={!canMoveUp}
+            aria-label={`Move ${familiar.display_name} up`}
+            className="familiar-studio-lifecycle__row-action"
+          >
+            <Icon name="ph:arrow-up-bold" width={12} />
+          </button>
+          <button
+            onClick={onMoveDown}
+            disabled={!canMoveDown}
+            aria-label={`Move ${familiar.display_name} down`}
+            className="familiar-studio-lifecycle__row-action"
+          >
+            <Icon name="ph:arrow-down-bold" width={12} />
+          </button>
+        </>
+      ) : null}
       {isArchived ? (
         <button onClick={onUnarchive} aria-label="Unarchive" className="familiar-studio-lifecycle__row-action">
           <Icon name="ph:arrow-counter-clockwise" width={12} />
