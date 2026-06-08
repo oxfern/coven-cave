@@ -281,6 +281,27 @@ function escAttr(s: string): string {
 
 const renderCache = new Map<string, string>();
 
+/**
+ * Scan markdown for fence openers in order, returning the filename suffix for
+ * each (or null when the fence had no `:filename`). Used to re-attach filename
+ * labels after we strip them so @create-markdown/core can parse the fence.
+ */
+function scanFenceFilenames(markdown: string): Array<string | null> {
+  const filenames: Array<string | null> = [];
+  let inFence = false;
+  for (const line of markdown.split("\n")) {
+    if (!/^\s*```/.test(line)) continue;
+    if (inFence) {
+      inFence = false;
+      continue;
+    }
+    const m = /^\s*```\s*[\w+.-]*(?::(\S+))?\s*$/.exec(line);
+    filenames.push(m?.[1] ?? null);
+    inFence = true;
+  }
+  return filenames;
+}
+
 async function mdToHtml(markdown: string): Promise<string> {
   if (renderCache.has(markdown)) return renderCache.get(markdown)!;
 
@@ -292,23 +313,23 @@ async function mdToHtml(markdown: string): Promise<string> {
   // contains a colon (e.g. ```ts:example.ts), treating the opener as a
   // paragraph and then mis-reading the closing ``` as a new opener — which
   // cascades and swallows the rest of the message as a fake code block.
-  // Strip the `:filename` suffix before parsing so only `lang` reaches it.
+  // Pre-scan filenames (positional, one per fence opener) so we can re-attach
+  // them after stripping the suffix for the parser.
+  const fenceFilenames = scanFenceFilenames(markdown);
   const normalized = markdown.replace(/^(\s*```\s*[\w+.-]+):\S+/gm, "$1");
 
   const blocks: Block[] = parse(normalized);
 
-  // Render prose via renderAsync (no shiki plugin — we handle code blocks)
-  // then swap in our Shiki-rendered code blocks.
-  type CodeBlockEntry = { placeholder: string; html: string };
-  const codeReplacements: CodeBlockEntry[] = [];
-
   // First pass: renderAsync without shiki (gives us structural HTML fast)
   const proseHtml = await renderAsync(blocks);
 
-  // Second pass: render each code block with Shiki and substitute
+  // Second pass: render each code block with Shiki. Index-keyed (not pushed)
+  // so codeReplacements[i] corresponds to the i-th code block in parse order
+  // regardless of Promise.all resolution order.
   const codeBlocks = blocks.filter((b) => b.type === "codeBlock");
+  const codeReplacements: string[] = new Array(codeBlocks.length);
   await Promise.all(
-    codeBlocks.map(async (block) => {
+    codeBlocks.map(async (block, i) => {
       // @create-markdown/core CodeBlock has .content (spans) and .props
       const cb = block as {
         type: "codeBlock";
@@ -316,32 +337,35 @@ async function mdToHtml(markdown: string): Promise<string> {
         props: { language?: string; info?: string };
       };
       const code = cb.content.map((s) => s.text).join("");
-      const info = cb.props.info ?? cb.props.language ?? "";
-      const shikiHtml = await renderCodeBlock(code, info);
-      codeReplacements.push({ placeholder: code, html: shikiHtml });
+      const rawInfo = cb.props.info ?? cb.props.language ?? "";
+      const filename = fenceFilenames[i] ?? null;
+      const info = filename ? `${rawInfo}:${filename}` : rawInfo;
+      codeReplacements[i] = await renderCodeBlock(code, info);
     }),
   );
 
-  // renderAsync wraps code blocks in <pre><code>...</code></pre>
-  // Replace each <pre>...</pre> with our Shiki output.
-  let html = proseHtml;
-  for (const { placeholder, html: replacement } of codeReplacements) {
-    // Match the pre/code block containing this code (escaped in HTML)
-    const escaped = escHtml(placeholder);
-    // Simple approach: replace first matching <pre>...<code>..placeholder..</code></pre>
-    const re = new RegExp(
-      `<pre[^>]*>[\\s\\S]*?<code[^>]*>${regEsc(escaped)}[\\s\\S]*?<\\/code>[\\s\\S]*?<\\/pre>`,
-    );
-    html = html.replace(re, replacement);
+  // renderAsync wraps each code block in <pre>...</pre>. Walk the prose HTML
+  // and substitute the N-th <pre> with the N-th replacement positionally.
+  // Content-matching with a lazy regex (the previous approach) misfires when
+  // multiple code blocks exist: the regex anchors on the FIRST <pre> and the
+  // lazy quantifier extends across block boundaries to find the placeholder
+  // text, replacing across two blocks and nesting one inside the other.
+  const preRe = /<pre[^>]*>[\s\S]*?<\/pre>/g;
+  let html = "";
+  let lastIdx = 0;
+  let replaceIdx = 0;
+  let match: RegExpExecArray | null;
+  while ((match = preRe.exec(proseHtml)) !== null) {
+    html += proseHtml.slice(lastIdx, match.index);
+    html += codeReplacements[replaceIdx] ?? match[0];
+    lastIdx = preRe.lastIndex;
+    replaceIdx += 1;
   }
+  html += proseHtml.slice(lastIdx);
 
   const sanitizedHtml = sanitizeHtml(html);
   renderCache.set(markdown, sanitizedHtml);
   return sanitizedHtml;
-}
-
-function regEsc(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 // ---------------------------------------------------------------------------
