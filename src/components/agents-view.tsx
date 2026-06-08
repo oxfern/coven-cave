@@ -265,6 +265,7 @@ export function AgentsView({
     return [...sessions]
       .filter((s) => (s.origin ?? inferOrigin(s)) === "chat")
       .filter((s) => (showClosed ? isClosed(s) : !isClosed(s)))
+      .filter((s) => (activeFamiliarId ? s.familiarId === activeFamiliarId : true))
       .filter((s) => {
         if (!q) return true;
         const f = s.familiarId ? famById.get(s.familiarId) : null;
@@ -272,7 +273,7 @@ export function AgentsView({
           .some((v) => v?.toLowerCase().includes(q));
       })
       .sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1));
-  }, [famById, query, sessions, showClosed]);
+  }, [activeFamiliarId, famById, query, sessions, showClosed]);
 
   const groupedSessions = useMemo(() => {
     if (groupBy === "none") return [{ label: null, sessions: filteredSessions }];
