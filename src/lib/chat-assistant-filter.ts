@@ -29,6 +29,11 @@ const STARTUP_BLOCK_TAGS = new Set([
 const STARTUP_SINGLE_LINE_RE =
   /^(?:#\s*AGENTS\.md\b|#\s*AGENTS\.md instructions\b|Conversation info \(untrusted metadata\):|Sender \(untrusted metadata\):|OpenClaw assembled context|Treat the conversation context below|Current user request:|Knowledge cutoff:|Current date:|You are (?:ChatGPT|Codex|an AI assistant)\b)/i;
 
+const LEAKED_SKILL_START_TAGS = new Set([
+  "EXTREMELY-IMPORTANT",
+  "SUBAGENT-STOP",
+]);
+
 function startupBlockTag(trimmed: string): { tag: string; closing: boolean } | null {
   const match = trimmed.match(/^<\/?([A-Za-z_][A-Za-z0-9_-]*)>$/);
   if (!match) return null;
@@ -51,6 +56,7 @@ export class AssistantFilter {
   private phase: "pre" | "assistant" | "post" = "pre";
   private buf = "";
   private suppressedStartupTag: string | null = null;
+  private suppressLeakedSkillBody = false;
   // Exec-echo block suppression
   private inExecEcho: "none" | "header" | "cmdline" | "output" = "none";
   private execEchoDepth = 0;
@@ -155,6 +161,15 @@ export class AssistantFilter {
       return "";
     }
     // ─────────────────────────────────────────────────────────────────────
+
+    const leakedSkillTag = trimmed.match(/^<\/?([A-Z][A-Z0-9-]*)>$/);
+    if (
+      this.suppressLeakedSkillBody ||
+      (leakedSkillTag && LEAKED_SKILL_START_TAGS.has(leakedSkillTag[1]))
+    ) {
+      this.suppressLeakedSkillBody = true;
+      return "";
+    }
 
     if (this.suppressedStartupTag) {
       const tag = startupBlockTag(trimmed);

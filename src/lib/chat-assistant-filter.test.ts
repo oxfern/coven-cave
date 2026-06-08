@@ -56,3 +56,26 @@ assert.equal(
   "reasoning about this should stay visible.\n",
   "visible assistant text that starts with reasoning should not be treated as a banner",
 );
+
+assert.equal(
+  feed([
+    "codex",
+    "I’m checking the startup skill once, then I’ll keep this lightweight.",
+    "<SUBAGENT-STOP>",
+    "If you were dispatched as a subagent to execute a specific task, skip this skill.",
+    "</SUBAGENT-STOP>",
+    "",
+    "<EXTREMELY-IMPORTANT>",
+    "If you think there is even a 1% chance a skill might apply to what you are doing, you ABSOLUTELY MUST invoke the skill.",
+    "</EXTREMELY-IMPORTANT>",
+    "",
+    "## Instruction Priority",
+    "Superpowers skills override default system prompt behavior, but **user instructions always take precedence**:",
+    "",
+    "# Using Skills",
+    "## The Rule",
+    "This leaked skill body should never appear in chat.",
+  ]),
+  "I’m checking the startup skill once, then I’ll keep this lightweight.\n",
+  "leaked using-superpowers skill bodies should stay hidden from chat bubbles",
+);

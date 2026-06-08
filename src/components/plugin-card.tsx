@@ -22,6 +22,9 @@ const CATEGORY_ICON: Record<string, IconName> = {
   Utility: "ph:wrench-bold",
 };
 
+const ROW_CLASS =
+  "flex w-full items-center gap-4 px-3 py-3 border-b border-[var(--border-hairline)] last:border-b-0 transition-colors hover:bg-[var(--bg-raised)]";
+
 function recommendedFor(plugin: MarketplacePluginWithState): string {
   const familiars = plugin.roleAffinity.map((entry) => entry.familiar);
   const unique = Array.from(new Set(familiars));
@@ -107,7 +110,7 @@ export function PluginCard({
         type="button"
         disabled={busy || plugin.installed}
         onClick={onClick}
-        className="flex w-full items-center gap-4 px-0 py-3 border-b border-[var(--border-hairline)] last:border-b-0 transition-colors hover:bg-[var(--bg-raised)] disabled:cursor-default disabled:hover:bg-transparent text-left"
+        className={`${ROW_CLASS} disabled:cursor-default disabled:hover:bg-transparent text-left`}
       >
         {inner}
       </button>
@@ -115,7 +118,7 @@ export function PluginCard({
   }
 
   return (
-    <div className="flex w-full items-center gap-4 px-0 py-3 border-b border-[var(--border-hairline)] last:border-b-0 transition-colors hover:bg-[var(--bg-raised)]">
+    <div className={ROW_CLASS}>
       {inner}
     </div>
   );

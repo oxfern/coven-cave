@@ -75,3 +75,9 @@ assert.match(
   /recommendedFor/i,
   "Plugin cards should expose familiar or role affinity",
 );
+
+assert.match(
+  pluginCard,
+  /px-3 py-3/,
+  "Plugin rows should keep hovered or selected content padded away from the row edge",
+);
