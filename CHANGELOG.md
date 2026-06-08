@@ -111,13 +111,19 @@ internal audit.
   `package.json` and `tauri.conf.json` were `0.0.49`. Bumped Cargo (and
   the matching `Cargo.lock` entry for the `app` crate) so the native
   binary's version metadata matches the user-visible build version.
+- **Screenshots refreshed** against the new shell IA + Familiar Studio
+  via `node scripts/capture-screenshots.mjs`. The capture script also
+  picked up the Chat / Board renames and a more robust sidebar selector
+  (matches the visible label rather than the full `Board ⌘3` accessible
+  name). 3D canvas non-blank verification (`scripts/verify-trace-graph-3d.mjs`)
+  passed for desktop and mobile viewports.
 
 ### Known limitations
 
-- `screenshots/*.png` predate the avatar rail + companion rail IA and
-  the Familiar Studio drawer. Refresh before the next tagged release.
-- `release/` still ships only `CovenCave-v0.0.48.dmg`. Tagging requires
-  rebuilt `.dmg` / `.msi` / `.AppImage` artifacts plus SHA256SUMS.
+- `release/` still ships only `CovenCave-v0.0.48.dmg`. Tagging the
+  next release requires rebuilt `.dmg` / `.msi` / `.AppImage`
+  artifacts plus a `SHA256SUMS` file. Owned by the release pipeline,
+  not this branch.
 
 ---
 
