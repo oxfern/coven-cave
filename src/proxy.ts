@@ -1,14 +1,25 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-const ACCESS_TOKEN_COOKIE = "coven_cave_access";
-const ACCESS_TOKEN_QUERY_PARAM = "coven_access_token";
-const TOKEN_PARAM = "covenCaveToken";
-const TOKEN_HEADER = "x-coven-cave-token";
-const SAFE_CONTENT_TYPES = [
-  "application/json",
-  "application/x-www-form-urlencoded",
-  "multipart/form-data",
-];
+import {
+  ACCESS_TOKEN_COOKIE,
+  ACCESS_TOKEN_QUERY_PARAM,
+  TOKEN_PARAM,
+  TOKEN_HEADER,
+  SAFE_CONTENT_TYPES,
+  timingSafeEqualString,
+  isLoopbackHost,
+  sameOrigin,
+  bearerFromReferer,
+} from "./proxy-helpers";
+
+// Re-exported here so existing call sites (and tests) that imported these
+// from "./proxy" keep working.
+export {
+  timingSafeEqualString,
+  isLoopbackHost,
+  sameOrigin,
+  bearerFromReferer,
+};
 
 function jsonError(status: number, error: string) {
   return NextResponse.json({ ok: false, error }, { status });
@@ -17,19 +28,6 @@ function jsonError(status: number, error: string) {
 function configuredMobileAccessToken() {
   const token = process.env.COVEN_CAVE_ACCESS_TOKEN?.trim();
   return token && token.length > 0 ? token : null;
-}
-
-function timingSafeEqualString(a: string, b: string) {
-  const encoder = new TextEncoder();
-  const aBytes = encoder.encode(a);
-  const bBytes = encoder.encode(b);
-  if (aBytes.length !== bBytes.length) return false;
-
-  let diff = 0;
-  for (let i = 0; i < aBytes.length; i += 1) {
-    diff |= aBytes[i] ^ bBytes[i];
-  }
-  return diff === 0;
 }
 
 function bearerToken(req: NextRequest) {
@@ -78,34 +76,6 @@ function mobileAccessGate(req: NextRequest) {
   }
 
   return null;
-}
-
-function isLoopbackHost(host: string | null) {
-  if (!host) return false;
-  const hostname = host.startsWith("[")
-    ? host.slice(1, host.indexOf("]"))
-    : host.split(":")[0];
-  return hostname === "127.0.0.1" || hostname === "localhost" || hostname === "::1";
-}
-
-function sameOrigin(value: string | null, expectedOrigin: string) {
-  if (!value) return true;
-  try {
-    return new URL(value).origin === expectedOrigin;
-  } catch {
-    return false;
-  }
-}
-
-function bearerFromReferer(value: string | null, expectedOrigin: string) {
-  if (!value) return null;
-  try {
-    const url = new URL(value);
-    if (url.origin !== expectedOrigin) return null;
-    return url.searchParams.get(TOKEN_PARAM);
-  } catch {
-    return null;
-  }
 }
 
 function hasSafeContentType(req: NextRequest) {
