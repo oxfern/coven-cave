@@ -24,13 +24,22 @@ import type { Familiar } from "@/lib/types";
 
 type Props = {
   familiar: Familiar;
+  /** Notified whenever the hovered glyph entry changes; used by the modal header. */
+  onHoverChange?: (entry: GlyphCatalogEntry | null) => void;
 };
 
-export function FamiliarGlyphPickerPanel({ familiar }: Props) {
+export function FamiliarGlyphPickerPanel({ familiar, onHoverChange }: Props) {
   const overrides = useGlyphOverrides();
   const recent = useRecentGlyphs();
   const [query, setQuery] = useState("");
-  const [hovered, setHovered] = useState<GlyphCatalogEntry | null>(null);
+  const [hovered, setHoveredState] = useState<GlyphCatalogEntry | null>(null);
+  const setHovered = useCallback(
+    (entry: GlyphCatalogEntry | null) => {
+      setHoveredState(entry);
+      onHoverChange?.(entry);
+    },
+    [onHoverChange],
+  );
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   // Cmd/Ctrl+Backspace clears the current override.

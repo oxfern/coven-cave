@@ -9,6 +9,7 @@ import {
 import { useResolvedFamiliars } from "@/lib/familiar-resolve";
 import { FamiliarGlyph as GlyphView } from "@/components/familiar-glyph";
 import { FamiliarGlyphPickerPanel } from "@/components/familiar-glyph-picker-panel";
+import type { GlyphCatalogEntry } from "@/lib/glyph-catalog";
 import type { Familiar } from "@/lib/types";
 
 type Props = {
@@ -21,6 +22,7 @@ export function FamiliarGlyphPicker({ open, familiar, onClose }: Props) {
   const resolvedFamiliarList = useResolvedFamiliars(familiar ? [familiar] : []);
   const resolvedFamiliar = resolvedFamiliarList[0] ?? null;
   const overrides = useGlyphOverrides();
+  const [hovered, setHovered] = useState<GlyphCatalogEntry | null>(null);
 
   // Reset state each time the picker opens for a new familiar.
   useEffect(() => {
@@ -65,7 +67,7 @@ export function FamiliarGlyphPicker({ open, familiar, onClose }: Props) {
               {familiar.display_name}
             </span>
             <span className="text-[11px] text-[var(--text-muted)]">
-              Pick an icon
+              {hovered?.name ?? "Pick an icon"}
             </span>
           </div>
           <button
@@ -79,7 +81,7 @@ export function FamiliarGlyphPicker({ open, familiar, onClose }: Props) {
         </div>
 
         {/* Panel body: search, recent, results count, grid */}
-        <FamiliarGlyphPickerPanel familiar={familiar} />
+        <FamiliarGlyphPickerPanel familiar={familiar} onHoverChange={setHovered} />
 
         {/* Footer */}
         <div className="flex items-center justify-between border-t border-[var(--border-hairline)] px-4 py-2 text-[11px] text-[var(--text-muted)]">
