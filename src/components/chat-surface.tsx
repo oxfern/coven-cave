@@ -186,134 +186,6 @@ function RightPanel({
   );
 }
 
-// ── Chats list familiar filter ────────────────────────────────────────────────
-
-function ChatFilterDropdown({
-  value,
-  familiars,
-  open,
-  onOpenChange,
-  onChange,
-}: {
-  value: string | null;
-  familiars: Familiar[];
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onChange: (next: string | null) => void;
-}) {
-  const ref = React.useRef<HTMLDivElement>(null);
-  const activeFamiliar = value ? familiars.find((f) => f.id === value) ?? null : null;
-  const label = activeFamiliar ? activeFamiliar.display_name : "All chats";
-
-  React.useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onOpenChange(false);
-    };
-    const onMouse = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) onOpenChange(false);
-    };
-    window.addEventListener("keydown", onKey);
-    window.addEventListener("mousedown", onMouse);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      window.removeEventListener("mousedown", onMouse);
-    };
-  }, [open, onOpenChange]);
-
-  return (
-    <div ref={ref} className="relative inline-block">
-      <button
-        type="button"
-        onClick={() => onOpenChange(!open)}
-        className="focus-ring group inline-flex h-7 min-w-0 items-center gap-1.5 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/20 px-2 transition-colors hover:bg-[var(--bg-raised)]/60"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-label={`Filter chats by familiar — currently ${label}`}
-        title="Filter chats by familiar"
-      >
-        <span className="min-w-0 truncate max-w-[140px] text-[12px] font-medium text-[var(--text-primary)]">
-          {label}
-        </span>
-        <Icon
-          name="ph:caret-up-down-bold"
-          width={10}
-          className="shrink-0 text-[var(--text-muted)] opacity-60 transition-opacity group-hover:opacity-100"
-        />
-      </button>
-      {open ? (
-        <div
-          role="menu"
-          className="absolute left-0 top-full z-40 mt-1.5 min-w-[220px] overflow-hidden rounded-xl border border-[var(--border-strong)] bg-[var(--bg-elevated)] shadow-2xl"
-        >
-          <div className="px-2 py-1.5 text-[10px] uppercase tracking-wider text-[var(--text-muted)]">
-            Filter chats
-          </div>
-          <button
-            type="button"
-            role="menuitem"
-            aria-current={value === null ? "true" : undefined}
-            onClick={() => {
-              onOpenChange(false);
-              onChange(null);
-            }}
-            className={[
-              "focus-ring-inset flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors",
-              value === null
-                ? "bg-[color-mix(in_oklch,var(--accent-presence)_14%,transparent)] text-[var(--text-primary)]"
-                : "text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]",
-            ].join(" ")}
-          >
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-[13px] font-medium leading-tight">All chats</div>
-              <div className="truncate text-[11px] text-[var(--text-muted)]">
-                Across every familiar
-              </div>
-            </div>
-            {value === null ? (
-              <Icon name="ph:check-bold" width={11} className="shrink-0 text-[var(--accent-presence)]" />
-            ) : null}
-          </button>
-          <div className="my-1 border-t border-[var(--border-hairline)]" />
-          {familiars.map((f) => {
-            const isActive = f.id === value;
-            return (
-              <button
-                key={f.id}
-                role="menuitem"
-                aria-current={isActive ? "true" : undefined}
-                type="button"
-                onClick={() => {
-                  onOpenChange(false);
-                  onChange(f.id);
-                }}
-                className={[
-                  "focus-ring-inset flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors",
-                  isActive
-                    ? "bg-[color-mix(in_oklch,var(--accent-presence)_14%,transparent)] text-[var(--text-primary)]"
-                    : "text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]",
-                ].join(" ")}
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-[13px] font-medium leading-tight">
-                    {f.display_name}
-                  </div>
-                  {f.role ? (
-                    <div className="truncate text-[11px] text-[var(--text-muted)]">{f.role}</div>
-                  ) : null}
-                </div>
-                {isActive ? (
-                  <Icon name="ph:check-bold" width={11} className="shrink-0 text-[var(--accent-presence)]" />
-                ) : null}
-              </button>
-            );
-          })}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
 // ── Main view ─────────────────────────────────────────────────────────────────
 
 export function ChatSurface({
@@ -347,14 +219,10 @@ export function ChatSurface({
   const [scope, setScope] = useState<AgentsScope>("sessions");
   const [query, setQuery] = useState("");
   const [showClosed, setShowClosed] = useState(false);
-  const [groupBy, setGroupBy] = useState<"familiar" | "status" | "date" | "none">("familiar");
+  // groupBy intentionally omits "familiar": Chats is already filtered to the
+  // active agent, so grouping by familiar would always produce one group.
+  const [groupBy, setGroupBy] = useState<"status" | "date" | "none">("date");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  // Familiar filter for the chats list — defaults to null (show all chats).
-  // Decoupled from `activeFamiliarId` (which still drives new chats and the
-  // right panel) so the list lands on "All chats" rather than pre-filtering
-  // to whichever familiar is currently active in the workspace.
-  const [chatFilterId, setChatFilterId] = useState<string | null>(null);
-  const [chatFilterOpen, setChatFilterOpen] = useState(false);
 
   // Right panel — prefer new prop, fall back to legacy bool
   const rightPanel: "inspector" | "chat" | null =
@@ -403,7 +271,7 @@ export function ChatSurface({
     return [...sessions]
       .filter((s) => (s.origin ?? inferOrigin(s)) === "chat")
       .filter((s) => (showClosed ? isClosed(s) : !isClosed(s)))
-      .filter((s) => (chatFilterId ? s.familiarId === chatFilterId : true))
+      .filter((s) => (activeFamiliarId ? s.familiarId === activeFamiliarId : true))
       .filter((s) => {
         if (!q) return true;
         const f = s.familiarId ? famById.get(s.familiarId) : null;
@@ -411,17 +279,14 @@ export function ChatSurface({
           .some((v) => v?.toLowerCase().includes(q));
       })
       .sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1));
-  }, [chatFilterId, famById, query, sessions, showClosed]);
+  }, [activeFamiliarId, famById, query, sessions, showClosed]);
 
   const groupedSessions = useMemo(() => {
     if (groupBy === "none") return [{ label: null, sessions: filteredSessions }];
     const map = new Map<string, typeof filteredSessions>();
     for (const s of filteredSessions) {
       let key: string;
-      if (groupBy === "familiar") {
-        const f = s.familiarId ? famById.get(s.familiarId) : null;
-        key = f ? f.display_name : "Unknown";
-      } else if (groupBy === "status") {
+      if (groupBy === "status") {
         key = s.status ?? "unknown";
       } else {
         const d = new Date(s.updated_at);
@@ -436,7 +301,7 @@ export function ChatSurface({
       map.get(key)!.push(s);
     }
     return [...map.entries()].map(([label, sessions]) => ({ label, sessions }));
-  }, [famById, filteredSessions, groupBy]);
+  }, [filteredSessions, groupBy]);
 
   // Clear selection when filter/group changes
   useEffect(() => { setSelectedIds(new Set()); }, [groupBy, showClosed, query]);
@@ -533,22 +398,12 @@ export function ChatSurface({
 
           {/* Actions flush right */}
           <div className="flex items-center gap-1.5 py-1.5">
-            {scope === "sessions" && familiars.length > 0 && (
-              <ChatFilterDropdown
-                value={chatFilterId}
-                familiars={familiars}
-                open={chatFilterOpen}
-                onOpenChange={setChatFilterOpen}
-                onChange={setChatFilterId}
-              />
-            )}
             {scope === "conversation" && activeFamiliar && (
               <FamiliarSwitcher
                 familiar={activeFamiliar}
                 familiars={familiars}
                 onSelect={(id) => {
                   onSetActiveFamiliar(id);
-                  setChatFilterId(id);
                   setScope("sessions");
                   window.setTimeout(() => routerRef.current?.goToList(), 0);
                 }}
@@ -577,18 +432,17 @@ export function ChatSurface({
               </div>
             )}
             {(scope === "sessions" || scope === "conversation") && (
-              <select
-                value={groupBy}
-                onChange={(e) => setGroupBy(e.target.value as typeof groupBy)}
-                className="h-7 cursor-pointer rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/20 px-2 pr-6 text-[11px] text-[var(--text-muted)] outline-none hover:text-[var(--text-secondary)] focus:border-[oklch(0.65_0.18_280/50%)] appearance-none"
-                title="Group by"
-                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%23888' d='M2 3.5l3 3 3-3'/%3E%3C/svg%3E")`, backgroundRepeat: "no-repeat", backgroundPosition: "right 6px center" }}
-              >
-                <option value="familiar">Familiar</option>
-                <option value="status">Status</option>
-                <option value="date">Date</option>
-                <option value="none">None</option>
-              </select>
+              <div className="inline-flex rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/20 p-0.5" title="Group by" role="group" aria-label="Group by">
+                <button type="button" onClick={() => setGroupBy("date")} aria-pressed={groupBy === "date"} className={softButton(groupBy === "date")}>
+                  Date
+                </button>
+                <button type="button" onClick={() => setGroupBy("status")} aria-pressed={groupBy === "status"} className={softButton(groupBy === "status")}>
+                  Status
+                </button>
+                <button type="button" onClick={() => setGroupBy("none")} aria-pressed={groupBy === "none"} className={softButton(groupBy === "none")}>
+                  None
+                </button>
+              </div>
             )}
             <button
               type="button"
@@ -666,6 +520,7 @@ export function ChatSurface({
                 sessions={sessions}
                 activeFamiliarId={activeFamiliarId}
                 activeSessionId={activeSessionId ?? null}
+                hideFamiliarFilter
                 onOpenSession={(sessionId, familiarId) => {
                   if (onOpenSession) {
                     onOpenSession(sessionId, familiarId);

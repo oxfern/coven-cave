@@ -654,6 +654,9 @@ export type SessionsViewProps = {
   onNewChat: (familiarId?: string) => void;
   /** Called after a successful mutation so the parent can refresh its sessions list. */
   onSessionsChanged?: () => void;
+  /** Hide the per-familiar filter dropdown. Used by the Chats surface where the
+   *  list is already scoped to the active agent. */
+  hideFamiliarFilter?: boolean;
 };
 
 export function SessionsView({
@@ -664,6 +667,7 @@ export function SessionsView({
   onOpenSession,
   onNewChat,
   onSessionsChanged,
+  hideFamiliarFilter = false,
 }: SessionsViewProps) {
   const overrides = useGlyphOverrides();
   const [layoutMode, setLayoutMode] = useState<SessionsLayoutMode>("rows");
@@ -832,7 +836,7 @@ export function SessionsView({
           {subtitle && <span className="sessions-view-subtitle">{subtitle}</span>}
         </div>
         <div className="sessions-view-actions">
-          {familiars.length > 0 && (
+          {!hideFamiliarFilter && familiars.length > 0 && (
             <div ref={filterRef} className="relative inline-block">
               <button
                 type="button"
