@@ -117,6 +117,25 @@ internal audit.
   (matches the visible label rather than the full `Board ⌘3` accessible
   name). 3D canvas non-blank verification (`scripts/verify-trace-graph-3d.mjs`)
   passed for desktop and mobile viewports.
+- **`scripts/release.sh` writes `release/SHA256SUMS`** automatically
+  after each successful build, replacing any prior entry for the
+  same artifact in place. README's "Release standard" promise is now
+  enforced by the script rather than the operator's memory.
+- **`Copy diagnostics`** payload extended with `capturedAt`,
+  `statusFailures`, `setupError`, and `agentsError` so support traces
+  can answer "daemon unreachable vs setup itself failed?" without a
+  follow-up round trip.
+- **Proxy helpers extracted** into `src/proxy-helpers.ts` so the
+  CSRF / loopback / same-origin / bearer-token / timing-safe-compare
+  primitives can be unit-tested directly (`proxy-behavior.test.ts`)
+  without paying the `next/server` ESM resolution cost. Pure
+  refactor; proxy.ts re-exports the helpers and middleware behavior
+  is unchanged.
+- **README + docs/mobile-tailscale.md** brought in line with the new
+  IA (avatar rail, Familiar Studio, Chat/Board renames) and the
+  always-on CSRF guards. Keybinds table expanded for the new
+  surface / familiar / chat shortcuts; screenshots section
+  references all eight current PNGs.
 
 ### Known limitations
 
