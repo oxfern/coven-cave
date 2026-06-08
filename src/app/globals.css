@@ -21,32 +21,34 @@
    Reserved for familiar presence dots and the health strip — not
    for primary CTAs.
 
-   Palette v1.1 — dark surfaces now carry enough purple chroma (0.022)
-   to read as clean brand-violet rather than the near-neutral warm-grey
-   that the previous near-zero chroma (0.005–0.006) produced on some
-   displays. All hue values are pinned to 293 (close to #9A8ECD's
-   natural hue) so surfaces, panels, and the accent all share the same
-   colour axis. */
+   Palette v1.2 — Mood C tuned for a professional, sleek dark UI.
+   Surface chroma drops from 0.022 → ~0.005 so the shell reads as
+   refined neutral graphite rather than tinted purple. The cave base
+   sits deep (L≈0.07) for that "near-black, low-light editor" feel,
+   with small lightness steps building hierarchy (panel → card →
+   elevated → hover). Brand hue 293 is preserved in accents so the
+   accent-presence dot still feels OpenCoven without bleeding into
+   every surface. */
 
 :root {
   /* ---- Palette (oklch — same colour science as shadcn) ---- */
-  --background: oklch(0.16 0.022 293);
+  --background: oklch(0.07 0.004 293);
   --foreground: oklch(0.985 0 0);
-  --card: oklch(0.19 0.022 293);
+  --card: oklch(0.115 0.005 293);
   --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.19 0.022 293);
+  --popover: oklch(0.135 0.006 293);
   --popover-foreground: oklch(0.985 0 0);
   --primary: oklch(0.92 0.004 293);
-  --primary-foreground: oklch(0.19 0.022 293);
-  --secondary: oklch(0.25 0.022 293);
+  --primary-foreground: oklch(0.115 0.005 293);
+  --secondary: oklch(0.17 0.006 293);
   --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.25 0.022 293);
-  --muted-foreground: oklch(0.68 0.022 293);
-  --accent: oklch(0.25 0.022 293);
+  --muted: oklch(0.17 0.006 293);
+  --muted-foreground: oklch(0.66 0.012 293);
+  --accent: oklch(0.17 0.006 293);
   --accent-foreground: oklch(0.985 0 0);
-  --border: oklch(1 0 0 / 6%);
-  --border-strong: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 10%);
+  --border: oklch(1 0 0 / 5%);
+  --border-strong: oklch(1 0 0 / 9%);
+  --input: oklch(1 0 0 / 8%);
   --ring: oklch(0.55 0.08 293);
 
   /* ---- Coven brand ----
@@ -61,10 +63,10 @@
      Semantic names called out in the spec. Resolve to the same
      palette as above so either vocabulary works. */
   --bg-base: var(--background);
-  --bg-panel: oklch(0.145 0.022 293);       /* slightly darker than --card */
+  --bg-panel: oklch(0.055 0.003 293);       /* deepest — app shell / sidebar floor */
   --bg-raised: var(--card);
-  --bg-elevated: oklch(0.22 0.022 293);     /* lighter than --card, for dropdowns/popovers */
-  --bg-hover: oklch(0.27 0.024 293);        /* hover state */
+  --bg-elevated: oklch(0.17 0.006 293);     /* dropdowns / popovers */
+  --bg-hover: oklch(0.21 0.007 293);        /* hover state */
   --border-hairline: var(--border);
   --fg-base: var(--text-primary);
   --fg-muted: var(--text-secondary);
