@@ -577,7 +577,7 @@ function MemoryTab({ familiar }: { familiar: Familiar | null }) {
   }
 
   if (openPath) {
-    const totalRedactions = openFile
+    const totalRedactions = openFile?.redactions
       ? Object.values(openFile.redactions).reduce((a, b) => a + b, 0)
       : 0;
     return (
