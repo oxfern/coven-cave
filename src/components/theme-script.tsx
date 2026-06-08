@@ -1,26 +1,44 @@
 /**
- * ThemeScript — flash-free theme restoration.
+ * ThemeScript — flash-free theme + mode restoration.
  *
  * Rendered as a <script> tag inside <head> via layout.tsx.
  * Runs before the first paint so there's no theme flash.
  *
  * Strategy:
- *  1. Read localStorage["coven-theme"]  (preset id or "custom")
- *  2. If preset — set data-theme on <html>
- *  3. If custom  — read localStorage["coven-custom-theme"] and apply
- *     every CSS var from cssVars.theme + cssVars.dark via setProperty.
+ *  1. Read localStorage["coven-theme"] (id or "custom"), default "coven".
+ *  2. Read localStorage["coven-mode"] ("light" | "dark"), default "dark".
+ *  3. One-shot rename: mood-c → coven, sky → tide, orchid → dusk, midnight → slate.
+ *  4. Always set BOTH `data-theme` and `data-mode` on <html>.
+ *  5. If theme === "custom", apply `cssVars.theme` (mode-agnostic) +
+ *     `cssVars[mode]` (mode-specific) from localStorage["coven-custom-theme"].
+ *
+ * NOTE: The storage key strings ("coven-theme", "coven-mode",
+ * "coven-custom-theme") and the legacy rename map are duplicated from
+ * src/lib/theme-storage.ts. They cannot be imported here because the
+ * script body is a string literal that runs in the browser before any
+ * module code resolves. Keep both in sync when adding new keys or
+ * renames.
  */
 
 const THEME_SCRIPT = `
 (function () {
   try {
-    var theme = localStorage.getItem("coven-theme");
-    if (!theme || theme === "mood-c") return; // default :root handles it
-
-    if (theme === "midnight" || theme === "orchid" || theme === "sky") {
-      document.documentElement.setAttribute("data-theme", theme);
-      return;
+    var rename = { "mood-c": "coven", "sky": "tide", "orchid": "dusk", "midnight": "slate" };
+    var valid = ["coven","tide","grove","ember","bloom","dusk","mist","slate","custom"];
+    var theme = localStorage.getItem("coven-theme") || "coven";
+    if (rename[theme]) {
+      theme = rename[theme];
+      localStorage.setItem("coven-theme", theme);
     }
+    // Allowlist: corrupt or attacker-written localStorage values must not
+    // land as data-theme attribute content. Unknown ids fall back to coven.
+    if (valid.indexOf(theme) === -1) theme = "coven";
+    var mode = localStorage.getItem("coven-mode") || "dark";
+    if (mode !== "light" && mode !== "dark") mode = "dark";
+
+    var html = document.documentElement;
+    html.setAttribute("data-theme", theme);
+    html.setAttribute("data-mode", mode);
 
     if (theme === "custom") {
       var raw = localStorage.getItem("coven-custom-theme");
@@ -28,7 +46,6 @@ const THEME_SCRIPT = `
       var data = JSON.parse(raw);
       var cssVars = data && data.cssVars;
       if (!cssVars) return;
-      var html = document.documentElement;
       function applyGroup(group) {
         if (!group || typeof group !== "object") return;
         for (var name in group) {
@@ -39,15 +56,19 @@ const THEME_SCRIPT = `
         }
       }
       applyGroup(cssVars.theme);
-      applyGroup(cssVars.dark);
+      var modeGroup = mode === "light" ? cssVars.light : cssVars.dark;
+      // Fallback to the opposite group if the selected mode is absent
+      // (tweakcn imports from the dark-only era ship only cssVars.dark).
+      if (!modeGroup) modeGroup = mode === "light" ? cssVars.dark : cssVars.light;
+      applyGroup(modeGroup);
     }
   } catch (e) {}
 })();
 `.trim();
 
 /**
- * Renders an inline <script> that runs synchronously before hydration.
- * Must be placed in <head> (before any CSS-in-JS or painted content).
+ * Inline <script> that runs synchronously before hydration.
+ * Must be placed in <head>.
  */
 export function ThemeScript() {
   return (
