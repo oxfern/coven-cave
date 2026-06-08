@@ -231,7 +231,7 @@ const ADDON_ROWS: Array<{
   },
   {
     key: "library",
-    label: "Grimoire",
+    label: "Library",
     icon: "ph:books",
     description: "Save links, notes, and references for your familiars to draw from.",
   },

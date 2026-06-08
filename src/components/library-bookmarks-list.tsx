@@ -231,11 +231,32 @@ export function LibraryBookmarksList({ selectedId, onSelect, onDelete }: Props) 
                       className={item.id === selectedId ? "selected" : ""}
                       onClick={() => onSelect(item)}>
                       <td>
-                        <span className="board-table-title">{item.title}</span>
+                        <span className="board-table-title library-title-cell">
+                          {item.favicon ? (
+                            <img
+                              src={item.favicon}
+                              alt=""
+                              width={14}
+                              height={14}
+                              className="library-favicon"
+                              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                            />
+                          ) : (
+                            <Icon name="ph:link-simple" width={13} className="library-favicon-fallback" />
+                          )}
+                          <a
+                            href={item.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="library-bookmark-link"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {item.title}
+                          </a>
+                        </span>
                       </td>
                       <td>
                         <span className="board-table-muted library-domain-cell">
-                          <Icon name="ph:link-simple" width={11} />
                           {item.domain}
                         </span>
                       </td>

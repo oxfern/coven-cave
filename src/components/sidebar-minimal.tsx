@@ -66,7 +66,7 @@ const FOLDER_MODES: Array<{
   // Integrations
   { id: "github", label: "GitHub",       iconName: "ph:github-logo", dividerBefore: true },
   // Knowledge
-  { id: "library", label: "Grimoire",     iconName: "ph:books",            dividerBefore: true },
+  { id: "library", label: "Library",     iconName: "ph:books",            dividerBefore: true },
 ];
 
 const UTILITY_MODES: Array<{

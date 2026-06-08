@@ -9,6 +9,13 @@ function domainFrom(url: string): string {
   catch { return url; }
 }
 
+function faviconUrl(url: string): string {
+  try {
+    const { protocol, hostname } = new URL(url);
+    return `${protocol}//${hostname}/favicon.ico`;
+  } catch { return ""; }
+}
+
 function generateId(): string {
   return `bm_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 }
@@ -35,6 +42,7 @@ export async function POST(req: NextRequest) {
     url: body.url,
     title: body.title ?? domain,
     domain,
+    favicon: faviconUrl(body.url),
     notes: body.notes,
     tags: body.tags ?? [],
     savedAt: new Date().toISOString(),

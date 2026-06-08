@@ -72,7 +72,7 @@ export function LibraryCollectionRail({
     <div className="library-rail">
 
       {/* ── Research collections ─────────────────────────────── */}
-      <div className="library-rail-header">Grimoire</div>
+      <div className="library-rail-header">Library</div>
       <div className="library-rail-list">
         {collections.map((col) => {
           const count = docCounts[col.id] ?? 0;
