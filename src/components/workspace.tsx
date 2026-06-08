@@ -19,6 +19,7 @@ import { FamiliarStudioProvider } from "@/lib/familiar-studio-context";
 import { FamiliarStudio } from "@/components/familiar-studio";
 import { CompanionRail, type CompanionTab } from "@/components/companion-rail";
 import { RailInspector } from "@/components/inspector-pane";
+import { AgentsView } from "@/components/agents-view";
 import { RailMemoryList } from "@/components/agents-memory-view";
 import {
   getActiveFamiliar,
@@ -74,7 +75,7 @@ export function Workspace() {
   const { pushBanner, dismissBanner } = useShellBanners();
   const [responseNeeded, setResponseNeeded] = useState<Set<string>>(new Set());
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [mode, setMode] = useState<WorkspaceMode>("home");
+  const [mode, setMode] = useState<WorkspaceMode>("agents");
   const browserPaneRef = useRef<BrowserPaneHandle>(null);
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [rightPanel, setRightPanel] = useState<"inspector" | "chat" | null>(null);
@@ -548,7 +549,7 @@ export function Workspace() {
 
   useEffect(() => {
     const SURFACE_ORDER: WorkspaceMode[] = [
-      "home", "chat", "board", "calendar", "inbox", "library", "browser", "terminal",
+      "agents", "home", "chat", "board", "calendar", "inbox", "library", "browser",
     ];
 
     const onKey = (e: KeyboardEvent) => {
@@ -866,7 +867,20 @@ export function Workspace() {
 
   const detail = (
     <div key={mode} className="cave-mode-fade h-full flex flex-col">
-      {mode === "home" ? (
+      {mode === "agents" ? (
+      <AgentsView
+        familiars={familiars}
+        sessions={sessions}
+        daemonRunning={daemonRunning}
+        responseNeeded={responseNeeded}
+        onStartChat={(familiarId) => startAgentChat(familiarId)}
+        onOpenSession={(sessionId, familiarId) => openAgentSession(sessionId, familiarId)}
+        onOpenMemoryFile={(path) => {
+          window.location.hash = `memory:${encodeURIComponent(path)}`;
+        }}
+        onOpenOnboarding={openOnboarding}
+      />
+    ) : mode === "home" ? (
       <HomeComposer
         familiars={familiars}
         activeFamiliarId={activeId}
@@ -1036,7 +1050,7 @@ export function Workspace() {
         list={list}
         detail={detail}
         agent={
-          mode === "browser" ? undefined : (
+          mode === "browser" || mode === "agents" ? undefined : (
             <CompanionRail
               familiar={active}
               defaultTab={railTab}
