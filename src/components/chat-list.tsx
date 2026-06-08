@@ -151,12 +151,7 @@ export function ChatList({ familiar, familiars = [], sessions, daemonRunning, on
       {/* ── Agent dossier + command strip ── */}
       <header className="agent-panel-dossier border-b border-[var(--border-hairline)] bg-[var(--bg-base)] px-4 py-3">
         <div className="flex min-w-0 items-start gap-3">
-          <span
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-raised)]"
-            aria-hidden
-          >
-            <FamiliarGlyph glyph={glyph} size="md" />
-          </span>
+
           <div className="min-w-0 flex-1">
             <div className="flex min-w-0 items-center gap-2">
               <FamiliarSwitcher familiar={familiar} familiars={familiars} onSelect={onFamiliarSelect} />
@@ -171,13 +166,7 @@ export function ChatList({ familiar, familiars = [], sessions, daemonRunning, on
                 {daemonRunning ? "online" : "offline"}
               </span>
             </div>
-            <p className="mt-1 truncate text-[12px] text-[var(--text-muted)]">
-              {familiar.role || "Familiar"} · Agent runtime{" "}
-              <span className="font-mono text-[var(--text-secondary)]">
-                {familiar.harness ?? "codex"}
-                {familiar.model ? ` / ${familiar.model}` : ""}
-              </span>
-            </p>
+
           </div>
           <button
             type="button"
