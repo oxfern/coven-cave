@@ -34,6 +34,27 @@ export function FamiliarAvatarRail({
 
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
+
+  // Dismiss the + context menu on outside click or Esc.
+  useEffect(() => {
+    if (!addMenuOpen) return;
+    const onDocClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.closest(".familiar-avatar-rail__add-menu")) return;
+      if (target?.closest(".familiar-avatar-rail__add")) return;
+      setAddMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setAddMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDocClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDocClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [addMenuOpen]);
 
   function onDragStart(id: string) {
     return (e: React.DragEvent) => {
@@ -156,19 +177,55 @@ export function FamiliarAvatarRail({
         })}
       </ul>
 
-      <button
-        type="button"
-        className="familiar-avatar-rail__add"
-        aria-label="Add familiar"
-        title="Add familiar (right-click to manage)"
-        onClick={onAddFamiliar}
-        onContextMenu={(e) => {
-          e.preventDefault();
-          openFamiliarStudioListView();
-        }}
-      >
-        <Icon name="ph:plus-bold" width={12} />
-      </button>
+      <div className="familiar-avatar-rail__add-wrap">
+        <button
+          type="button"
+          className="familiar-avatar-rail__add"
+          aria-label="Add familiar"
+          aria-haspopup="menu"
+          aria-expanded={addMenuOpen ? "true" : undefined}
+          title="Add familiar (right-click for more)"
+          onClick={onAddFamiliar}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            setAddMenuOpen((open) => !open);
+          }}
+        >
+          <Icon name="ph:plus-bold" width={12} />
+        </button>
+        {addMenuOpen ? (
+          <div
+            role="menu"
+            className="familiar-avatar-rail__add-menu"
+            aria-label="Familiar actions"
+          >
+            <button
+              type="button"
+              role="menuitem"
+              className="familiar-avatar-rail__add-menu-item"
+              onClick={() => {
+                setAddMenuOpen(false);
+                onAddFamiliar();
+              }}
+            >
+              <Icon name="ph:plus-bold" width={12} />
+              <span>New familiar</span>
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              className="familiar-avatar-rail__add-menu-item"
+              onClick={() => {
+                setAddMenuOpen(false);
+                openFamiliarStudioListView();
+              }}
+            >
+              <Icon name="ph:list-bullets" width={12} />
+              <span>Manage familiars…</span>
+            </button>
+          </div>
+        ) : null}
+      </div>
 
       <button
         type="button"

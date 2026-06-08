@@ -1,10 +1,15 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Icon, type IconName } from "@/lib/icon";
 import { FamiliarAvatar } from "@/components/familiar-avatar";
 import { useFamiliarStudio, type FamiliarStudioTab } from "@/lib/familiar-studio-context";
-import { useResolvedFamiliars } from "@/lib/familiar-resolve";
+import { useResolvedFamiliars, type ResolvedFamiliar } from "@/lib/familiar-resolve";
+import {
+  setFamiliarOverride,
+  clearFamiliarOverrideField,
+} from "@/lib/cave-familiar-overrides";
+import { useDaemonSyncStatus } from "@/lib/daemon-sync-status";
 import { FamiliarStudioIdentityTab } from "./familiar-studio-identity-tab";
 import { FamiliarStudioLookTab } from "./familiar-studio-look-tab";
 import { FamiliarStudioBrainTab } from "./familiar-studio-brain-tab";
@@ -30,6 +35,7 @@ export function FamiliarStudio({ familiars }: Props) {
     setActiveTab,
     closeFamiliarStudio,
   } = useFamiliarStudio();
+  const daemonSync = useDaemonSyncStatus();
 
   // Resolve with archived included so the Lifecycle list view can show them.
   const resolved = useResolvedFamiliars(familiars, { includeArchived: true });
@@ -110,7 +116,7 @@ export function FamiliarStudio({ familiars }: Props) {
             <>
               <FamiliarAvatar familiar={familiar} size="lg" />
               <div className="familiar-studio__heading">
-                <span className="familiar-studio__name">{familiar.display_name}</span>
+                <HeaderName familiar={familiar} />
                 <span className="familiar-studio__role">{familiar.role}</span>
               </div>
             </>
@@ -148,8 +154,75 @@ export function FamiliarStudio({ familiars }: Props) {
 
         <footer className="familiar-studio__footer">
           <span className="familiar-studio__autosave">Changes save automatically</span>
+          {daemonSync.offline ? (
+            <span
+              className="familiar-studio__sync-warn"
+              title={daemonSync.reason ?? undefined}
+              aria-live="polite"
+            >
+              <Icon name="ph:warning-circle" width={11} />
+              Saved locally, daemon offline
+            </span>
+          ) : null}
         </footer>
       </div>
     </aside>
+  );
+}
+
+function HeaderName({ familiar }: { familiar: ResolvedFamiliar }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(familiar.display_name);
+
+  function enter() {
+    setDraft(familiar.display_name);
+    setEditing(true);
+  }
+
+  function commit() {
+    setEditing(false);
+    if (draft.trim() === "") {
+      clearFamiliarOverrideField(familiar.id, "display_name");
+    } else if (draft !== familiar.display_name) {
+      setFamiliarOverride(familiar.id, { display_name: draft });
+    }
+  }
+
+  function cancel() {
+    setDraft(familiar.display_name);
+    setEditing(false);
+  }
+
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        className="familiar-studio__name familiar-studio__name--editing"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            (e.currentTarget as HTMLInputElement).blur();
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            cancel();
+          }
+        }}
+        aria-label="Edit display name"
+      />
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      className="familiar-studio__name"
+      onClick={enter}
+      title="Click to rename"
+    >
+      {familiar.display_name}
+    </button>
   );
 }
