@@ -80,3 +80,9 @@ assert.match(source, /onDragOver/, "onDragOver handler must be present");
 assert.match(source, /onDrop/, "onDrop handler must be present");
 assert.match(source, /setFamiliarOrder/, "Must call setFamiliarOrder on drop");
 assert.match(source, /openFamiliarStudioListView/, "Right-click on + opens list view");
+assert.match(source, /familiar-avatar-rail__add-menu/, "Right-click on + renders a context menu");
+assert.match(source, /New familiar/, "Menu item: New familiar (calls onAddFamiliar)");
+assert.match(source, /Manage familiars/, "Menu item: Manage familiars (opens list view)");
+assert.match(source, /aria-haspopup/, "Add button declares menu popup for a11y");
+
+console.log("familiar-avatar-rail.test.ts: ok");
