@@ -1,0 +1,53 @@
+// @ts-nocheck
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+
+const bookmarks = await readFile(new URL("./library-bookmarks-list.tsx", import.meta.url), "utf8");
+const reading   = await readFile(new URL("./library-reading-list.tsx",   import.meta.url), "utf8");
+const github    = await readFile(new URL("./library-github-list.tsx",    import.meta.url), "utf8");
+
+// ───────── Task 1: localeCompare null-guards ─────────
+// bookmarks — title, domain, savedAt
+assert.match(bookmarks, /\(a\.title \?\? ""\)\.localeCompare\(b\.title \?\? ""\)/,    "bookmarks title null-guard");
+assert.match(bookmarks, /\(a\.domain \?\? ""\)\.localeCompare\(b\.domain \?\? ""\)/,  "bookmarks domain null-guard");
+assert.match(bookmarks, /\(a\.savedAt \?\? ""\)\.localeCompare\(b\.savedAt \?\? ""\)/,"bookmarks savedAt null-guard");
+
+// reading — title, addedAt, label
+assert.match(reading, /\(a\.title \?\? ""\)\.localeCompare\(b\.title \?\? ""\)/,     "reading title null-guard");
+assert.match(reading, /\(a\.addedAt \?\? ""\)\.localeCompare\(b\.addedAt \?\? ""\)/, "reading addedAt null-guard");
+assert.match(reading, /\(a\.label \?\? ""\)\.localeCompare\(b\.label \?\? ""\)/,     "reading label null-guard");
+
+// github — title, repo, savedAt
+assert.match(github, /\(a\.title \?\? ""\)\.localeCompare\(b\.title \?\? ""\)/,   "github title null-guard");
+assert.match(github, /\(a\.repo \?\? ""\)\.localeCompare\(b\.repo \?\? ""\)/,     "github repo null-guard");
+assert.match(github, /\(a\.savedAt \?\? ""\)\.localeCompare\(b\.savedAt \?\? ""\)/,"github savedAt null-guard");
+
+// ───────── Task 2: Timeline placeholder shortened ─────────
+const timeline = await readFile(new URL("./library-timeline.tsx", import.meta.url), "utf8");
+assert.match(timeline, /placeholder="Search links…"/, "Timeline placeholder must be 'Search links…'");
+assert.match(timeline, /title="Search links — try chat: github: sage:"/, "Verbose hint must live in title=");
+assert.doesNotMatch(timeline, /placeholder="Search links — try chat: github: sage:"/, "Old long placeholder must be removed");
+
+// ───────── Task 3: Lists "All" renamed to "Timeline" ─────────
+const rail = await readFile(new URL("./library-collection-rail.tsx", import.meta.url), "utf8");
+assert.match(rail, /\{ id: "all",\s+label: "Timeline",\s+icon: "ph:link" \}/, "STATIC_LIST_SECTIONS first row label must be 'Timeline'");
+
+// ───────── Task 4: Section-aware preview empty state ─────────
+const preview = await readFile(new URL("./library-doc-preview.tsx", import.meta.url), "utf8");
+const view    = await readFile(new URL("./library-view.tsx",        import.meta.url), "utf8");
+
+assert.match(preview, /LibrarySectionKind[\s\S]{0,200}?from "@\/lib\/library-types"/, "LibrarySectionKind must be imported from library-types");
+assert.match(preview, /const EMPTY_TEXT: Record<LibrarySectionKind, string> = \{/, "EMPTY_TEXT typed Record<LibrarySectionKind, string>");
+for (const section of ["all", "docs", "bookmarks", "reading", "github", "projects", "skills"]) {
+  assert.ok(new RegExp(`${section}:\\s*"Select`).test(preview), `EMPTY_TEXT entry for ${section}`);
+}
+assert.match(preview, /activeSection \? EMPTY_TEXT\[activeSection\] : "Select an item to preview"/, "Empty render uses EMPTY_TEXT[activeSection]");
+assert.match(view, /<LibraryDocPreview\s+selected=\{selectedItem\}\s+loading=\{previewLoading\}\s+activeSection=\{activeSection\}/, "library-view passes activeSection");
+
+// ───────── Task 5: [ shortcut toggles list panel ─────────
+const view2 = await readFile(new URL("./library-view.tsx", import.meta.url), "utf8");
+assert.match(view2, /if \(e\.key !== "\["\) return;/, "library-view must filter keydown events for '['");
+assert.match(view2, /setListPinned\(\(v\) => !v\)/, "library-view must call setListPinned((v) => !v)");
+assert.match(view2, /\["input", "textarea", "select"\]\.includes\(tag\)/, "library-view must skip when focus is in an input");
+
+console.log("library-polish.test.ts: ok");
