@@ -385,6 +385,32 @@
   color: var(--text-muted);
 }
 
+/* One row: metadata on the left, action buttons on the right.
+ * Caller wraps the metadata in .library-preview-meta-left and the actions
+ * in .library-preview-meta-actions; this avoids meta items wrapping into
+ * the action cluster on narrow widths. */
+.library-preview-meta--with-actions {
+  flex-wrap: nowrap;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.library-preview-meta-left {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.library-preview-meta-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 .library-preview-sep {
   opacity: 0.4;
 }
@@ -449,8 +475,26 @@
   background: var(--bg-base);
   color: var(--text-secondary);
   font-size: 12px;
+  white-space: nowrap;
   cursor: pointer;
   transition: background 0.12s, color 0.12s;
+}
+
+/* Inline header variant — quieter border, tighter padding, single line. */
+.library-preview-action-btn--compact {
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border-color: var(--border-hairline);
+  background: transparent;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.library-preview-action-btn--compact:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
 }
 
 .library-preview-action-btn:hover {

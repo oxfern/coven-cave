@@ -67,16 +67,19 @@ async function openUrl(url: string, kind: UrlOpenKind = "web") {
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
-function CopyButton({ text, label }: { text: string; label: string }) {
+function CopyButton({ text, label, compact }: { text: string; label: string; compact?: boolean }) {
   const [copied, setCopied] = useState(false);
   return (
-    <button type="button" className="library-preview-action-btn"
+    <button
+      type="button"
+      className={`library-preview-action-btn${compact ? " library-preview-action-btn--compact" : ""}`}
       onClick={() => {
         navigator.clipboard.writeText(text)
           .then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); })
           .catch(() => undefined);
-      }}>
-      <Icon name={copied ? "ph:check" : "ph:copy"} width={13} />
+      }}
+    >
+      <Icon name={copied ? "ph:check" : "ph:copy"} width={compact ? 12 : 13} />
       <span>{copied ? "Copied!" : label}</span>
     </button>
   );
@@ -507,18 +510,45 @@ function DocDetail({ doc }: { doc: LibraryDocBody }) {
   const header = (
     <div className="library-preview-header">
       <div className="library-preview-title">{doc.title}</div>
-      <div className="library-preview-meta">
-        <span className="library-preview-familiar"><Icon name="ph:robot" width={12} className="inline-block mr-1 text-[var(--text-muted)]" />Sage</span>
-        <span className="library-preview-sep">·</span>
-        <span className="library-preview-date">{fmtDate(doc.modifiedAt)}</span>
-        <span className="library-preview-sep">·</span>
-        <span className="library-reading-time">⏱ ~{readMins} min read</span>
-        {doc.tags.length > 0 && (
-          <><span className="library-preview-sep">·</span>
-          <div className="library-preview-tags">
-            {doc.tags.map((t: string) => <span key={t} className="library-doclist-tag">{t}</span>)}
-          </div></>
-        )}
+      <div className="library-preview-meta library-preview-meta--with-actions">
+        <span className="library-preview-meta-left">
+          <span className="library-preview-familiar"><Icon name="ph:robot" width={12} className="inline-block mr-1 text-[var(--text-muted)]" />Sage</span>
+          <span className="library-preview-sep">·</span>
+          <span className="library-preview-date">{fmtDate(doc.modifiedAt)}</span>
+          <span className="library-preview-sep">·</span>
+          <span className="library-reading-time"><Icon name="ph:clock" width={11} className="inline-block mr-1 text-[var(--text-muted)]" />~{readMins} min read</span>
+          {doc.tags.length > 0 && (
+            <><span className="library-preview-sep">·</span>
+            <span className="library-preview-tags">
+              {doc.tags.map((t: string) => <span key={t} className="library-doclist-tag">{t}</span>)}
+            </span></>
+          )}
+        </span>
+        <span className="library-preview-meta-actions">
+          <button
+            type="button"
+            className="library-preview-action-btn library-preview-action-btn--compact"
+            title="Open in VS Code"
+            onClick={() => { if (doc.absolutePath) void openUrl(`vscode://file${doc.absolutePath}`, "vscode-file"); }}
+          >
+            <Icon name="ph:code" width={12} />
+            <span>Open</span>
+          </button>
+          <CopyButton
+            text={`~/.openclaw/workspace/sage/${doc.id}`}
+            label="Copy"
+            compact
+          />
+          <button
+            type="button"
+            className="library-preview-action-btn library-preview-action-btn--compact"
+            title="Reader mode"
+            onClick={() => setReaderOpen((v) => !v)}
+          >
+            <Icon name="ph:book-open" width={12} />
+            <span>Reader</span>
+          </button>
+        </span>
       </div>
       {Object.keys(doc.frontmatter).filter((k) => !["tags","tag"].includes(k)).length > 0 && (
         <div className="library-preview-frontmatter">
@@ -565,7 +595,6 @@ function DocDetail({ doc }: { doc: LibraryDocBody }) {
           <div className="library-scroll-progress-fill" style={{ width: `${scrollPct}%` }} />
         </div>
         {header}
-        {actionBar(false)}
         <div
           ref={bodyRef}
           onScroll={handleScroll}
