@@ -4,17 +4,20 @@
  * SidebarMinimal -- the redesigned Cave sidebar.
  *
  * Layout (top to bottom):
- *   1. Search + New chat CTA
+ *   1. Familiar switcher (full-width) + New chat CTA
  *   2. App destinations grouped by purpose:
  *      Work  (Home / Chat / Board / Calendar / Inbox)
  *      Knowledge (Library)
  *      Tools (Browser / Terminal / Roles / Capabilities / GitHub)
- *   3. Footer: Notifications + Settings
+ *   3. Footer: Settings
  */
 
-import React from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/lib/icon";
-import type { Familiar, SessionRow } from "@/lib/types";
+import { FamiliarAvatar } from "@/components/familiar-avatar";
+import { computePresence, REMOTE_HARNESSES } from "@/lib/presence";
+import type { ResolvedFamiliar } from "@/lib/familiar-resolve";
+import type { SessionRow } from "@/lib/types";
 import type { InboxItem } from "@/lib/cave-inbox";
 import type { InboxPrefs } from "@/lib/cave-inbox-prefs";
 
@@ -42,7 +45,6 @@ export type SidebarMinimalProps = {
   sessions: SessionRow[];
   activeSessionId?: string | null;
   onNewChat: () => void;
-  onOpenSearch: () => void;
   onOpenSettings: () => void;
   onModeChange: (mode: string) => void;
   onOpenSession: (id: string) => void;
@@ -50,12 +52,16 @@ export type SidebarMinimalProps = {
   /* Notifications — when omitted, the bell is hidden. */
   inboxItems?: InboxItem[];
   inboxPrefs?: InboxPrefs;
-  familiars?: Familiar[];
-  activeFamiliar?: Familiar | null;
+  familiars: ResolvedFamiliar[];
+  activeFamiliar?: ResolvedFamiliar | null;
+  responseNeeded?: Set<string>;
+  harnessInstalled?: (harnessId: string) => boolean | undefined;
   notificationBadgeCount?: number;
   onOpenInbox?: () => void;
   onOpenInboxItem?: (item: InboxItem) => void;
   onNotificationPrefsChanged?: () => void;
+  onSelectFamiliar: (id: string) => void;
+  onAddFamiliar: () => void;
 };
 
 const FOLDER_MODES: Array<{
@@ -161,23 +167,195 @@ function FolderRow({
   );
 }
 
-function SelectedFamiliarInfo({ familiar }: { familiar?: Familiar | null }) {
-  const title = familiar?.display_name ?? "No familiar selected";
-  const subtitle = familiar
-    ? [familiar.role, familiar.harness].filter(Boolean).join(" · ") || familiar.id
-    : "Pick one from the rail";
-  const detail = familiar?.model ?? familiar?.note ?? familiar?.status ?? null;
+function FamiliarSwitcher({
+  familiars,
+  activeFamiliar,
+  sessions,
+  responseNeeded,
+  harnessInstalled,
+  onSelectFamiliar,
+  onAddFamiliar,
+}: {
+  familiars: ResolvedFamiliar[];
+  activeFamiliar?: ResolvedFamiliar | null;
+  sessions: SessionRow[];
+  responseNeeded: Set<string>;
+  harnessInstalled?: (harnessId: string) => boolean | undefined;
+  onSelectFamiliar: (id: string) => void;
+  onAddFamiliar: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDocClick = (e: MouseEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (!t) return;
+      if (wrapRef.current?.contains(t)) return;
+      setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDocClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDocClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const activePresence = useMemo(() => {
+    if (!activeFamiliar) return null;
+    return computePresence({
+      familiar: activeFamiliar,
+      sessions,
+      needsReply: responseNeeded.has(activeFamiliar.id),
+      harnessInstalled: activeFamiliar.harness
+        ? harnessInstalled?.(activeFamiliar.harness)
+        : undefined,
+      isRemoteHarness: activeFamiliar.harness
+        ? REMOTE_HARNESSES.has(activeFamiliar.harness)
+        : false,
+    });
+  }, [activeFamiliar, sessions, responseNeeded, harnessInstalled]);
+
+  const subtitle = activeFamiliar
+    ? [activeFamiliar.role, activeFamiliar.harness].filter(Boolean).join(" · ") ||
+      activeFamiliar.id
+    : "Pick one to begin";
+
   return (
-    <div className="sidebar-selected-familiar" aria-label="Selected familiar">
-      <span className="sidebar-selected-familiar__icon" aria-hidden="true">
-        <Icon name={(familiar?.icon ?? "ph:sparkle") as Parameters<typeof Icon>[0]["name"]} width={15} />
-      </span>
-      <span className="sidebar-selected-familiar__body">
-        <span className="sidebar-selected-familiar__eyebrow">Selected familiar</span>
-        <span className="sidebar-selected-familiar__name">{title}</span>
-        <span className="sidebar-selected-familiar__meta">{subtitle}</span>
-        {detail ? <span className="sidebar-selected-familiar__detail">{detail}</span> : null}
-      </span>
+    <div className="sidebar-familiar-switcher" ref={wrapRef}>
+      <button
+        type="button"
+        className={`sidebar-familiar-switcher__trigger${open ? " sidebar-familiar-switcher__trigger--open" : ""}`}
+        aria-haspopup="listbox"
+        aria-expanded={open ? "true" : "false"}
+        aria-label={
+          activeFamiliar
+            ? `Active familiar: ${activeFamiliar.display_name}. Switch familiar`
+            : "Select a familiar"
+        }
+        onClick={() => setOpen((o) => !o)}
+        style={
+          activeFamiliar
+            ? ({ "--familiar-accent": activeFamiliar.color } as React.CSSProperties)
+            : undefined
+        }
+      >
+        <span className="sidebar-familiar-switcher__avatar" aria-hidden>
+          {activeFamiliar ? (
+            <FamiliarAvatar familiar={activeFamiliar} size="sm" />
+          ) : (
+            <Icon name="ph:sparkle" width={14} />
+          )}
+          {activePresence ? (
+            <span
+              className={`sidebar-familiar-switcher__presence ${activePresence.dot}`}
+              aria-hidden
+            />
+          ) : null}
+        </span>
+        <span className="sidebar-familiar-switcher__body">
+          <span className="sidebar-familiar-switcher__eyebrow">Familiar</span>
+          <span className="sidebar-familiar-switcher__name">
+            {activeFamiliar?.display_name ?? "No familiar selected"}
+          </span>
+          <span className="sidebar-familiar-switcher__meta">{subtitle}</span>
+        </span>
+        <Icon
+          name="ph:caret-down"
+          width={12}
+          className="sidebar-familiar-switcher__caret"
+        />
+      </button>
+      {open ? (
+        <div
+          role="listbox"
+          aria-label="Familiars"
+          className="sidebar-familiar-switcher__menu"
+        >
+          {familiars.length === 0 ? (
+            <div className="sidebar-familiar-switcher__empty">No familiars yet</div>
+          ) : (
+            <ul className="sidebar-familiar-switcher__list">
+              {familiars.map((f) => {
+                const isActive = activeFamiliar?.id === f.id;
+                const needsReply = responseNeeded.has(f.id);
+                const presence = computePresence({
+                  familiar: f,
+                  sessions,
+                  needsReply,
+                  harnessInstalled: f.harness
+                    ? harnessInstalled?.(f.harness)
+                    : undefined,
+                  isRemoteHarness: f.harness
+                    ? REMOTE_HARNESSES.has(f.harness)
+                    : false,
+                });
+                return (
+                  <li key={f.id} className="sidebar-familiar-switcher__item">
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={isActive}
+                      className={`sidebar-familiar-switcher__option${isActive ? " sidebar-familiar-switcher__option--active" : ""}`}
+                      style={
+                        { "--familiar-accent": f.color } as React.CSSProperties
+                      }
+                      onClick={() => {
+                        onSelectFamiliar(f.id);
+                        setOpen(false);
+                      }}
+                    >
+                      <span
+                        className="sidebar-familiar-switcher__option-avatar"
+                        aria-hidden
+                      >
+                        <FamiliarAvatar familiar={f} size="sm" />
+                        <span
+                          className={`sidebar-familiar-switcher__presence ${presence.dot}`}
+                          aria-hidden
+                        />
+                      </span>
+                      <span className="sidebar-familiar-switcher__option-name">
+                        {f.display_name}
+                      </span>
+                      {needsReply ? (
+                        <span
+                          className="sidebar-familiar-switcher__unread"
+                          aria-label="Reply needed"
+                          title="Reply needed"
+                        />
+                      ) : null}
+                      {isActive ? (
+                        <Icon
+                          name="ph:check-bold"
+                          width={12}
+                          className="sidebar-familiar-switcher__check"
+                        />
+                      ) : null}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          <button
+            type="button"
+            className="sidebar-familiar-switcher__add"
+            onClick={() => {
+              setOpen(false);
+              onAddFamiliar();
+            }}
+          >
+            <Icon name="ph:plus-bold" width={12} />
+            <span>Add familiar</span>
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -185,19 +363,17 @@ function SelectedFamiliarInfo({ familiar }: { familiar?: Familiar | null }) {
 export function SidebarMinimal(props: SidebarMinimalProps) {
   const {
     mode,
+    sessions,
     onNewChat,
-    onOpenSearch,
     onOpenSettings,
     onModeChange,
     addons,
-    inboxItems,
-    inboxPrefs,
     familiars,
     activeFamiliar,
-    notificationBadgeCount = 0,
-    onOpenInbox,
-    onOpenInboxItem,
-    onNotificationPrefsChanged,
+    responseNeeded,
+    harnessInstalled,
+    onSelectFamiliar,
+    onAddFamiliar,
   } = props;
 
   // Filter out disabled add-on items. GitHub is gated; library is always shown.
@@ -212,13 +388,16 @@ export function SidebarMinimal(props: SidebarMinimalProps) {
 
   return (
     <nav className="sidebar-minimal">
-      {/* Header actions: Search + New chat */}
+      {/* Header: Familiar switcher (full width) + New chat */}
       <div className="sidebar-actions sidebar-action-stack">
-        <ActionRow
-          icon={<Icon name="ph:magnifying-glass" width={14} />}
-          label="Search"
-          onClick={onOpenSearch}
-          trailing={<kbd className="sidebar-action-kbd">⌘K</kbd>}
+        <FamiliarSwitcher
+          familiars={familiars}
+          activeFamiliar={activeFamiliar ?? null}
+          sessions={sessions}
+          responseNeeded={responseNeeded ?? new Set()}
+          harnessInstalled={harnessInstalled}
+          onSelectFamiliar={onSelectFamiliar}
+          onAddFamiliar={onAddFamiliar}
         />
         <ActionRow
           icon={<Icon name="ph:note-pencil" width={14} />}
@@ -229,7 +408,6 @@ export function SidebarMinimal(props: SidebarMinimalProps) {
 
       <div className="sidebar-nav-scroll">
         <SidebarSection label="Work">
-          <SelectedFamiliarInfo familiar={activeFamiliar} />
           {workModes.map((fm) => (
             <FolderRow
               key={fm.id}

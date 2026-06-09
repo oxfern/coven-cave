@@ -14,7 +14,7 @@ import { NewReminderModal, draftFromSlashArgs } from "@/components/new-reminder-
 import { InboxToastStack, toastFromItem, type Toast } from "@/components/inbox-toast";
 import { FamiliarGlyphPicker } from "@/components/familiar-glyph-picker";
 import { Shell, type ShellHandle } from "@/components/shell";
-import { FamiliarAvatarRail } from "@/components/familiar-avatar-rail";
+import { Icon } from "@/lib/icon";
 import { FamiliarStudioProvider } from "@/lib/familiar-studio-context";
 import { FamiliarStudio } from "@/components/familiar-studio";
 import { CompanionRail, type CompanionTab } from "@/components/companion-rail";
@@ -71,7 +71,6 @@ export function Workspace() {
   const nextRouter = useRouter();
   const routerRef = useRef<ChatRouterHandle | null>(null);
   const shellRef = useRef<ShellHandle | null>(null);
-  const [navOpen, setNavOpen] = useState(true);
   const [activeId, setActiveId] = useState<string | null>(() => getActiveFamiliar());
   const [familiars, setFamiliars] = useState<Familiar[]>([]);
   const resolvedFamiliars = useResolvedFamiliars(familiars);
@@ -867,7 +866,6 @@ export function Workspace() {
       onNewChat={() => {
         startAgentChat(activeId);
       }}
-      onOpenSearch={() => setPaletteOpen(true)}
       onOpenSettings={() => nextRouter.push("/settings")}
       onModeChange={(m) => {
         if (m === "browser") {
@@ -881,8 +879,11 @@ export function Workspace() {
       }}
       inboxItems={inboxItemsWithEphemeral}
       inboxPrefs={inboxPrefs}
-      familiars={familiars}
-      activeFamiliar={active}
+      familiars={resolvedFamiliars}
+      activeFamiliar={resolvedFamiliars.find((f) => f.id === activeId) ?? null}
+      responseNeeded={responseNeeded}
+      onSelectFamiliar={selectFamiliar}
+      onAddFamiliar={openOnboarding}
       notificationBadgeCount={inboxBadgeCount}
       onOpenInbox={() => setMode("inbox")}
       onOpenInboxItem={(item) => {
@@ -1059,7 +1060,6 @@ export function Workspace() {
     <FamiliarStudioProvider>
       <Shell
         ref={shellRef}
-        onNavOpenChange={setNavOpen}
         onAgentOpenChange={(open) => {
           if (activeId) setRailOpen(activeId, open);
         }}
@@ -1083,16 +1083,17 @@ export function Workspace() {
           />
         }
         familiarRail={
-          <FamiliarAvatarRail
-            familiars={resolvedFamiliars}
-            activeId={activeId}
-            sessions={sessions}
-            responseNeeded={responseNeeded}
-            onSelect={selectFamiliar}
-            onAddFamiliar={openOnboarding}
-            onToggleSidebar={() => shellRef.current?.toggleNav()}
-            sidebarOpen={navOpen}
-          />
+          <aside className="sidebar-trigger-rail" aria-label="Sidebar toggle">
+            <button
+              type="button"
+              className="sidebar-trigger-rail__toggle"
+              aria-label="Toggle sidebar"
+              title="Toggle sidebar (⌘B)"
+              onClick={() => shellRef.current?.toggleNav()}
+            >
+              <Icon name="ph:sidebar-simple" width={14} />
+            </button>
+          </aside>
         }
         nav={sidebar}
         list={list}

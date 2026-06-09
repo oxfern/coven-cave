@@ -90,8 +90,14 @@ assert.doesNotMatch(
 
 assert.match(
   sidebar,
-  /<SelectedFamiliarInfo familiar=\{activeFamiliar\} \/>/,
-  "Sidebar Work section replaces the Familiars row with selected familiar info",
+  /<FamiliarSwitcher/,
+  "Sidebar top slot renders the full-width FamiliarSwitcher in place of the old search/selected-familiar card",
+);
+
+assert.doesNotMatch(
+  workspace,
+  /FamiliarAvatarRail/,
+  "Workspace no longer mounts the far-left FamiliarAvatarRail — the switcher inside the sidebar replaces it",
 );
 
 assert.match(

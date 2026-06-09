@@ -2806,6 +2806,50 @@ body {
 }
 
 /* ────────────────────────────────────────────────
+   Sidebar trigger rail — slim full-height column
+   holding the sidebar toggle, with a faint tint
+   ──────────────────────────────────────────────── */
+
+.sidebar-trigger-rail {
+  width: 36px;
+  flex: 0 0 36px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 0;
+  background: color-mix(in oklch, var(--bg-panel) 22%, transparent);
+  border-right: 1px solid var(--border-hairline);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  user-select: none;
+}
+
+.sidebar-trigger-rail__toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid var(--border-hairline);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.sidebar-trigger-rail__toggle:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+  border-color: var(--border-strong);
+}
+
+.sidebar-trigger-rail__toggle:focus-visible {
+  outline: var(--ring-width) solid var(--ring-focus);
+  outline-offset: 2px;
+}
+
+/* ────────────────────────────────────────────────
    Companion rail — right-side per-familiar pane
    (Phase 2, shell-ia-redesign)
    ──────────────────────────────────────────────── */
