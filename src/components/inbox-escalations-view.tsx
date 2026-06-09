@@ -360,7 +360,7 @@ export function InboxEscalationsView({
       ) : (
         <>
           <header
-            className="flex items-center gap-3 px-5 py-3 text-[11px]"
+            className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-3 py-3 text-[11px] sm:px-5"
             style={{ borderBottom: "1px solid var(--border-hairline)" }}
           >
             <span className="font-medium text-foreground">Inbox</span>
@@ -391,7 +391,7 @@ export function InboxEscalationsView({
               row is selected — they occupy the same vertical slot so the list
               doesn't jump. */}
           <div
-            className="flex items-center gap-1.5 px-5 py-2 text-[11px]"
+            className="flex items-center gap-1.5 overflow-x-auto px-3 py-2 text-[11px] sm:px-5"
             style={{ borderBottom: "1px solid var(--border-hairline)" }}
           >
             {selected.size > 0 ? (
@@ -414,14 +414,14 @@ export function InboxEscalationsView({
 
           {error ? (
             <div
-              className="border-b border-[var(--border-hairline)] px-5 py-1.5 text-xs text-[var(--color-danger)]"
+              className="border-b border-[var(--border-hairline)] px-3 py-1.5 text-xs text-[var(--color-danger)] sm:px-5"
               style={{ background: "color-mix(in oklch, var(--color-danger) 10%, var(--bg-base))" }}
             >
               {error}
             </div>
           ) : null}
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+          <div className="min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-5">
             <div className="mx-auto w-full max-w-[1200px]">
               {visible.length === 0 ? (
                 <div
@@ -713,7 +713,7 @@ function EscalationRow({
     <div className="flex flex-col gap-1.5">
       <div className="flex items-start gap-2">
         <label
-          className={`mt-0.5 inline-flex shrink-0 items-center transition-opacity ${
+          className={`touch-always-visible mt-0.5 inline-flex shrink-0 items-center transition-opacity ${
             isSelected || isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
           }`}
           onClick={(e) => e.stopPropagation()}
@@ -769,7 +769,7 @@ function EscalationRow({
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onPromoteToActive(); }}
-            className="shrink-0 opacity-0 group-hover:opacity-100 focus-ring rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-opacity"
+            className="touch-always-visible shrink-0 opacity-0 group-hover:opacity-100 focus-ring rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-opacity"
             aria-label="Show actions"
             title="Show actions"
           >

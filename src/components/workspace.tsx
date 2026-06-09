@@ -1069,9 +1069,19 @@ export function Workspace() {
               else setMode("inbox");
             }}
             onNotificationPrefsChanged={refreshPrefs}
+            onToggleNav={() => shellRef.current?.toggleNav()}
+            onToggleList={list ? () => shellRef.current?.toggleList() : undefined}
+            onToggleAgent={
+              showCompanionRail
+                ? () => {
+                    setRailTab("salem");
+                    shellRef.current?.toggleAgent();
+                  }
+                : undefined
+            }
           />
         }
-        agentRail={
+        agentRail={showCompanionRail ? (
           <aside className="agent-trigger-rail" aria-label="Salem toggle">
             <button
               type="button"
@@ -1086,7 +1096,7 @@ export function Workspace() {
               <Icon name="ph:cat" width={14} />
             </button>
           </aside>
-        }
+        ) : undefined}
         nav={sidebar}
         list={list}
         detail={detail}
