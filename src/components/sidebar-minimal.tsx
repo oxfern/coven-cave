@@ -223,47 +223,61 @@ function FamiliarSwitcher({
 
   return (
     <div className="sidebar-familiar-switcher" ref={wrapRef}>
-      <button
-        type="button"
-        className={`sidebar-familiar-switcher__trigger${open ? " sidebar-familiar-switcher__trigger--open" : ""}`}
-        aria-haspopup="listbox"
-        aria-expanded={open ? "true" : "false"}
-        aria-label={
-          activeFamiliar
-            ? `Active familiar: ${activeFamiliar.display_name}. Switch familiar`
-            : "Select a familiar"
-        }
-        onClick={() => setOpen((o) => !o)}
-        style={
-          activeFamiliar
-            ? ({ "--familiar-accent": activeFamiliar.color } as React.CSSProperties)
-            : undefined
-        }
-      >
-        <span className="sidebar-familiar-switcher__avatar" aria-hidden>
-          {activeFamiliar ? (
-            <FamiliarAvatar familiar={activeFamiliar} size="sm" />
-          ) : (
-            <Icon name="ph:sparkle" width={14} />
-          )}
-          {activePresence ? (
-            <span
-              className={`sidebar-familiar-switcher__presence ${activePresence.dot}`}
-              aria-hidden
-            />
-          ) : null}
-        </span>
-        <span className="sidebar-familiar-switcher__body">
-          <span className="sidebar-familiar-switcher__name">
-            {activeFamiliar?.display_name ?? "No familiar selected"}
+      <div className="sidebar-familiar-switcher__row">
+        <button
+          type="button"
+          className={`sidebar-familiar-switcher__trigger${open ? " sidebar-familiar-switcher__trigger--open" : ""}`}
+          aria-haspopup="listbox"
+          aria-expanded={open ? "true" : "false"}
+          aria-label={
+            activeFamiliar
+              ? `Active familiar: ${activeFamiliar.display_name}. Switch familiar`
+              : "Select a familiar"
+          }
+          onClick={() => setOpen((o) => !o)}
+          style={
+            activeFamiliar
+              ? ({ "--familiar-accent": activeFamiliar.color } as React.CSSProperties)
+              : undefined
+          }
+        >
+          <span className="sidebar-familiar-switcher__avatar" aria-hidden>
+            {activeFamiliar ? (
+              <FamiliarAvatar familiar={activeFamiliar} size="sm" />
+            ) : (
+              <Icon name="ph:sparkle" width={14} />
+            )}
+            {activePresence ? (
+              <span
+                className={`sidebar-familiar-switcher__presence ${activePresence.dot}`}
+                aria-hidden
+              />
+            ) : null}
           </span>
-        </span>
-        <Icon
-          name="ph:caret-down"
-          width={12}
-          className="sidebar-familiar-switcher__caret"
-        />
-      </button>
+          <span className="sidebar-familiar-switcher__body">
+            <span className="sidebar-familiar-switcher__name">
+              {activeFamiliar?.display_name ?? "No familiar selected"}
+            </span>
+          </span>
+          <Icon
+            name="ph:caret-down"
+            width={12}
+            className="sidebar-familiar-switcher__caret"
+          />
+        </button>
+        <button
+          type="button"
+          className="sidebar-familiar-switcher__plus"
+          aria-label="Add familiar"
+          title="Add familiar"
+          onClick={() => {
+            setOpen(false);
+            onAddFamiliar();
+          }}
+        >
+          <Icon name="ph:plus-bold" width={14} />
+        </button>
+      </div>
       {open ? (
         <div
           role="listbox"
@@ -385,22 +399,36 @@ export function SidebarMinimal(props: SidebarMinimalProps) {
 
   return (
     <nav className="sidebar-minimal">
-      {/* Header: Familiar switcher (full width) + New chat */}
+      {/* Header: Familiar switcher + inline + button (desktop); full-width
+          "New Chat" button under it on mobile. */}
       <div className="sidebar-actions sidebar-action-stack">
-        <FamiliarSwitcher
-          familiars={familiars}
-          activeFamiliar={activeFamiliar ?? null}
-          sessions={sessions}
-          responseNeeded={responseNeeded ?? new Set()}
-          harnessInstalled={harnessInstalled}
-          onSelectFamiliar={onSelectFamiliar}
-          onAddFamiliar={onAddFamiliar}
-        />
-        <ActionRow
-          icon={<Icon name="ph:note-pencil" width={14} />}
-          label="New chat"
-          onClick={onNewChat}
-        />
+        <div className="sidebar-switcher-row">
+          <FamiliarSwitcher
+            familiars={familiars}
+            activeFamiliar={activeFamiliar ?? null}
+            sessions={sessions}
+            responseNeeded={responseNeeded ?? new Set()}
+            harnessInstalled={harnessInstalled}
+            onSelectFamiliar={onSelectFamiliar}
+            onAddFamiliar={onAddFamiliar}
+          />
+          <button
+            type="button"
+            className="sidebar-new-chat-icon"
+            aria-label="New Chat"
+            title="New Chat"
+            onClick={onNewChat}
+          >
+            <Icon name="ph:plus-bold" width={14} />
+          </button>
+        </div>
+        <div className="sidebar-new-chat-row">
+          <ActionRow
+            icon={<Icon name="ph:note-pencil" width={14} />}
+            label="New Chat"
+            onClick={onNewChat}
+          />
+        </div>
       </div>
 
       <div className="sidebar-nav-scroll">

@@ -657,6 +657,54 @@
   background: var(--bg-elevated);
 }
 
+/* ── Switcher row: switcher + inline + button (desktop) ─────────────────── */
+.sidebar-switcher-row {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  width: 100%;
+}
+
+.sidebar-new-chat-icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  min-height: 38px;
+  border-radius: 8px;
+  border: 1px solid var(--border-hairline);
+  background: color-mix(in oklch, var(--bg-raised) 78%, transparent);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.sidebar-new-chat-icon:hover {
+  border-color: var(--border-strong);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.sidebar-new-chat-icon:focus-visible {
+  outline: var(--ring-width) solid var(--ring-focus);
+  outline-offset: -1px;
+}
+
+/* Desktop (>= 768px): hide the full-width "New Chat" row, keep the + icon. */
+@media (min-width: 768px) {
+  .sidebar-new-chat-row {
+    display: none;
+  }
+}
+
+/* Mobile (<= 767px): hide the inline + icon, show the full-width button. */
+@media (max-width: 767px) {
+  .sidebar-new-chat-icon {
+    display: none;
+  }
+}
+
 /* ── Familiar switcher (replaces search at sidebar top) ──────────────────── */
 .sidebar-familiar-switcher {
   position: relative;
@@ -664,11 +712,19 @@
   max-width: 260px;
 }
 
+.sidebar-familiar-switcher__row {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  width: 100%;
+}
+
 .sidebar-familiar-switcher__trigger {
   display: flex;
   align-items: center;
   gap: 8px;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   min-height: 38px;
   padding: 5px 9px;
   border-radius: 8px;
@@ -697,6 +753,32 @@
 
 .sidebar-familiar-switcher__trigger--open,
 .sidebar-familiar-switcher__trigger:focus-visible {
+  outline: var(--ring-width) solid var(--ring-focus);
+  outline-offset: -1px;
+}
+
+.sidebar-familiar-switcher__plus {
+  display: grid;
+  flex: 0 0 32px;
+  place-items: center;
+  width: 32px;
+  min-height: 38px;
+  padding: 0;
+  border-radius: 8px;
+  border: 1px solid var(--border-hairline);
+  background: var(--bg-raised);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.sidebar-familiar-switcher__plus:hover {
+  background: var(--bg-elevated);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.sidebar-familiar-switcher__plus:focus-visible {
   outline: var(--ring-width) solid var(--ring-focus);
   outline-offset: -1px;
 }
@@ -774,7 +856,10 @@
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
-  right: 0;
+  right: auto;
+  width: max-content;
+  min-width: 100%;
+  max-width: min(360px, calc(100vw - 24px));
   z-index: 40;
   display: flex;
   flex-direction: column;
