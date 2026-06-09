@@ -1076,6 +1076,22 @@ export function Workspace() {
             </button>
           </aside>
         }
+        agentRail={
+          <aside className="agent-trigger-rail" aria-label="Salem toggle">
+            <button
+              type="button"
+              className="agent-trigger-rail__toggle"
+              aria-label="Toggle Salem"
+              title="Toggle Salem (⌘J)"
+              onClick={() => {
+                setRailTab("salem");
+                shellRef.current?.toggleAgent();
+              }}
+            >
+              <Icon name="ph:cat" width={14} />
+            </button>
+          </aside>
+        }
         nav={sidebar}
         list={list}
         detail={detail}

@@ -56,12 +56,16 @@ assert.match(widget, /preload/, "widget must load Salem preload metadata");
 assert.match(widget, /salem-panel__preload/, "widget must render preload metadata");
 assert.match(widget, /Docs|Tools|Skills|Context/, "widget must label loaded docs/tools/skills/context");
 
-// 6. Layout mounts Salem; Workspace routes it into the right panel
-const layout = await readFile(path.join(root, "src/app/layout.tsx"), "utf8");
+// 6. Workspace exposes Salem via a right-edge agentRail toggle that mirrors
+//    the left-edge sidebar-trigger-rail. The standalone perch in layout.tsx
+//    has been retired in favour of the rail-based affordance.
 const workspace = await readFile(path.join(root, "src/components/workspace.tsx"), "utf8");
+const shell = await readFile(path.join(root, "src/components/shell.tsx"), "utf8");
 const companionRail = await readFile(path.join(root, "src/components/companion-rail.tsx"), "utf8");
-assert.match(layout, /SalemWidget/, "layout must mount SalemWidget");
-assert.match(layout, /from "@\/components\/salem\/salem-widget"/, "layout must import from salem dir");
+assert.match(shell, /agentRail\?:\s*ReactNode/, "Shell must declare an agentRail slot mirroring familiarRail");
+assert.match(workspace, /agentRail=\{/, "workspace must pass an agentRail to Shell");
+assert.match(workspace, /className="agent-trigger-rail"/, "agentRail must use the agent-trigger-rail class");
+assert.match(workspace, /shellRef\.current\?\.toggleAgent\(\)/, "agentRail toggle must invoke shellRef.toggleAgent");
 assert.match(workspace, /cave:salem-open/, "workspace must listen for Salem launcher events");
 assert.match(workspace, /shellRef\.current\?\.openAgent\(\)/, "Salem launcher must expand the right panel");
 assert.match(workspace, /setRailTab\("salem"\)/, "Salem launcher must select the Salem rail tab");
@@ -75,7 +79,7 @@ assert.match(css, /\.salem-panel/, "must have .salem-panel CSS");
 assert.match(css, /\.salem-panel--rail/, "must support Salem inside the right rail");
 assert.match(css, /\.salem-msg/, "must have .salem-msg CSS");
 assert.match(css, /\.salem-panel__preload/, "must style Salem preload metadata");
-assert.match(css, /--background:\s*#19191c;/, "default dark app background must be lifted for black-cat contrast");
+assert.match(css, /--background:\s*oklch\([^)]+\);/, "default dark app background must be lifted for black-cat contrast");
 assert.match(css, /\.salem-perch::before/, "Salem perch must include a visibility halo");
 assert.doesNotMatch(css, /\.salem-msg__glyph/, "open Salem chat must not keep unused emoji glyph CSS");
 assert.match(css, /position:\s*fixed/, "salem perch must be position fixed");

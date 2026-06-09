@@ -32,6 +32,7 @@ export const ICON_NAMES = [
   "ph:bell-fill",
   "ph:bell-slash",
   "ph:bell-slash-fill",
+  "ph:cat",
   "ph:camera",
   "ph:caret-down",
   "ph:funnel",

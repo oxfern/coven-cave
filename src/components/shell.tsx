@@ -92,6 +92,7 @@ export type ShellHandle = {
 
 function ShellInner({
   familiarRail,
+  agentRail,
   nav,
   list,
   detail,
@@ -102,6 +103,9 @@ function ShellInner({
   onAgentOpenChange,
 }: {
   familiarRail?: ReactNode;
+  /** Mirror of familiarRail on the right edge — typically a thin column with
+   *  a toggle for the agent panel. Rendered after the panel group. */
+  agentRail?: ReactNode;
   nav: ReactNode;
   list?: ReactNode;
   detail: ReactNode;
@@ -326,6 +330,7 @@ function ShellInner({
         ) : (
           horizontalGroup
         )}
+        {agentRail}
       </div>
     </div>
   );
