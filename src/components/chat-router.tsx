@@ -18,6 +18,8 @@ type Props = {
   onSlashFromChat?: (command: string, args: string) => boolean;
   onOpenOnboarding?: () => void;
   pendingProjectRoot?: string | null;
+  /** Route back to the linked board task from the chat header. */
+  onOpenTask?: (cardId: string) => void;
 };
 
 export type ChatRouterHandle = {
@@ -45,6 +47,7 @@ export const ChatRouter = forwardRef<ChatRouterHandle, Props>(function ChatRoute
     onSlashFromChat,
     onOpenOnboarding,
     pendingProjectRoot,
+    onOpenTask,
   },
   ref,
 ) {
@@ -143,6 +146,7 @@ export const ChatRouter = forwardRef<ChatRouterHandle, Props>(function ChatRoute
       }}
       onSlashCommand={onSlashFromChat}
       onOpenOnboarding={onOpenOnboarding}
+      onOpenTask={onOpenTask}
     />
   );
 });

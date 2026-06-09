@@ -38,6 +38,9 @@ type Props = {
   onOpenInboxItem: (item: InboxItem) => void;
   onInboxItemChanged: () => void | Promise<void>;
   onSessionsChanged?: () => void;
+  /** Forwarded to ChatRouter → ChatView so the Task chip in the chat header
+   *  routes back to the board with the linked card focused. */
+  onOpenTask?: (cardId: string) => void;
 };
 
 // ── Right panel (inspector / chat) ────────────────────────────────────────────
@@ -147,6 +150,7 @@ export function ChatSurface({
   onOpenInboxItem,
   onInboxItemChanged,
   onSessionsChanged,
+  onOpenTask,
 }: Props) {
   const [scope, setScope] = useState<AgentsScope>("conversation");
   const consumedPendingActionNonce = useRef<number | null>(null);
@@ -299,6 +303,7 @@ export function ChatSurface({
                 onSlashFromChat={onSlashFromChat}
                 onOpenOnboarding={onOpenOnboarding}
                 pendingProjectRoot={pendingProjectRoot}
+                onOpenTask={onOpenTask}
               />
             </div>
             {rightPanel !== null && (

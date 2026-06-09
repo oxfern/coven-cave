@@ -685,8 +685,9 @@ export function Workspace() {
       return;
     }
     if (intent.kind === "focus-card") {
-      // The board doesn't currently expose an imperative API; instead we use
-      // a URL hash that BoardView can listen for in a future polish pass.
+      // Navigate to the board and signal which card to focus via URL hash.
+      // BoardView listens for `#card-<id>` and selects the matching card.
+      setMode("board");
       window.location.hash = `card-${intent.cardId}`;
       return;
     }
@@ -941,6 +942,7 @@ export function Workspace() {
         onOpenInboxItem={openInspectorInboxItem}
         onInboxItemChanged={refreshInbox}
         onSessionsChanged={loadSessions}
+        onOpenTask={(cardId) => onPaletteIntent({ kind: "focus-card", cardId })}
       />
     ) : mode === "library" ? (
       <LibraryView

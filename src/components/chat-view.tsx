@@ -61,6 +61,10 @@ type Props = {
   onBack?: () => void;
   onSlashCommand?: (command: string, args: string) => boolean;
   onOpenOnboarding?: () => void;
+  /** Reverse navigation for a chat that's linked to a board task — clicking
+   *  the Task chip in the context strip routes back to the board with the
+   *  card focused. The link is bidirectional; this is the chat→task side. */
+  onOpenTask?: (cardId: string) => void;
 };
 
 export type ChatViewHandle = {
@@ -474,11 +478,13 @@ function ChatContextStrip({
   linkedContext,
   historyState,
   onSessionsChanged,
+  onOpenTask,
 }: {
   session: SessionRow | null;
   linkedContext: ChatLinkedContext | null;
   historyState: ChatHistoryState;
   onSessionsChanged?: () => void;
+  onOpenTask?: (cardId: string) => void;
 }) {
   const task = linkedContext?.task ?? null;
   const github = linkedContext?.github ?? [];
@@ -502,13 +508,29 @@ function ChatContextStrip({
         </span>
       ) : null}
       {task ? (
-        <span className="inline-flex min-w-0 max-w-[24rem] items-center gap-1.5 rounded-md border border-[color-mix(in_oklch,var(--accent-presence)_35%,transparent)] bg-[color-mix(in_oklch,var(--accent-presence)_12%,transparent)] px-2 py-1 text-[11px] text-[var(--text-secondary)]">
-          <Icon name="ph:kanban" width={12} className="shrink-0 text-[var(--accent-presence)]" />
-          <span className="shrink-0 font-medium">Task</span>
-          <span className="min-w-0 truncate">{task.title}</span>
-          <span className="shrink-0 text-[var(--text-muted)]">{task.status}</span>
-          <span className="shrink-0 text-[var(--text-muted)]">{task.priority}</span>
-        </span>
+        onOpenTask ? (
+          <button
+            type="button"
+            onClick={() => onOpenTask(task.id)}
+            title={`Open task: ${task.title}`}
+            className="focus-ring inline-flex min-w-0 max-w-[24rem] items-center gap-1.5 rounded-md border border-[color-mix(in_oklch,var(--accent-presence)_35%,transparent)] bg-[color-mix(in_oklch,var(--accent-presence)_12%,transparent)] px-2 py-1 text-[11px] text-[var(--text-secondary)] transition-colors hover:border-[color-mix(in_oklch,var(--accent-presence)_55%,transparent)] hover:bg-[color-mix(in_oklch,var(--accent-presence)_18%,transparent)] hover:text-[var(--text-primary)]"
+          >
+            <Icon name="ph:kanban" width={12} className="shrink-0 text-[var(--accent-presence)]" />
+            <span className="shrink-0 font-medium">Task</span>
+            <span className="min-w-0 truncate">{task.title}</span>
+            <span className="shrink-0 text-[var(--text-muted)]">{task.status}</span>
+            <span className="shrink-0 text-[var(--text-muted)]">{task.priority}</span>
+            <Icon name="ph:arrow-square-out" width={10} className="shrink-0 text-[var(--text-muted)]" />
+          </button>
+        ) : (
+          <span className="inline-flex min-w-0 max-w-[24rem] items-center gap-1.5 rounded-md border border-[color-mix(in_oklch,var(--accent-presence)_35%,transparent)] bg-[color-mix(in_oklch,var(--accent-presence)_12%,transparent)] px-2 py-1 text-[11px] text-[var(--text-secondary)]">
+            <Icon name="ph:kanban" width={12} className="shrink-0 text-[var(--accent-presence)]" />
+            <span className="shrink-0 font-medium">Task</span>
+            <span className="min-w-0 truncate">{task.title}</span>
+            <span className="shrink-0 text-[var(--text-muted)]">{task.status}</span>
+            <span className="shrink-0 text-[var(--text-muted)]">{task.priority}</span>
+          </span>
+        )
       ) : null}
       {github.map((item) => (
         <a
@@ -560,7 +582,7 @@ function ChatHeadlineTitle({
 // ── ChatView ──────────────────────────────────────────────────────────────────
 
 export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
-  { familiar, sessionId, session, projectRoot, daemonRunning, onSessionStarted, onSessionsChanged, onSlashCommand, onOpenOnboarding },
+  { familiar, sessionId, session, projectRoot, daemonRunning, onSessionStarted, onSessionsChanged, onSlashCommand, onOpenOnboarding, onOpenTask },
   ref,
 ) {
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -1129,6 +1151,7 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
             linkedContext={linkedContext}
             historyState={historyState}
             onSessionsChanged={onSessionsChanged}
+            onOpenTask={onOpenTask}
           />
         </div>
       </header>

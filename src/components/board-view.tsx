@@ -65,6 +65,27 @@ export function BoardView({ familiars, sessions, activeFamiliarId, onJumpToSessi
   useEffect(() => { localStorage.setItem("cave:board:viewMode", viewMode); }, [viewMode]);
   useEffect(() => { localStorage.setItem("cave:board:groupBy", groupBy); }, [groupBy]);
 
+  // Honour `#card-<id>` in the URL: workspace's `focus-card` palette intent
+  // (e.g. the Task chip in chat-view) routes to /?…#card-<id>; we pick that
+  // up here and open the inspector for the matching card. We wait until the
+  // target card has loaded into `cards` before consuming the hash — otherwise
+  // the cleanup effect just below would null `selectedCardId` on the next
+  // render because the card isn't in the (empty) cards array yet.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const apply = () => {
+      const match = /^#card-(.+)$/.exec(window.location.hash);
+      if (!match) return;
+      const id = decodeURIComponent(match[1]);
+      if (!cards.some((c) => c.id === id)) return;
+      setSelectedCardId(id);
+      history.replaceState(null, "", window.location.pathname + window.location.search);
+    };
+    apply();
+    window.addEventListener("hashchange", apply);
+    return () => window.removeEventListener("hashchange", apply);
+  }, [cards]);
+
   const familiarsById = useMemo(() => new Map(familiars.map((f) => [f.id, f])), [familiars]);
   const filtered = useMemo(
     () =>
