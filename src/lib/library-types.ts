@@ -74,7 +74,39 @@ export type LibraryGitHubItem = {
   capture?: LinkCapture;
 };
 
-export type LibrarySectionKind = "all" | "docs" | "bookmarks" | "reading" | "github" | "skills" | "projects";
+export type LibrarySectionKind = "all" | "docs" | "bookmarks" | "reading" | "github" | "skills" | "projects" | "graph";
+
+// ── Graphify Knowledge Graph ─────────────────────────────────────
+export type GraphifyNode = {
+  id: string;
+  label: string;
+  type?: string;
+  weight?: number;
+  tags?: string[];
+  [key: string]: unknown;
+};
+
+export type GraphifyEdge = {
+  source: string;
+  target: string;
+  label?: string;
+  weight?: number;
+  [key: string]: unknown;
+};
+
+export type GraphifyGraph = {
+  nodes: GraphifyNode[];
+  edges: GraphifyEdge[];
+};
+
+export type GraphifyResult = {
+  id: string;
+  label: string;          // folder name
+  targetPath: string;     // folder that was graphified
+  generatedAt: string;    // ISO timestamp
+  reportMd?: string;      // contents of GRAPH_REPORT.md
+  graphJson: GraphifyGraph; // parsed graph.json
+};
 
 // ── Link routing (familiar-driven ingestion) ────────────────────
 export type LinkSource =

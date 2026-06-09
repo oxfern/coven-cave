@@ -20,6 +20,8 @@ import {
 } from "@/lib/chat-attachments";
 import { VoiceCallButton } from "./voice-call-button";
 import { VoiceCallOverlay } from "./voice-call-overlay";
+import { CsvImportModal } from "./csv-import-modal";
+import { looksLikeCsv } from "@/lib/csv-import";
 
 type ToolEvent = {
   id: string;
@@ -601,6 +603,8 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
   const [error, setError] = useState<string | null>(null);
   const [lastFailedSend, setLastFailedSend] = useState<FailedSend | null>(null);
   const [voiceCallOpen, setVoiceCallOpen] = useState(false);
+  const [csvRaw, setCsvRaw] = useState<string | null>(null);
+  const [csvModalOpen, setCsvModalOpen] = useState(false);
   const currentSessionRef = useRef<string | null>(sessionId);
   const tailRef = useRef<HTMLDivElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -993,6 +997,14 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
   };
 
   const attachFiles = async (files: FileList | null) => {
+    // Check for CSV files before normal attachment handling
+    if (files?.length) {
+      const csvFiles = Array.from(files).filter((f) => f.name.endsWith(".csv") || f.type === "text/csv");
+      if (csvFiles.length > 0 && csvFiles[0]) {
+        const text = await csvFiles[0].text();
+        if (looksLikeCsv(text)) { setCsvRaw(text); return; }
+      }
+    }
     if (!files?.length) return;
     const selected = Array.from(files).slice(0, Math.max(0, 10 - attachments.length));
     if (selected.length === 0) return;
@@ -1365,6 +1377,23 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
           ) : null}
 
           <div className="cave-composer-panel">
+            {csvRaw && !csvModalOpen && (
+              <div className="flex items-center gap-2 border-b border-[var(--border-hairline)]/70 bg-[var(--bg-raised)] px-3 py-1.5">
+                <Icon name="ph:file-text" width={12} className="shrink-0 text-[var(--text-muted)]" />
+                <span className="flex-1 truncate text-[11px] text-[var(--text-secondary)]">CSV detected — import to Library?</span>
+                <button
+                  type="button"
+                  onClick={() => setCsvModalOpen(true)}
+                  className="shrink-0 rounded bg-[var(--accent-presence)] px-2 py-0.5 text-[10px] font-medium text-white hover:opacity-90"
+                >Import</button>
+                <button
+                  type="button"
+                  onClick={() => setCsvRaw(null)}
+                  className="shrink-0 rounded p-0.5 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                  aria-label="Dismiss"
+                ><Icon name="ph:x-bold" width={9} /></button>
+              </div>
+            )}
             {attachments.length > 0 ? (
               <div className="flex flex-wrap gap-1.5 border-b border-[var(--border-hairline)]/70 px-3 py-2">
                 {attachments.map((attachment) => (
@@ -1393,6 +1422,10 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={onComposerKey}
+              onPaste={(e) => {
+                const text = e.clipboardData.getData("text/plain");
+                if (looksLikeCsv(text)) { setCsvRaw(text); }
+              }}
               placeholder={busy ? "Streaming… (esc to cancel)" : `Message ${familiar.display_name}…`}
               rows={1}
               inputMode="text"
@@ -1452,6 +1485,18 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
           </div>
         </div>
       </footer>
+      {csvRaw && csvModalOpen && (
+        <CsvImportModal
+          raw={csvRaw}
+          familiar={familiar.id}
+          onImport={(count) => {
+            setCsvModalOpen(false);
+            setCsvRaw(null);
+            void count;
+          }}
+          onClose={() => setCsvModalOpen(false)}
+        />
+      )}
       {voiceCallOpen && sessionId && (
         <VoiceCallOverlay
           familiar={familiar}

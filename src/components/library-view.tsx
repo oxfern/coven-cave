@@ -11,6 +11,7 @@ import { LibraryGitHubList } from "@/components/library-github-list";
 import { LibraryDocPreview, type SelectedItem } from "@/components/library-doc-preview";
 import { LibraryTimeline } from "@/components/library-timeline";
 import { ComuxView } from "@/components/comux-view";
+import { LibraryGraphView } from "@/components/library-graph-view";
 import type { TimelineEntry } from "@/app/api/library/all/route";
 import type { Familiar, SessionRow } from "@/lib/types";
 import type {
@@ -232,6 +233,9 @@ export function LibraryView({ onOpenUrl, sessions, onOpenSession, onNewProjectCh
               }}
               onDelete={(id) => { if (selectedGhId === id) setSelectedItem(null); }}
             />
+          )}
+          {activeSection === "graph" && (
+            <LibraryGraphView />
           )}
           {activeSection === "projects" && (
             <ComuxView
