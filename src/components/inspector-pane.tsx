@@ -125,7 +125,11 @@ export function InspectorPane({
         </nav>
       )}
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div
+        className={`min-h-0 flex-1 ${
+          tab === "memory" ? "overflow-hidden" : "overflow-y-auto"
+        }`}
+      >
         {tab === "memory" ? <MemoryTab familiar={familiar} /> : null}
         {tab === "familiar" ? <FamiliarCapabilityPanel familiar={familiar} /> : null}
         {tab === "inbox" ? (
