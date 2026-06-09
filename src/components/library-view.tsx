@@ -258,6 +258,7 @@ export function LibraryView({ onOpenUrl, sessions, onOpenSession, onNewProjectCh
           familiars={familiars}
           sessions={sessions ?? []}
           defaultStatus="inbox"
+          defaultTitle={boardDraft.title || boardDraft.domain || ""}
           defaultLinks={[boardDraft.url]}
           defaultNotes={[boardDraft.url, boardDraft.notes].filter(Boolean).join("\n")}
           defaultLabels={boardDraft.tags}

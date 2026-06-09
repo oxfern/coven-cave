@@ -32,6 +32,7 @@ type Props = {
   sessions: SessionRow[];
   defaultStatus?: CardStatus;
   defaultFamiliarId?: string | null;
+  defaultTitle?: string;
   defaultLinks?: string[];
   defaultNotes?: string;
   defaultLabels?: string[];
@@ -45,6 +46,7 @@ export function NewCardModal({
   sessions,
   defaultStatus = "inbox",
   defaultFamiliarId = null,
+  defaultTitle,
   defaultLinks,
   defaultNotes,
   defaultLabels,
@@ -65,7 +67,7 @@ export function NewCardModal({
 
   useEffect(() => {
     if (!open) return;
-    setTitle("");
+    setTitle(defaultTitle ?? "");
     setNotes(defaultNotes ?? "");
     setStatus(defaultStatus);
     setPriority("medium");
@@ -75,7 +77,7 @@ export function NewCardModal({
     setLinks(defaultLinks ? defaultLinks.join("\n") : "");
     setLabels(defaultLabels ? defaultLabels.join(", ") : "");
     setError(null);
-  }, [open, defaultStatus, defaultFamiliarId, defaultLinks, defaultNotes, defaultLabels]);
+  }, [open, defaultStatus, defaultFamiliarId, defaultTitle, defaultLinks, defaultNotes, defaultLabels]);
 
   const eligibleSessions = familiarId
     ? sessions.filter((s) => s.familiarId === familiarId)
