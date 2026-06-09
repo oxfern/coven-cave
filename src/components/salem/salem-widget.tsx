@@ -11,7 +11,7 @@ type Message = { role: "user" | "salem"; text: string };
 type SalemMood = "idle" | "thinking" | "happy" | "listening";
 type PreloadSummary = { docs: number; tools: number; skills: number; context: number };
 
-const GREETING = "I'm Salem, your sassy Coven docs familiar. Yes, the black-cat-in-the-corner thing is intentional. I'm preloaded with Coven docs, tool context, guide skills, and Cave route awareness. Ask me about familiars, plugins, roles, the marketplace, or how Cave works.";
+const GREETING = "I'm Salem, your Coven docs familiar. Yes, the black-cat-in-the-corner thing is intentional. I'm preloaded with Coven docs, tool context, guide skills, and Cave route awareness. Ask me about familiars, plugins, roles, the marketplace, or how Cave works.";
 
 // ---------------------------------------------------------------------------
 // Strip raw <Cards>...</Cards> and <Card .../> JSX blobs from Salem replies
@@ -151,7 +151,7 @@ export function SalemChatPanel() {
           <div>
             <div className="salem-panel__name">Salem</div>
             <div className="salem-panel__subtitle">
-              {preload?.preload.persona.archetype ?? "Sassy male docs familiar"}
+              {preload?.preload.persona.archetype ?? "Male docs familiar"}
             </div>
           </div>
         </div>

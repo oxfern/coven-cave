@@ -36,7 +36,7 @@ assert.match(context, /toolLoadout/, "must preload tool loadout context");
 assert.match(context, /skillLoadout/, "must preload skill loadout context");
 assert.match(context, /routeContext/, "must preload Cave route context");
 assert.match(context, /Ask Molty/, "must preserve Ask Molty docs-agent lineage");
-assert.match(context, /Sassy male black cat/, "must preserve Salem's sassy male black cat persona");
+assert.match(context, /Male black cat/, "must preserve Salem's male black cat persona");
 assert.match(context, /Sabrina the Teenage Witch/, "must preserve Salem's Sabrina inspiration");
 assert.match(context, /he\/him/, "must use he/him pronouns for Salem");
 
@@ -48,7 +48,7 @@ assert.match(route, /SALEM_PRELOAD_CONTEXT/, "must use shared preload context");
 assert.match(route, /familiar|familiar/, "must know about familiars");
 assert.match(route, /role|Role/, "must know about roles");
 assert.match(route, /plugin|Plugin/, "must know about plugins");
-assert.match(route, /Sassy male black cat/, "must answer with Salem's persona");
+assert.match(route, /Male black cat/, "must answer with Salem's persona");
 assert.doesNotMatch(route, /🐱|😅/, "Salem API replies must stay emoji-free inside chat");
 
 // 5. SalemWidget surfaces preload status
