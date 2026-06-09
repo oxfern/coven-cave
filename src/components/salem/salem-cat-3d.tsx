@@ -42,6 +42,24 @@ export function SalemCat3D({ mood = "idle", size = 96 }: Props) {
     renderer.setClearColor(0x000000, 0);
     el.appendChild(renderer.domElement);
 
+    // three.js 0.184 forgets to reset UNPACK_FLIP_Y_WEBGL /
+    // UNPACK_PREMULTIPLY_ALPHA_WEBGL before uploading its internal
+    // empty3dTexture (and any other 3D/2D-array texture). WebGL spec
+    // disallows those flags for texImage3D, so the renderer logs
+    // INVALID_OPERATION on init. Wrap the call to force the flags off
+    // for the 3D-texture path only — 2D uploads are unaffected.
+    {
+      const gl = renderer.getContext() as WebGL2RenderingContext;
+      if (typeof gl.texImage3D === "function") {
+        const original = gl.texImage3D.bind(gl);
+        gl.texImage3D = ((...args: Parameters<WebGL2RenderingContext["texImage3D"]>) => {
+          gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 0);
+          gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0);
+          return original(...args);
+        }) as typeof gl.texImage3D;
+      }
+    }
+
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
     camera.position.set(0, 0.2, 3.2);
