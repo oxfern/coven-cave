@@ -51,6 +51,14 @@ export function sameOrigin(value: string | null, expectedOrigin: string) {
   }
 }
 
+export function isAllowedRequestSource(
+  value: string | null,
+  expectedOrigin: string,
+  mobileAccessAuthenticated = false,
+) {
+  return mobileAccessAuthenticated || sameOrigin(value, expectedOrigin);
+}
+
 export function bearerFromReferer(value: string | null, expectedOrigin: string) {
   if (!value) return null;
   try {

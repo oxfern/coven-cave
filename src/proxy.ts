@@ -10,6 +10,7 @@ import {
   isLoopbackHost,
   isAllowedApiHost,
   sameOrigin,
+  isAllowedRequestSource,
   bearerFromReferer,
 } from "./proxy-helpers";
 
@@ -20,6 +21,7 @@ export {
   isLoopbackHost,
   isAllowedApiHost,
   sameOrigin,
+  isAllowedRequestSource,
   bearerFromReferer,
 };
 
@@ -111,10 +113,10 @@ export function proxy(req: NextRequest) {
   if (!isAllowedApiHost(req.headers.get("host"), mobileAccessAuthenticated)) {
     return jsonError(403, "forbidden host");
   }
-  if (!sameOrigin(req.headers.get("origin"), expectedOrigin)) {
+  if (!isAllowedRequestSource(req.headers.get("origin"), expectedOrigin, mobileAccessAuthenticated)) {
     return jsonError(403, "forbidden origin");
   }
-  if (!sameOrigin(req.headers.get("referer"), expectedOrigin)) {
+  if (!isAllowedRequestSource(req.headers.get("referer"), expectedOrigin, mobileAccessAuthenticated)) {
     return jsonError(403, "forbidden referer");
   }
   if (!hasSafeContentType(req)) {

@@ -18,6 +18,7 @@ import {
   isLoopbackHost,
   isAllowedApiHost,
   sameOrigin,
+  isAllowedRequestSource,
   bearerFromReferer,
   timingSafeEqualString,
 } from "./proxy-helpers.ts";
@@ -112,6 +113,19 @@ assert.equal(
   sameOrigin("http://example.com:3000", expected),
   false,
   "non-loopback hostname must still be rejected",
+);
+
+// ─── isAllowedRequestSource ────────────────────────────────────────────────
+assert.equal(isAllowedRequestSource("https://tailnet.example.ts.net", expected, false), false);
+assert.equal(
+  isAllowedRequestSource("https://tailnet.example.ts.net", expected, true),
+  true,
+  "valid mobile access token should allow Tailscale Serve referers/origins",
+);
+assert.equal(
+  isAllowedRequestSource("http://localhost:3000", expected, false),
+  true,
+  "normal same-origin browser dev mode remains allowed",
 );
 
 // ─── bearerFromReferer ─────────────────────────────────────────────────────
