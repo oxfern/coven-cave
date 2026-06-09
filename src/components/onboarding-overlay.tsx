@@ -256,12 +256,6 @@ export function OnboardingOverlay({ open, onDismiss }: Props) {
     };
   }, [open, refresh, loadHarnesses, loadOpenClawAgents]);
 
-  useEffect(() => {
-    if (!open || !status?.complete) return;
-    const t = setTimeout(onDismiss, 1200);
-    return () => clearTimeout(t);
-  }, [open, status?.complete, onDismiss]);
-
   const platformCopy = PLATFORM_COPY[platform];
   const chatHarnesses = harnesses.filter((adapter) => adapter.chatSupported);
 

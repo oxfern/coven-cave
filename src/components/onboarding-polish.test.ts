@@ -43,6 +43,12 @@ assert.match(
   "Onboarding status-unreachable banner should announce as alert",
 );
 
+assert.doesNotMatch(
+  source,
+  /setTimeout\(onDismiss,\s*1200\)/,
+  "Onboarding should not auto-close after setup becomes complete; adding a familiar must leave setup open",
+);
+
 // Glyph input validation
 assert.match(
   source,
