@@ -410,7 +410,7 @@ function TimeGrid({
         {HOURS.map((h) => (
           <div
             key={h}
-            className="absolute right-2 text-[9px] text-[var(--text-muted)] -translate-y-1/2"
+            className="absolute right-2 text-[9px] text-[var(--text-muted)] pt-0.5"
             style={{ top: h * HOUR_HEIGHT }}
           >
             {fmtHourLabel(h)}
