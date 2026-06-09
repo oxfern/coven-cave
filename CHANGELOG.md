@@ -7,6 +7,29 @@ breaking config changes; patch releases stay additive.
 
 ## [Unreleased]
 
+## [0.0.59] — 2026-06-09
+
+### Added
+- **Voice chat** — WebRTC realtime overlay using OpenAI Realtime API; `VoiceCallButton` in chat header, `VoiceCallOverlay` state machine, ephemeral token endpoint (`POST /api/voice/session`), transcript append (`POST /api/voice/transcript`), voice turns grouped under a call header, Familiar Studio Brain tab now exposes voice provider/model/voice settings
+- **Home composer** — slash command autocomplete
+- **Calendar** — TimeGrid parity, today indicator, AM/PM labels, `+ New event`, Agenda show-past toggle, date jumper
+- **Inbox** — followup polish: state pill, resolved count, hover affordance, name truncation
+- **Library** — `[` shortcut, Timeline rename, section-aware empty state, `localeCompare` crash fix, narrow-rail placeholder
+
+### Changed
+- **Sidebar** — duplicate "New Chat" ActionRow hidden on desktop; `kbd` hint contrast improved so ⌘1–8 shortcuts are legible
+- **Chat header** — status/title confusion resolved; cleaner single-row layout
+- **Notifications bell** — minimalist pass
+- **Library reader** — header actions folded into the meta row; Lora font, airy padding
+- **Board** — cards hard-scoped to the active familiar; CWD and Links columns dropped
+- **Home** — destination-aware placeholder, visible Send label, keyboard hint
+
+### Fixed
+- Board table duplicate `HomeComposer` mount removed
+- Unused `SessionsView` component and dedicated test deleted
+
+---
+
 ## [0.0.58] — 2026-06-09
 
 Accessibility sweep across the main interactive surfaces (kanban,
