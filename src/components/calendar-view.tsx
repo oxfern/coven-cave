@@ -69,6 +69,13 @@ function fmtDateHeading(d: Date): string {
   });
 }
 
+function fmtHourLabel(h: number): string {
+  if (h === 0) return "12 AM";
+  if (h < 12) return `${h} AM`;
+  if (h === 12) return "12 PM";
+  return `${h - 12} PM`;
+}
+
 function defaultEntryFireAt(day: Date): string {
   const target = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 9, 0, 0, 0);
   const now = new Date();
@@ -187,7 +194,17 @@ function AgendaView({
   onAddEntry?: (defaults?: { fireAt?: string; title?: string; whenText?: string }) => void;
   onOpenItem?: (item: InboxItem) => void;
 }) {
-  // Group items by date, sorted ascending from anchor
+  const [showPast, setShowPast] = useState(false);
+
+  const pastCount = useMemo(
+    () => items.filter((it) => {
+      const d = itemDate(it);
+      return d && d < startOfDay(anchor);
+    }).length,
+    [items, anchor],
+  );
+
+  // Group items by date, then filter / sort based on showPast.
   const groups = useMemo(() => {
     const map = new Map<string, { date: Date; items: InboxItem[] }>();
     for (const item of items) {
@@ -198,26 +215,53 @@ function AgendaView({
       map.get(key)!.items.push(item);
     }
     return Array.from(map.values())
-      .sort((a, b) => a.date.getTime() - b.date.getTime())
-      .filter((g) => g.date >= startOfDay(anchor));
-  }, [items, anchor]);
+      .filter((g) => showPast ? true : g.date >= startOfDay(anchor))
+      .sort((a, b) => showPast
+        ? b.date.getTime() - a.date.getTime()
+        : a.date.getTime() - b.date.getTime());
+  }, [items, anchor, showPast]);
 
   if (groups.length === 0) {
     return (
-      <EmptyScheduleState
-        icon="ph:calendar-blank"
-        label="Nothing scheduled"
-        onAddEntry={
-          onAddEntry
-            ? () => onAddEntry({ fireAt: defaultEntryFireAt(anchor) })
-            : undefined
-        }
-      />
+      <div className="flex min-h-[220px] flex-1 flex-col items-center justify-center gap-3 px-4 py-12 text-center text-sm text-[var(--text-muted)]">
+        <Icon name="ph:calendar-blank" width={32} className="text-[var(--text-muted)]" />
+        <div>Nothing scheduled upcoming.</div>
+        {pastCount > 0 && !showPast ? (
+          <button
+            type="button"
+            onClick={() => setShowPast(true)}
+            className="focus-ring rounded-md border border-[var(--border-hairline)] px-3 py-1 text-[12px] text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-raised)] hover:text-[var(--text-primary)]"
+          >
+            Show {pastCount} past item{pastCount !== 1 ? "s" : ""}
+          </button>
+        ) : null}
+        {onAddEntry ? (
+          <button
+            type="button"
+            onClick={() => onAddEntry({ fireAt: defaultEntryFireAt(anchor) })}
+            className="focus-ring inline-flex items-center gap-1.5 rounded-md border border-[var(--border-hairline)] px-3 py-1 text-[12px] text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-raised)] hover:text-[var(--text-primary)]"
+          >
+            <Icon name="ph:plus" width={11} />
+            Add task or event
+          </button>
+        ) : null}
+      </div>
     );
   }
 
   return (
     <div className="flex flex-col gap-6 overflow-y-auto px-3 py-4 sm:px-6">
+      {showPast ? (
+        <div className="-mb-2 flex justify-end">
+          <button
+            type="button"
+            onClick={() => setShowPast(false)}
+            className="focus-ring rounded-md px-2 py-0.5 text-[10px] text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-raised)] hover:text-[var(--text-primary)]"
+          >
+            Hide past
+          </button>
+        </div>
+      ) : null}
       {groups.map(({ date, items: groupItems }) => (
         <div key={date.toISOString()}>
           <div className="mb-2 flex items-center gap-3">
@@ -369,7 +413,7 @@ function TimeGrid({
             className="absolute right-2 text-[9px] text-[var(--text-muted)] -translate-y-1/2"
             style={{ top: h * HOUR_HEIGHT }}
           >
-            {h === 0 ? "" : `${h}:00`}
+            {fmtHourLabel(h)}
           </div>
         ))}
       </div>
@@ -381,7 +425,13 @@ function TimeGrid({
         }`}
       >
         {columns.map((col, ci) => (
-          <div key={ci} className="flex-1 relative min-w-[80px]" style={{ height: totalHeight }}>
+          <div
+            key={ci}
+            className={col.isToday
+              ? "flex-1 relative min-w-[80px] bg-[color-mix(in_oklch,var(--accent-presence)_6%,transparent)]"
+              : "flex-1 relative min-w-[80px]"}
+            style={{ height: totalHeight }}
+          >
             {/* Hour lines */}
             {HOURS.map((h) => (
               <div
@@ -467,6 +517,8 @@ function DayView({
     items: timedItems,
   }], [anchor, timedItems]);
 
+  const isEmpty = timedItems.length === 0 && allDayItems.length === 0;
+
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
       {/* Header */}
@@ -482,20 +534,19 @@ function DayView({
           onOpenItem={onOpenItem}
         />
       )}
-      {/* Time grid */}
-      {timedItems.length === 0 && allDayItems.length === 0 ? (
-        <EmptyScheduleState
-          icon="ph:sun"
-          label="Nothing scheduled for this day"
-          onAddEntry={
-            onAddEntry
-              ? () => onAddEntry({ fireAt: defaultEntryFireAt(anchor) })
-              : undefined
-          }
-        />
-      ) : timedItems.length === 0 ? null : (
+      {/* Time grid — always rendered for visual parity with Week */}
+      <div className="relative flex flex-1 overflow-hidden">
         <TimeGrid columns={columns} onOpenItem={onOpenItem} />
-      )}
+        {isEmpty && onAddEntry ? (
+          <button
+            type="button"
+            onClick={() => onAddEntry({ fireAt: defaultEntryFireAt(anchor) })}
+            className="focus-ring absolute top-3 right-3 z-10 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/80 px-2.5 py-1 text-[11px] text-[var(--text-secondary)] backdrop-blur transition-colors hover:bg-[var(--bg-raised)] hover:text-[var(--text-primary)]"
+          >
+            + Add event
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -575,19 +626,18 @@ function WeekView({
       {allDayColumns.some((c) => c.items.length > 0) && (
         <AllDayStrip columns={allDayColumns} onOpenItem={onOpenItem} />
       )}
-      {isWeekEmpty ? (
-        <EmptyScheduleState
-          icon="ph:calendar-blank"
-          label="Nothing scheduled for this week"
-          onAddEntry={
-            onAddEntry
-              ? () => onAddEntry({ fireAt: defaultWeekEntryFireAt(anchor) })
-              : undefined
-          }
-        />
-      ) : (
+      <div className="relative flex flex-1 overflow-hidden">
         <TimeGrid columns={columns} onOpenItem={onOpenItem} />
-      )}
+        {isWeekEmpty && onAddEntry ? (
+          <button
+            type="button"
+            onClick={() => onAddEntry({ fireAt: defaultWeekEntryFireAt(anchor) })}
+            className="focus-ring absolute top-3 right-3 z-10 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/80 px-2.5 py-1 text-[11px] text-[var(--text-secondary)] backdrop-blur transition-colors hover:bg-[var(--bg-raised)] hover:text-[var(--text-primary)]"
+          >
+            + Add event
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -655,7 +705,7 @@ function MonthView({
                     isCurrentMonth
                       ? "bg-[var(--bg-panel)] hover:bg-[var(--bg-raised)]"
                       : "bg-[var(--bg-base)] hover:bg-[var(--bg-panel)]"
-                  }`}
+                  } ${isToday ? "ring-1 ring-inset ring-[var(--accent-presence)]" : ""}`}
                 >
                   <span
                     className={`mb-1 flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-medium ${
@@ -706,6 +756,105 @@ function MonthView({
 }
 
 // ─── Item Detail Panel ───────────────────────────────────────────────────────
+
+function MiniMonthPopover({
+  anchor,
+  onPick,
+  onClose,
+}: {
+  anchor: Date;
+  onPick: (d: Date) => void;
+  onClose: () => void;
+}) {
+  const [view, setView] = useState<Date>(startOfMonth(anchor));
+  const ref = useRef<HTMLDivElement>(null);
+  const today = new Date();
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    const onClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("mousedown", onClick);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("mousedown", onClick);
+    };
+  }, [onClose]);
+
+  const monthStart = view;
+  const gridStart = startOfWeek(monthStart);
+  const cells = Array.from({ length: 42 }, (_, i) => addDays(gridStart, i));
+
+  return (
+    <div
+      ref={ref}
+      role="dialog"
+      aria-label="Jump to date"
+      className="absolute top-full left-0 z-20 mt-2 w-[260px] rounded-lg border border-[var(--border-strong)] bg-[var(--bg-elevated)] p-3 shadow-2xl"
+    >
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={() => setView((d) => { const n = new Date(d); n.setMonth(n.getMonth() - 1); return n; })}
+          className="focus-ring grid h-6 w-6 place-items-center rounded-md text-[var(--text-muted)] hover:bg-[var(--bg-raised)] hover:text-[var(--text-primary)]"
+          aria-label="Previous month"
+        >
+          <Icon name="ph:arrow-left-bold" width={10} />
+        </button>
+        <span className="text-[12px] font-medium text-[var(--text-primary)]">
+          {MONTHS[view.getMonth()]} {view.getFullYear()}
+        </span>
+        <button
+          type="button"
+          onClick={() => setView((d) => { const n = new Date(d); n.setMonth(n.getMonth() + 1); return n; })}
+          className="focus-ring grid h-6 w-6 place-items-center rounded-md text-[var(--text-muted)] hover:bg-[var(--bg-raised)] hover:text-[var(--text-primary)]"
+          aria-label="Next month"
+        >
+          <Icon name="ph:arrow-right-bold" width={10} />
+        </button>
+      </div>
+      <div className="mb-1 grid grid-cols-7 gap-px text-[9px] uppercase tracking-widest text-[var(--text-muted)]">
+        {WEEKDAYS.map((wd) => <div key={wd} className="text-center">{wd.slice(0, 1)}</div>)}
+      </div>
+      <div className="grid grid-cols-7 gap-px">
+        {cells.map((day, i) => {
+          const isCurrentMonth = day.getMonth() === view.getMonth();
+          const isToday = isSameDay(day, today);
+          const isAnchor = isSameDay(day, anchor);
+          return (
+            <button
+              key={i}
+              type="button"
+              onClick={() => onPick(day)}
+              className={`focus-ring h-7 w-full rounded text-[11px] transition-colors ${
+                isAnchor
+                  ? "bg-[var(--accent-presence)] text-white"
+                  : isToday
+                    ? "ring-1 ring-inset ring-[var(--accent-presence)] text-[var(--accent-presence)]"
+                    : isCurrentMonth
+                      ? "text-[var(--text-primary)] hover:bg-[var(--bg-raised)]"
+                      : "text-[var(--text-muted)] hover:bg-[var(--bg-raised)]/40"
+              }`}
+            >
+              {day.getDate()}
+            </button>
+          );
+        })}
+      </div>
+      <button
+        type="button"
+        onClick={() => onPick(today)}
+        className="focus-ring mt-2 w-full rounded-md border border-[var(--border-hairline)] py-1 text-[11px] text-[var(--text-secondary)] hover:bg-[var(--bg-raised)] hover:text-[var(--text-primary)]"
+      >
+        Today
+      </button>
+    </div>
+  );
+}
 
 function ItemDetailPanel({
   item,
@@ -804,6 +953,7 @@ export function CalendarView({ items, familiars, onAddEntry, onOpenItem }: Props
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [anchor, setAnchor] = useState<Date>(new Date());
   const [selectedItem, setSelectedItem] = useState<InboxItem | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -900,16 +1050,29 @@ export function CalendarView({ items, familiars, onAddEntry, onOpenItem }: Props
           </button>
         </div>
 
-        {/* Heading + pending pill */}
-        <div className="min-w-[120px] flex flex-1 items-center gap-2 min-w-0">
-          <h2 className="truncate text-sm font-semibold text-[var(--text-primary)]">
+        {/* Heading + pending pill + jump-to-date popover */}
+        <div className="relative min-w-[120px] flex flex-1 items-center gap-2 min-w-0">
+          <button
+            type="button"
+            onClick={() => setPickerOpen((v) => !v)}
+            aria-expanded={pickerOpen}
+            aria-haspopup="dialog"
+            className="focus-ring truncate text-sm font-semibold text-[var(--text-primary)] transition-colors hover:text-[var(--accent-presence)]"
+          >
             {headingLabel()}
-          </h2>
+          </button>
           {items.filter((i) => i.status === "pending").length > 0 && (
             <span className="shrink-0 rounded-full bg-[var(--bg-raised)] border border-[var(--border-hairline)] px-2 py-0.5 text-[10px] text-[var(--text-muted)] font-medium tabular-nums">
               {items.filter((i) => i.status === "pending").length} pending
             </span>
           )}
+          {pickerOpen ? (
+            <MiniMonthPopover
+              anchor={anchor}
+              onPick={(d) => { setAnchor(d); setPickerOpen(false); }}
+              onClose={() => setPickerOpen(false)}
+            />
+          ) : null}
         </div>
 
         {/* View mode toggle */}
@@ -928,6 +1091,18 @@ export function CalendarView({ items, familiars, onAddEntry, onOpenItem }: Props
             </button>
           ))}
         </div>
+
+        {onAddEntry ? (
+          <button
+            type="button"
+            onClick={() => onAddEntry({ fireAt: defaultEntryFireAt(anchor) })}
+            aria-label="New event"
+            className="focus-ring inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/40 px-2 text-[11px] text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-raised)] hover:text-[var(--text-primary)]"
+          >
+            <Icon name="ph:plus-bold" width={10} />
+            New event
+          </button>
+        ) : null}
       </div>
 
       {/* View body */}
@@ -968,6 +1143,11 @@ export function CalendarView({ items, familiars, onAddEntry, onOpenItem }: Props
           />
         )}
       </div>
+      <footer
+        className="shrink-0 border-t border-[var(--border-hairline)] px-3 py-1.5 text-[10px] text-[var(--text-muted)] sm:px-6"
+      >
+        ← → navigate · T today · D Day · W Week · M Month · A Agenda
+      </footer>
       {selectedItem && (
         <ItemDetailPanel
           item={selectedItem}
