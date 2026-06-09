@@ -8,7 +8,7 @@
  *   2. App destinations grouped by purpose:
  *      Work  (Home / Chat / Board / Calendar / Inbox)
  *      Knowledge (Library)
- *      Tools (Browser / Terminal / GitHub)
+ *      Tools (Browser / Terminal / Roles / Capabilities / GitHub)
  *   3. Footer: Notifications + Settings
  */
 
@@ -75,15 +75,10 @@ const FOLDER_MODES: Array<{
   // Knowledge
   { id: "library", label: "Library", iconName: "ph:books", group: "knowledge", kbd: "⌘6" },
   // Tools
-<<<<<<< Updated upstream
-  { id: "browser", label: "Browser", iconName: "ph:globe", group: "tools", kbd: "⌘8" },
-  { id: "terminal", label: "Terminal", iconName: "ph:terminal-window", group: "tools" },
-=======
   { id: "browser", label: "Browser", iconName: "ph:globe", group: "tools", kbd: "⌘7" },
   { id: "terminal", label: "Terminal", iconName: "ph:terminal-window", group: "tools", kbd: "⌘8" },
   { id: "roles", label: "Roles", iconName: "ph:mask-happy", group: "tools" },
   { id: "capabilities", label: "Capabilities", iconName: "ph:lightning-bold", group: "tools" },
->>>>>>> Stashed changes
   // Add-ons (gated)
   { id: "github", label: "GitHub", iconName: "ph:github-logo", group: "addons" },
 ];
