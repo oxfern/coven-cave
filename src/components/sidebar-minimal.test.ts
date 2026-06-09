@@ -43,14 +43,32 @@ assert.doesNotMatch(
 
 assert.match(
   source,
-  /activeFamiliar\?: Familiar \| null/,
-  "Sidebar receives the selected familiar for Work context",
+  /activeFamiliar\?: ResolvedFamiliar \| null/,
+  "Sidebar receives the resolved selected familiar so the switcher can render avatar/color",
 );
 
 assert.match(
   source,
-  /<SelectedFamiliarInfo familiar=\{activeFamiliar\} \/>/,
-  "Work section should show selected familiar info instead of a Familiars row",
+  /<FamiliarSwitcher/,
+  "Sidebar top slot renders the full-width FamiliarSwitcher (replaces the old search row + selected-familiar card)",
+);
+
+assert.match(
+  source,
+  /onSelectFamiliar: \(id: string\) => void/,
+  "Sidebar exposes onSelectFamiliar so the switcher can change the active familiar like the old avatar rail",
+);
+
+assert.match(
+  source,
+  /onAddFamiliar: \(\) => void/,
+  "Sidebar exposes onAddFamiliar so the switcher menu can trigger onboarding",
+);
+
+assert.doesNotMatch(
+  source,
+  /onOpenSearch/,
+  "Sidebar no longer surfaces a Search action row — the slot is now the FamiliarSwitcher",
 );
 
 assert.match(
