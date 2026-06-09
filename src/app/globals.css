@@ -3246,7 +3246,7 @@ body {
   align-items: center;
   gap: 8px;
   padding: 5px 12px;
-  min-width: 240px;
+  min-width: 420px;
   background: var(--bg-base);
   border: 1px solid var(--border-hairline);
   border-radius: var(--radius-control);
