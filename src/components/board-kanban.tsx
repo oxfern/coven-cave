@@ -197,6 +197,64 @@ export function BoardKanban({ cards, familiars, sessions, groupBy, selectedCardI
     rail.scrollBy({ left: Math.max(rail.clientWidth * 0.72, 280) * dir, behavior: "smooth" });
   };
 
+  // Click-and-drag horizontal scroll ("grabber") for the rail.
+  // Activates only when the pointer goes down on empty rail space — never on a
+  // card, a button, the column list, or any interactive control. Cards keep
+  // their HTML5 drag behavior; the column scroll containers keep wheel/scroll.
+  const handleRailPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (e.button !== 0 || e.pointerType === "touch") return;
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      if (
+        target.closest(
+          '[data-card-id], button, a, input, textarea, select, [contenteditable="true"], [role="button"], .board-kanban-list',
+        )
+      ) {
+        return;
+      }
+      const rail = e.currentTarget;
+      const startX = e.clientX;
+      const startLeft = rail.scrollLeft;
+      let moved = false;
+      rail.classList.add("board-kanban-rail-wrap--grabbing");
+      try {
+        rail.setPointerCapture(e.pointerId);
+      } catch {
+        /* setPointerCapture can throw in jsdom; harmless. */
+      }
+      const onMove = (ev: PointerEvent) => {
+        const dx = ev.clientX - startX;
+        if (!moved && Math.abs(dx) > 3) moved = true;
+        rail.scrollLeft = startLeft - dx;
+      };
+      const onUp = (ev: PointerEvent) => {
+        rail.classList.remove("board-kanban-rail-wrap--grabbing");
+        rail.removeEventListener("pointermove", onMove);
+        rail.removeEventListener("pointerup", onUp);
+        rail.removeEventListener("pointercancel", onUp);
+        try {
+          rail.releasePointerCapture(ev.pointerId);
+        } catch {
+          /* harmless */
+        }
+        // Swallow the upcoming click if we actually scrolled, so columns
+        // don't toggle behind us.
+        if (moved) {
+          const swallow = (cev: MouseEvent) => {
+            cev.stopPropagation();
+            cev.preventDefault();
+          };
+          rail.addEventListener("click", swallow, { capture: true, once: true });
+        }
+      };
+      rail.addEventListener("pointermove", onMove);
+      rail.addEventListener("pointerup", onUp);
+      rail.addEventListener("pointercancel", onUp);
+    },
+    [],
+  );
+
   const toggleGroup = (key: string) =>
     setCollapsedGroups((prev) => { const n = new Set(prev); if (n.has(key)) n.delete(key); else n.add(key); return n; });
 
@@ -240,7 +298,8 @@ export function BoardKanban({ cards, familiars, sessions, groupBy, selectedCardI
               <div
                 className={isMultiSwimlane ? "board-swimlane-rail" : "board-kanban-rail-wrap"}
                 style={isMultiSwimlane ? {} : { flex: 1, minHeight: 0 }}
-                ref={(el) => { if (el) railRefs.current.set(key, el); }}>
+                ref={(el) => { if (el) railRefs.current.set(key, el); }}
+                onPointerDown={handleRailPointerDown}>
                 <div className="board-kanban-rail" style={isMultiSwimlane ? { height: 320 } : { height: "100%" }}>
                   {COLUMNS.map((col) => {
                     const rows = grpGrouped.get(col.id) ?? [];
@@ -320,7 +379,7 @@ function KanbanCard({ card, familiars, sessions, isDragging, isSelected, isGrabb
   const resolvedFamiliar = resolvedFamiliars[0] ?? null;
   const session = sessions.find((s) => s.id === card.sessionId) ?? null;
   const pri = PRIORITIES.find((p) => p.id === card.priority)!;
-  const hasChips = !!card.cwd || card.links.length > 0 || card.labels.length > 0;
+  const hasChips = !!card.cwd || card.links.length > 0 || card.labels.length > 0 || !!session;
 
   return (
     <li draggable
@@ -344,6 +403,15 @@ function KanbanCard({ card, familiars, sessions, isDragging, isSelected, isGrabb
       {card.notes && <p className="board-kanban-card-notes">{card.notes}</p>}
       {hasChips && (
         <div className="board-kanban-card-chips">
+          {session && (
+            <span
+              className="board-kanban-card-chip board-kanban-card-chip--chat"
+              title={`Linked chat: ${session.title || "(untitled)"}`}
+            >
+              <Icon name="ph:chat-circle-dots" width={9} />
+              Chat
+            </span>
+          )}
           {card.cwd && (
             <span className="board-kanban-card-chip board-kanban-card-chip--path" title={card.cwd}>
               <Icon name="ph:folder" width={9} />

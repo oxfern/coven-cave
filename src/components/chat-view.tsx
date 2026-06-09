@@ -524,6 +524,10 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
                 })),
           );
           setHistoryState("loaded");
+        } else if (json.ok && json.context) {
+          // Known affiliation (e.g. fresh task chat) — no transcript yet.
+          setTurns([]);
+          setHistoryState("loaded");
         } else {
           setTurns([]);
           setHistoryState("missing");

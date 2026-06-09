@@ -137,6 +137,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     }
   }
 
+  // No transcript yet — but if a board card claims this session, surface
+  // the task affiliation so the chat header can show the Task pill on first open.
+  const context = await linkedContextForSession(id);
+  if (context) {
+    return NextResponse.json({ ok: true, conversation: null, context });
+  }
+
   return NextResponse.json({ ok: false, error: "not found" }, { status: 404 });
 }
 
