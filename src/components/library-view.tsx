@@ -23,6 +23,7 @@ import type {
   LibraryGitHubItem,
   LibrarySectionKind,
 } from "@/lib/library-types";
+import { NewCardModal, type NewCardDraft } from "@/components/new-card-modal";
 
 type LibraryViewProps = {
   onOpenUrl?: (url: string) => void;
@@ -47,6 +48,7 @@ export function LibraryView({ onOpenUrl, sessions, onOpenSession, onNewProjectCh
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [familiars, setFamiliars] = useState<Familiar[]>([]);
   const [timelineSelectedId, setTimelineSelectedId] = useState<string | null>(null);
+  const [boardDraft, setBoardDraft] = useState<LibraryBookmark | null>(null);
 
   useEffect(() => {
     void fetch("/api/familiars", { cache: "no-store" })
@@ -212,6 +214,7 @@ export function LibraryView({ onOpenUrl, sessions, onOpenSession, onNewProjectCh
                 setSelectedItem({ kind: "bookmark", item });
               }}
               onDelete={(id) => { if (selectedBmId === id) setSelectedItem(null); }}
+              onAddToBoard={(bookmark) => setBoardDraft(bookmark)}
             />
           )}
           {activeSection === "reading" && (
@@ -247,6 +250,34 @@ export function LibraryView({ onOpenUrl, sessions, onOpenSession, onNewProjectCh
           )}
         </div>
       </div>
+      {/* Add-to-Board modal — triggered from bookmark rows */}
+      {boardDraft && (
+        <NewCardModal
+          open={boardDraft !== null}
+          onClose={() => setBoardDraft(null)}
+          familiars={familiars}
+          sessions={sessions ?? []}
+          defaultStatus="inbox"
+          defaultLinks={[boardDraft.url]}
+          defaultNotes={[boardDraft.url, boardDraft.notes].filter(Boolean).join("\n")}
+          defaultLabels={boardDraft.tags}
+          onCreate={async (draft: NewCardDraft) => {
+            await fetch("/api/board", {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({
+                title: draft.title,
+                notes: draft.notes,
+                status: draft.status,
+                priority: draft.priority,
+                links: draft.links,
+                labels: draft.labels,
+              }),
+            });
+            setBoardDraft(null);
+          }}
+        />
+      )}
     </div>
   );
 }

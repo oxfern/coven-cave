@@ -147,6 +147,7 @@ type Props = {
   selectedId: string | null;
   onSelect: (item: LibraryBookmark) => void;
   onDelete?: (id: string) => void;
+  onAddToBoard?: (bookmark: LibraryBookmark) => void;
 };
 
 const COLS: { key: SortKey; label: string; width?: string }[] = [
@@ -155,7 +156,7 @@ const COLS: { key: SortKey; label: string; width?: string }[] = [
   { key: "savedAt", label: "Saved",   width: "80px" },
 ];
 
-export function LibraryBookmarksList({ selectedId, onSelect, onDelete }: Props) {
+export function LibraryBookmarksList({ selectedId, onSelect, onDelete, onAddToBoard }: Props) {
   const [items, setItems] = useState<LibraryBookmark[]>([]);
   const [loading, setLoading] = useState(true);
   const [sortKey, setSortKey] = useState<SortKey>("savedAt");
@@ -163,6 +164,7 @@ export function LibraryBookmarksList({ selectedId, onSelect, onDelete }: Props) 
   const [groupBy, setGroupBy] = useState<GroupBy>("tags");
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [adding, setAdding] = useState(false);
+  const [addedToBoardId, setAddedToBoardId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -256,7 +258,7 @@ export function LibraryBookmarksList({ selectedId, onSelect, onDelete }: Props) 
                   </th>
                 ))}
                 <th style={{ width: "160px" }}>Tags</th>
-                <th style={{ width: "32px" }} />
+                <th style={{ width: "64px" }} />
               </tr>
             </thead>
             <tbody>
@@ -309,9 +311,38 @@ export function LibraryBookmarksList({ selectedId, onSelect, onDelete }: Props) 
                           )}
                         </div>
                       </td>
-                      <td onClick={(e) => { e.stopPropagation(); void handleDelete(item.id); }}>
-                        <span className="library-row-delete" title="Remove">
-                          <Icon name="ph:x" width={11} />
+                      <td onClick={(e) => e.stopPropagation()}>
+                        <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                          {onAddToBoard && (
+                            addedToBoardId === item.id ? (
+                              <span
+                                className="library-row-delete"
+                                title="Added to Board"
+                                style={{ color: "var(--color-success, #16a34a)", cursor: "default" }}
+                              >
+                                <Icon name="ph:check" width={11} />
+                              </span>
+                            ) : (
+                              <span
+                                className="library-row-delete"
+                                title="Add to Board"
+                                onClick={() => {
+                                  onAddToBoard(item);
+                                  setAddedToBoardId(item.id);
+                                  setTimeout(() => setAddedToBoardId((prev) => prev === item.id ? null : prev), 3000);
+                                }}
+                              >
+                                <Icon name="ph:kanban" width={11} />
+                              </span>
+                            )
+                          )}
+                          <span
+                            className="library-row-delete"
+                            title="Remove"
+                            onClick={() => { void handleDelete(item.id); }}
+                          >
+                            <Icon name="ph:x" width={11} />
+                          </span>
                         </span>
                       </td>
                     </tr>

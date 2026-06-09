@@ -71,6 +71,46 @@ const RESULT_LIMITS = {
   command: 6,
 };
 
+// ── @familiar query parsing ────────────────────────────────────────────────
+// Users can scope the palette to a single familiar by typing `@<name>` anywhere
+// in the query. The token matches a familiar's id / name / display_name
+// (case- and whitespace-insensitive, substring). Everything else in the query
+// becomes a free-text filter applied *within* that scope.
+//
+//   "@nova"              → scope: nova,        rest: ""
+//   "@val readme"        → scope: valentina,   rest: "readme"
+//   "browser @nova"      → scope: nova,        rest: "browser"
+//   "@"                  → scope: all (suggest list), rest: ""
+//   "hello"              → no scope
+//
+// We only honour the *first* `@token` in the query — multiple `@`s collapse
+// down to the first (the rest stay as literal text in the free-text portion).
+export function parseFamiliarToken(query: string): { token: string | null; rest: string } {
+  const m = query.match(/(^|\s)@([\w-]*)/);
+  if (!m) return { token: null, rest: query };
+  const token = m[2].toLowerCase();
+  const rest = (query.slice(0, m.index! + m[1].length) + query.slice(m.index! + m[1].length + 1 + m[2].length)).trim();
+  return { token, rest };
+}
+
+function normalizeFamiliarHandle(s: string): string {
+  return s.toLowerCase().replace(/\s+/g, "");
+}
+
+export function resolveFamiliarIds(familiars: Familiar[], token: string | null): Set<string> | null {
+  if (token === null) return null;
+  if (token === "") return new Set(familiars.map((f) => f.id));
+  const t = token.toLowerCase();
+  const out = new Set<string>();
+  for (const f of familiars) {
+    const candidates = [f.id, f.name ?? "", f.display_name];
+    if (candidates.some((c) => normalizeFamiliarHandle(c).includes(t))) {
+      out.add(f.id);
+    }
+  }
+  return out;
+}
+
 export function CommandPalette({
   open,
   onClose,
@@ -120,22 +160,42 @@ export function CommandPalette({
   }, [open]);
 
   const rows: Row[] = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const { token, rest } = parseFamiliarToken(query);
+    const q = rest.trim().toLowerCase();
+    const scope = resolveFamiliarIds(familiars, token);
+    const scoped = scope !== null;
+    // When the user has typed `@token` but no familiar matches it yet, we
+    // surface the familiar suggestions only (so they can complete the handle)
+    // and suppress everything else. This is also what we do for a bare `@`.
+    const noFamiliarMatch = scoped && scope!.size === 0;
 
     const familiarRows: Row[] = familiars
-      .filter(
-        (f) =>
-          !q ||
+      .filter((f) => {
+        if (scoped && !scope!.has(f.id)) return false;
+        if (!q) return true;
+        return (
           f.display_name.toLowerCase().includes(q) ||
           f.role.toLowerCase().includes(q) ||
-          (f.harness ?? "").toLowerCase().includes(q),
-      )
+          (f.harness ?? "").toLowerCase().includes(q)
+        );
+      })
       .slice(0, RESULT_LIMITS.familiar)
       .map((f) => ({ id: `f:${f.id}`, kind: "familiar", familiar: f }));
+
+    // If the familiar-handle resolved to nothing, only suggestions are useful.
+    if (noFamiliarMatch) return familiarRows;
 
     const sessionRows: Row[] = sessions
       .filter((s) => {
         if (!s.familiarId) return false;
+        if (scoped) {
+          if (!scope!.has(s.familiarId)) return false;
+          if (!q) return true;
+          return (
+            (s.title ?? "").toLowerCase().includes(q) ||
+            s.harness.toLowerCase().includes(q)
+          );
+        }
         if (!q) return s.familiarId === activeFamiliarId;
         return (
           (s.title ?? "").toLowerCase().includes(q) ||
@@ -152,14 +212,18 @@ export function CommandPalette({
       }));
 
     const cardRows: Row[] = cards
-      .filter(
-        (c) =>
-          !q ||
+      .filter((c) => {
+        if (scoped) {
+          if (!c.familiarId || !scope!.has(c.familiarId)) return false;
+        }
+        if (!q) return true;
+        return (
           c.title.toLowerCase().includes(q) ||
           (c.labels ?? []).some((l) => l.toLowerCase().includes(q)) ||
           c.status.toLowerCase().includes(q) ||
-          c.priority.toLowerCase().includes(q),
-      )
+          c.priority.toLowerCase().includes(q)
+        );
+      })
       .slice(0, RESULT_LIMITS.card)
       .map((c) => ({
         id: `card:${c.id}`,
@@ -169,13 +233,15 @@ export function CommandPalette({
       }));
 
     const covenMemoryRows: Row[] = covenMemory
-      .filter(
-        (e) =>
-          !q ||
+      .filter((e) => {
+        if (scoped && !scope!.has(e.familiar_id)) return false;
+        if (!q) return true;
+        return (
           e.title.toLowerCase().includes(q) ||
           (e.excerpt ?? "").toLowerCase().includes(q) ||
-          e.familiar_id.toLowerCase().includes(q),
-      )
+          e.familiar_id.toLowerCase().includes(q)
+        );
+      })
       .slice(0, RESULT_LIMITS.covenMemory)
       .map((e) => ({
         id: `cm:${e.id}`,
@@ -184,35 +250,41 @@ export function CommandPalette({
         familiar: familiars.find((f) => f.id === e.familiar_id) ?? null,
       }));
 
-    const fsMemoryRows: Row[] = fsMemory
-      .filter(
-        (e) =>
-          !q ||
-          e.relPath.toLowerCase().includes(q) ||
-          e.rootLabel.toLowerCase().includes(q),
-      )
-      .slice(0, RESULT_LIMITS.fsMemory)
-      .map((e) => ({ id: `fm:${e.fullPath}`, kind: "fs-memory", entry: e }));
+    // fs-memory, slash commands, and shortcuts are not familiar-scoped, so
+    // they're suppressed entirely whenever the user is using `@familiar`.
+    const fsMemoryRows: Row[] = scoped
+      ? []
+      : fsMemory
+          .filter(
+            (e) =>
+              !q ||
+              e.relPath.toLowerCase().includes(q) ||
+              e.rootLabel.toLowerCase().includes(q),
+          )
+          .slice(0, RESULT_LIMITS.fsMemory)
+          .map((e) => ({ id: `fm:${e.fullPath}`, kind: "fs-memory", entry: e }));
 
-    const cmdRows: Row[] = SLASH_COMMANDS.filter(
-      (c) =>
-        !q ||
-        c.name.includes(q) ||
-        (c.aliases ?? []).some((a) => a.includes(q)) ||
-        c.description.toLowerCase().includes(q),
-    )
-      .slice(0, RESULT_LIMITS.command)
-      .map((c) => ({
-        id: `c:${c.name}`,
-        kind: "command",
-        name: c.name,
-        hint: c.hint,
-        intent: { kind: "slash", command: c.name },
-      }));
+    const cmdRows: Row[] = scoped
+      ? []
+      : SLASH_COMMANDS.filter(
+          (c) =>
+            !q ||
+            c.name.includes(q) ||
+            (c.aliases ?? []).some((a) => a.includes(q)) ||
+            c.description.toLowerCase().includes(q),
+        )
+          .slice(0, RESULT_LIMITS.command)
+          .map((c) => ({
+            id: `c:${c.name}`,
+            kind: "command",
+            name: c.name,
+            hint: c.hint,
+            intent: { kind: "slash", command: c.name },
+          }));
 
     const shortcutRows: Row[] = [];
     const toggleLabel = "Toggle Familiar Chat";
-    if (!q || toggleLabel.toLowerCase().includes(q) || "⌘j".includes(q)) {
+    if (!scoped && (!q || toggleLabel.toLowerCase().includes(q) || "⌘j".includes(q))) {
       shortcutRows.push({
         id: "shortcut:toggle-agent",
         kind: "shortcut",
@@ -312,7 +384,7 @@ export function CommandPalette({
             setActiveIdx(0);
           }}
           onKeyDown={onComposerKey}
-          placeholder="Search familiars · chats · cards · memory · commands…"
+          placeholder="Search familiars · chats · cards · memory · commands… (try @familiar to scope)"
           aria-label="Search and jump to anything"
           aria-controls="command-palette-listbox"
           aria-activedescendant={

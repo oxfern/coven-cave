@@ -373,6 +373,7 @@ function LinksSection({
 }) {
   const [draft, setDraft] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const [savedToLibrary, setSavedToLibrary] = useState<Record<string, "saving" | "done" | "error">>({});
 
   const links = card.links ?? [];
 
@@ -391,6 +392,36 @@ function LinksSection({
 
   function deleteLink(url: string) {
     onPatch(card.id, { links: links.filter((l) => l !== url) });
+  }
+
+  async function saveToLibrary(url: string) {
+    setSavedToLibrary((prev) => ({ ...prev, [url]: "saving" }));
+    try {
+      let title = url;
+      try { title = new URL(url).hostname.replace(/^www./, ""); } catch { /* use url */ }
+      const res = await fetch("/api/library/bookmarks", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ url, title, tags: card.labels ?? [] }),
+      });
+      const json = await res.json().catch(() => null);
+      if (res.ok && json?.ok) {
+        setSavedToLibrary((prev) => ({ ...prev, [url]: "done" }));
+        setTimeout(() => setSavedToLibrary((prev) => {
+          const next = { ...prev }; delete next[url]; return next;
+        }), 2000);
+      } else {
+        setSavedToLibrary((prev) => ({ ...prev, [url]: "error" }));
+        setTimeout(() => setSavedToLibrary((prev) => {
+          const next = { ...prev }; delete next[url]; return next;
+        }), 3000);
+      }
+    } catch {
+      setSavedToLibrary((prev) => ({ ...prev, [url]: "error" }));
+      setTimeout(() => setSavedToLibrary((prev) => {
+        const next = { ...prev }; delete next[url]; return next;
+      }), 3000);
+    }
   }
 
   return (
@@ -417,6 +448,7 @@ function LinksSection({
         <ul style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: 8 }}>
           {links.map((link) => {
             const href = safeHref(link);
+            const saveState = savedToLibrary[link];
             return (
               <li
                 key={link}
@@ -461,7 +493,23 @@ function LinksSection({
                     {link}
                   </span>
                 )}
-                <span style={{ opacity: 0, display: "flex" }} className="step-actions">
+                <span style={{ opacity: 0, display: "flex", alignItems: "center", gap: 2 }} className="step-actions">
+                  {saveState === "error" ? (
+                    <span style={{ fontSize: 10, color: "var(--color-danger)" }} title="Save failed">
+                      err
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="board-toolbar-btn"
+                      style={{ padding: "1px 4px", color: saveState === "done" ? "var(--color-success, #16a34a)" : "var(--text-muted)" }}
+                      onClick={() => { if (!saveState) void saveToLibrary(link); }}
+                      title={saveState === "done" ? "Saved to Library" : "Save to Library"}
+                      disabled={saveState === "saving"}
+                    >
+                      <Icon name={saveState === "done" ? "ph:check" : "ph:bookmark-simple"} width={10} />
+                    </button>
+                  )}
                   <button
                     type="button"
                     className="board-toolbar-btn"
