@@ -37,8 +37,25 @@ async function ensureDir() {
   await mkdir(CONV_DIR, { recursive: true });
 }
 
+export function isSafeConversationSessionId(sessionId: string): boolean {
+  if (!sessionId || sessionId.length > 240) return false;
+  if (sessionId === "." || sessionId === "..") return false;
+  if (sessionId.includes("/") || sessionId.includes("\\") || sessionId.includes("\0")) {
+    return false;
+  }
+  return path.basename(sessionId) === sessionId;
+}
+
 function pathFor(sessionId: string): string {
-  return path.join(CONV_DIR, `${sessionId}.json`);
+  if (!isSafeConversationSessionId(sessionId)) {
+    throw new Error("invalid session id");
+  }
+  const root = path.resolve(CONV_DIR);
+  const resolved = path.resolve(root, `${sessionId}.json`);
+  if (!resolved.startsWith(root + path.sep)) {
+    throw new Error("invalid session id");
+  }
+  return resolved;
 }
 
 export async function loadConversation(sessionId: string): Promise<ConversationFile | null> {
