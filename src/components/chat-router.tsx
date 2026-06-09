@@ -14,6 +14,7 @@ type Props = {
   sessions: SessionRow[];
   daemonRunning?: boolean;
   onSessionStarted?: () => void;
+  onSessionsChanged?: () => void;
   onSlashFromChat?: (command: string, args: string) => boolean;
   onOpenOnboarding?: () => void;
   pendingProjectRoot?: string | null;
@@ -40,6 +41,7 @@ export const ChatRouter = forwardRef<ChatRouterHandle, Props>(function ChatRoute
     sessions,
     daemonRunning,
     onSessionStarted,
+    onSessionsChanged,
     onSlashFromChat,
     onOpenOnboarding,
     pendingProjectRoot,
@@ -125,6 +127,7 @@ export const ChatRouter = forwardRef<ChatRouterHandle, Props>(function ChatRoute
       session={activeSession}
       projectRoot={view.kind === "chat" ? view.projectRoot : undefined}
       daemonRunning={daemonRunning}
+      onSessionsChanged={onSessionsChanged}
       onBack={() => setView({ kind: "list" })}
       onSessionStarted={(sid) => {
         // Only promote the sessionId in the view state when the current chat

@@ -57,6 +57,7 @@ type Props = {
   projectRoot?: string;
   daemonRunning?: boolean;
   onSessionStarted?: (sessionId: string) => void;
+  onSessionsChanged?: () => void;
   onBack?: () => void;
   onSlashCommand?: (command: string, args: string) => boolean;
   onOpenOnboarding?: () => void;
@@ -358,14 +359,107 @@ function ChatLifecycleStatus({
   );
 }
 
+function ChatTitleEditable({
+  session,
+  onSessionsChanged,
+}: {
+  session: SessionRow;
+  onSessionsChanged?: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(session.title ?? "");
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const submittedRef = useRef(false);
+
+  useEffect(() => {
+    if (!editing) setValue(session.title ?? "");
+  }, [session.title, editing]);
+
+  useEffect(() => {
+    if (!editing) return;
+    submittedRef.current = false;
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, [editing]);
+
+  const display = session.title || session.id;
+
+  const submit = async () => {
+    if (submittedRef.current) return;
+    submittedRef.current = true;
+    const trimmed = value.trim();
+    setEditing(false);
+    if (trimmed === (session.title ?? "").trim()) return;
+    try {
+      await fetch(`/api/sessions/${encodeURIComponent(session.id)}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ title: trimmed }),
+      });
+      onSessionsChanged?.();
+    } catch {
+      /* transient — next sessions poll will reconcile */
+    }
+  };
+
+  const cancel = () => {
+    if (submittedRef.current) return;
+    submittedRef.current = true;
+    setValue(session.title ?? "");
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        type="text"
+        className="cave-chat-title-input min-w-0 flex-1 rounded-sm bg-transparent text-[11px] text-[var(--text-primary)] outline-none"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => {
+          e.stopPropagation();
+          if (e.key === "Enter") {
+            e.preventDefault();
+            void submit();
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            cancel();
+          }
+        }}
+        onBlur={() => void submit()}
+        aria-label="Chat title"
+        maxLength={200}
+      />
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      className="min-w-0 flex-1 truncate text-left text-[11px] text-[var(--text-secondary)] transition-colors hover:text-[var(--text-primary)]"
+      title={`${display} — click to rename`}
+      onClick={(e) => {
+        e.stopPropagation();
+        setEditing(true);
+      }}
+    >
+      {display}
+    </button>
+  );
+}
+
 function ChatContextStrip({
   session,
   linkedContext,
   historyState,
+  onSessionsChanged,
 }: {
   session: SessionRow | null;
   linkedContext: ChatLinkedContext | null;
   historyState: ChatHistoryState;
+  onSessionsChanged?: () => void;
 }) {
   const task = linkedContext?.task ?? null;
   const github = linkedContext?.github ?? [];
@@ -376,7 +470,7 @@ function ChatContextStrip({
       {session ? (
         <span className="inline-flex min-w-0 max-w-[22rem] items-center gap-1.5 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/40 px-2 py-1 text-[11px] text-[var(--text-secondary)]">
           <Icon name="ph:chats-circle" width={12} className="shrink-0 text-[var(--text-muted)]" />
-          <span className="min-w-0 truncate">{session.title || session.id}</span>
+          <ChatTitleEditable session={session} onSessionsChanged={onSessionsChanged} />
           <span className="shrink-0 text-[var(--text-muted)]">{session.status}</span>
           {session.project_root ? (
             <span className="shrink-0 font-mono text-[var(--text-muted)]">{repoName(session.project_root)}</span>
@@ -419,7 +513,7 @@ function ChatContextStrip({
 // ── ChatView ──────────────────────────────────────────────────────────────────
 
 export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
-  { familiar, sessionId, session, projectRoot, daemonRunning, onSessionStarted, onSlashCommand, onOpenOnboarding },
+  { familiar, sessionId, session, projectRoot, daemonRunning, onSessionStarted, onSessionsChanged, onSlashCommand, onOpenOnboarding },
   ref,
 ) {
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -982,6 +1076,7 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
             session={session ?? null}
             linkedContext={linkedContext}
             historyState={historyState}
+            onSessionsChanged={onSessionsChanged}
           />
         </div>
       </header>

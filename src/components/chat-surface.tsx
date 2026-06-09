@@ -305,6 +305,7 @@ export function ChatSurface({
                 sessions={sessions}
                 daemonRunning={daemonRunning}
                 onSessionStarted={onSessionStarted}
+                onSessionsChanged={onSessionsChanged}
                 onSlashFromChat={onSlashFromChat}
                 onOpenOnboarding={onOpenOnboarding}
                 pendingProjectRoot={pendingProjectRoot}
