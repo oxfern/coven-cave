@@ -974,6 +974,7 @@ export function Workspace() {
           }
         }}
         familiars={familiars}
+        activeFamiliarId={activeId}
         onNewReminder={() => openReminderModal()}
         onOpenSession={(sessionId, familiarId) => {
           openAgentSession(sessionId, familiarId);
@@ -1007,6 +1008,7 @@ export function Workspace() {
       <CalendarView
         items={inboxItems}
         familiars={familiars}
+        activeFamiliarId={activeId}
         onAddEntry={(defaults) => {
           openReminderModal(
             defaults?.title ?? "",

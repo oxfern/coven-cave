@@ -19,6 +19,10 @@ import { AutomationsView } from "@/components/automations-view";
 type Props = {
   onOpenSource?: (item: Escalation) => void;
   familiars?: Familiar[];
+  /** When set, the inbox hard-scopes to escalations involving this familiar
+   *  (fromFamiliar or aboutFamiliar). Defensive null escape: bypass the
+   *  familiar filter entirely. Mirrors BoardView's hard-scope. */
+  activeFamiliarId?: string | null;
   onNewReminder?: () => void;
   onOpenSession?: (sessionId: string, familiarId?: string | null) => void;
   defaultTab?: "escalations" | "schedules";
@@ -81,6 +85,7 @@ function age(iso: string): string {
 export function InboxEscalationsView({
   onOpenSource,
   familiars,
+  activeFamiliarId,
   onNewReminder,
   onOpenSession,
   defaultTab,
@@ -122,18 +127,33 @@ export function InboxEscalationsView({
     return () => clearInterval(id);
   }, [refresh]);
 
+  // Hard-scope to the active familiar — escalations whose fromFamiliar or
+  // aboutFamiliar matches drop through; everything else is hidden. Defensive
+  // null escape: when activeFamiliarId is null/unset, show everything.
+  const scopedItems = useMemo(
+    () =>
+      activeFamiliarId == null
+        ? items
+        : items.filter(
+            (it) =>
+              it.fromFamiliar === activeFamiliarId ||
+              it.aboutFamiliar === activeFamiliarId,
+          ),
+    [items, activeFamiliarId],
+  );
+
   // Items visible after state filters (snoozed/dismissed/resolved) but BEFORE
   // the severity-chip filter — counts on the chip row come from this list so
   // they reflect "what's in the inbox" not "what's currently shown".
   const inSeverity = useMemo(() => {
-    const list = items.filter((it) => {
+    const list = scopedItems.filter((it) => {
       if (it.state === "snoozed") return false;
       if (it.state === "dismissed") return false;
       if (!showResolved && it.state === "resolved") return false;
       return true;
     });
     return sortEscalations(list);
-  }, [items, showResolved]);
+  }, [scopedItems, showResolved]);
 
   const severityCounts = useMemo(() => {
     const counts: Record<EscalationSeverity, number> = { critical: 0, warn: 0, info: 0 };
@@ -303,11 +323,11 @@ export function InboxEscalationsView({
     return () => window.removeEventListener("keydown", handler);
   }, [visible, activeIdx, patchItem, patchMany, onOpenSource, snoozeMenuFor, selected, toggleSelected]);
 
-  const newCount = items.filter((i) => i.state === "new").length;
-  const criticalCount = items.filter(
+  const newCount = scopedItems.filter((i) => i.state === "new").length;
+  const criticalCount = scopedItems.filter(
     (i) => i.severity === "critical" && i.state !== "resolved" && i.state !== "dismissed",
   ).length;
-  const resolvedCount = items.filter((i) => i.state === "resolved").length;
+  const resolvedCount = scopedItems.filter((i) => i.state === "resolved").length;
 
   return (
     <section

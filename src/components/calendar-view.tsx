@@ -14,6 +14,10 @@ type ViewMode = "agenda" | "day" | "week" | "month";
 type Props = {
   items: InboxItem[];
   familiars: Familiar[];
+  /** When set, the calendar hard-scopes to items belonging to this familiar.
+   *  Defensive null escape: bypass the familiar filter entirely. Mirrors
+   *  BoardView's hard-scope. */
+  activeFamiliarId?: string | null;
   onAddEntry?: (defaults?: { fireAt?: string; title?: string; whenText?: string }) => void;
   onOpenItem?: (item: InboxItem) => void;
 };
@@ -949,12 +953,22 @@ function ItemDetailPanel({
 
 // ─── Main CalendarView ────────────────────────────────────────────────────────
 
-export function CalendarView({ items, familiars, onAddEntry, onOpenItem }: Props) {
+export function CalendarView({ items, familiars, activeFamiliarId, onAddEntry, onOpenItem }: Props) {
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [anchor, setAnchor] = useState<Date>(new Date());
   const [selectedItem, setSelectedItem] = useState<InboxItem | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Hard-scope: filter every downstream view (agenda/day/week/month) to the
+  // active familiar. Defensive null escape: bypass the filter entirely.
+  const scopedItems = useMemo(
+    () =>
+      activeFamiliarId == null
+        ? items
+        : items.filter((it) => it.familiarId === activeFamiliarId),
+    [items, activeFamiliarId],
+  );
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -1061,9 +1075,9 @@ export function CalendarView({ items, familiars, onAddEntry, onOpenItem }: Props
           >
             {headingLabel()}
           </button>
-          {items.filter((i) => i.status === "pending").length > 0 && (
+          {scopedItems.filter((i) => i.status === "pending").length > 0 && (
             <span className="shrink-0 rounded-full bg-[var(--bg-raised)] border border-[var(--border-hairline)] px-2 py-0.5 text-[10px] text-[var(--text-muted)] font-medium tabular-nums">
-              {items.filter((i) => i.status === "pending").length} pending
+              {scopedItems.filter((i) => i.status === "pending").length} pending
             </span>
           )}
           {pickerOpen ? (
@@ -1109,7 +1123,7 @@ export function CalendarView({ items, familiars, onAddEntry, onOpenItem }: Props
       <div className="flex-1 overflow-hidden flex flex-col">
         {viewMode === "agenda" && (
           <AgendaView
-            items={items}
+            items={scopedItems}
             anchor={anchor}
             onAddEntry={onAddEntry}
             onOpenItem={(item) => setSelectedItem(item)}
@@ -1117,7 +1131,7 @@ export function CalendarView({ items, familiars, onAddEntry, onOpenItem }: Props
         )}
         {viewMode === "day" && (
           <DayView
-            items={items}
+            items={scopedItems}
             anchor={anchor}
             onAddEntry={onAddEntry}
             onOpenItem={(item) => setSelectedItem(item)}
@@ -1125,7 +1139,7 @@ export function CalendarView({ items, familiars, onAddEntry, onOpenItem }: Props
         )}
         {viewMode === "week" && (
           <WeekView
-            items={items}
+            items={scopedItems}
             anchor={anchor}
             onAddEntry={onAddEntry}
             onOpenItem={(item) => setSelectedItem(item)}
@@ -1133,7 +1147,7 @@ export function CalendarView({ items, familiars, onAddEntry, onOpenItem }: Props
         )}
         {viewMode === "month" && (
           <MonthView
-            items={items}
+            items={scopedItems}
             anchor={anchor}
             onOpenItem={(item) => setSelectedItem(item)}
             onDayClick={(day) => {
