@@ -13,10 +13,10 @@ assert.doesNotMatch(
   "Sessions mode branch has been removed from workspace",
 );
 
-assert.match(
+assert.doesNotMatch(
   chatSurface,
-  /import \{ SessionsView \} from "@\/components\/sessions-view"/,
-  "ChatSurface imports SessionsView for the history fallback",
+  /import \{ SessionsView \}/,
+  "ChatSurface should no longer import SessionsView — ChatList from chat-router is the single chat list",
 );
 
 assert.match(

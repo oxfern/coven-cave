@@ -66,16 +66,22 @@ assert.match(
   "ChatSurface memory should stay locked to the selected familiar",
 );
 
-assert.match(
+assert.doesNotMatch(
   chatSurface,
-  /<SessionsView[\s\S]*familiars=\{scopedFamiliars\}[\s\S]*activeFamiliarId=\{activeFamiliarId\}[\s\S]*hideFamiliarFilter/,
-  "ChatSurface history should not receive the redundant full familiars list",
+  /SessionsView/,
+  "ChatSurface should not render SessionsView — the dossier ChatList from ChatRouter is the single chat list",
 );
 
 assert.match(
   chatSurface,
   /memory: "Memory"/,
-  "ChatSurface should label the third primary tab Memory instead of Traces",
+  "ChatSurface should label the secondary primary tab Memory instead of Traces",
+);
+
+assert.match(
+  chatSurface,
+  /useState<AgentsScope>\("conversation"\)/,
+  "ChatSurface should default the scope to conversation so the ChatList shows when Chat is selected",
 );
 
 assert.doesNotMatch(
@@ -152,8 +158,8 @@ assert.match(
 
 assert.match(
   chatSurface,
-  /scope === "conversation" \? \(\s*<div className="flex min-h-0 min-w-0 flex-1">/,
-  "ChatSurface conversation row should use remaining height below the tab bar instead of h-full",
+  /scope === "memory" \? \([\s\S]*?\) : \(\s*<div className="flex min-h-0 min-w-0 flex-1">/,
+  "ChatSurface non-memory branch (conversation) should use remaining height below the tab bar instead of h-full",
 );
 
 assert.match(

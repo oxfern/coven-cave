@@ -929,11 +929,9 @@ export function Workspace() {
       />
     ) : mode === "chat" ? (
       <ChatSurface
-        familiars={familiars}
         sessions={sessions}
         activeFamiliar={active}
         activeFamiliarId={activeId}
-        activeSessionId={routerRef.current?.currentSessionId() ?? null}
         daemonRunning={daemonRunning}
         routerRef={routerRef}
         inboxItems={inboxItemsWithEphemeral}
@@ -956,12 +954,6 @@ export function Workspace() {
         onCreateReminder={openReminderForFamiliar}
         onOpenInboxItem={openInspectorInboxItem}
         onInboxItemChanged={refreshInbox}
-        onOpenSession={(sessionId, familiarId) => {
-          openAgentSession(sessionId, familiarId);
-        }}
-        onNewChat={(familiarId) => {
-          startAgentChat(familiarId ?? activeId);
-        }}
         onSessionsChanged={loadSessions}
       />
     ) : mode === "library" ? (

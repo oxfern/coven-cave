@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { ChatRouter, type ChatRouterHandle } from "@/components/chat-router";
 import { AgentsMemoryView } from "@/components/agents-memory-view";
-import { SessionsView } from "@/components/sessions-view";
 import { InspectorPane } from "@/components/inspector-pane";
 import { AgentPanel } from "@/components/agent-panel";
 import { Icon } from "@/lib/icon";
@@ -13,14 +12,12 @@ import type { PendingChatAction } from "@/lib/pending-chat-action";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type AgentsScope = "sessions" | "conversation" | "memory";
+type AgentsScope = "conversation" | "memory";
 
 type Props = {
-  familiars: Familiar[];
   sessions: SessionRow[];
   activeFamiliar: Familiar | null;
   activeFamiliarId: string | null;
-  activeSessionId?: string | null;
   daemonRunning: boolean;
   routerRef: RefObject<ChatRouterHandle | null>;
   inboxItems: InboxItem[];
@@ -40,8 +37,6 @@ type Props = {
   onCreateReminder: (familiarId: string) => void;
   onOpenInboxItem: (item: InboxItem) => void;
   onInboxItemChanged: () => void | Promise<void>;
-  onOpenSession?: (sessionId: string, familiarId?: string) => void;
-  onNewChat?: (familiarId?: string) => void;
   onSessionsChanged?: () => void;
 };
 
@@ -129,11 +124,9 @@ function RightPanel({
 // ── Main view ─────────────────────────────────────────────────────────────────
 
 export function ChatSurface({
-  familiars,
   sessions,
   activeFamiliar,
   activeFamiliarId,
-  activeSessionId,
   daemonRunning,
   routerRef,
   inboxItems,
@@ -153,11 +146,9 @@ export function ChatSurface({
   onCreateReminder,
   onOpenInboxItem,
   onInboxItemChanged,
-  onOpenSession,
-  onNewChat,
   onSessionsChanged,
 }: Props) {
-  const [scope, setScope] = useState<AgentsScope>("sessions");
+  const [scope, setScope] = useState<AgentsScope>("conversation");
   const consumedPendingActionNonce = useRef<number | null>(null);
 
   // Right panel — prefer new prop, fall back to legacy bool
@@ -232,12 +223,6 @@ export function ChatSurface({
     window.setTimeout(() => routerRef.current?.newChat(), 0);
   }
 
-  function openConversation(session: SessionRow) {
-    if (session.familiarId) onSetActiveFamiliar(session.familiarId);
-    setScope("conversation");
-    window.setTimeout(() => routerRef.current?.openSession(session.id), 0);
-  }
-
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
@@ -248,17 +233,22 @@ export function ChatSurface({
         <div className="flex shrink-0 items-center justify-between border-b border-[var(--border-hairline)] px-4">
           {/* Tabs flush left */}
           <div className="flex items-end gap-0">
-            {(["sessions", "memory"] as const).map((s) => {
+            {(["conversation", "memory"] as const).map((s) => {
               const labels: Record<string, string> = {
-                sessions: "Chats",
+                conversation: "Chats",
                 memory: "Memory",
               };
-              const isActive = scope === s || (s === "sessions" && scope === "conversation");
+              const isActive = scope === s;
               return (
                 <button
                   key={s}
                   type="button"
-                  onClick={() => setScope(s)}
+                  onClick={() => {
+                    setScope(s);
+                    if (s === "conversation") {
+                      window.setTimeout(() => routerRef.current?.goToList(), 0);
+                    }
+                  }}
                   className={[
                     "relative px-2 py-2.5 text-[12px] transition-colors",
                     isActive
@@ -296,7 +286,7 @@ export function ChatSurface({
               window.location.hash = `memory:${encodeURIComponent(path)}`;
             }}
           />
-        ) : scope === "conversation" ? (
+        ) : (
           <div className="flex min-h-0 min-w-0 flex-1">
             <div className="min-h-0 min-w-0 flex-1">
               <ChatRouter
@@ -328,37 +318,6 @@ export function ChatSurface({
                 onInboxItemChanged={onInboxItemChanged}
               />
             )}
-          </div>
-        ) : (
-          /* History fallback — SessionsView when no thread is open */
-          <div className="flex min-h-0 flex-1 flex-col">
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              <SessionsView
-                familiars={scopedFamiliars}
-                sessions={sessions}
-                activeFamiliarId={activeFamiliarId}
-                activeSessionId={activeSessionId ?? null}
-                hideFamiliarFilter
-                compact
-                groupByRecency
-                onOpenSession={(sessionId, familiarId) => {
-                  if (onOpenSession) {
-                    onOpenSession(sessionId, familiarId);
-                  } else {
-                    const session = sessions.find((s) => s.id === sessionId);
-                    if (session) openConversation(session);
-                  }
-                }}
-                onNewChat={(familiarId) => {
-                  if (onNewChat) {
-                    onNewChat(familiarId);
-                  } else {
-                    startConversation(familiarId ?? activeFamiliarId);
-                  }
-                }}
-                onSessionsChanged={onSessionsChanged ?? onSessionStarted}
-              />
-            </div>
           </div>
         )}
       </div>
