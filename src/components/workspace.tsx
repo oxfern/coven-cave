@@ -694,6 +694,34 @@ export function Workspace() {
       window.location.hash = `card-${intent.cardId}`;
       return;
     }
+    if (intent.kind === "create-task") {
+      const title = intent.title.trim();
+      if (!title) return;
+      const familiarId = activeId;
+      void (async () => {
+        try {
+          const res = await fetch("/api/board", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ title, familiarId }),
+          });
+          const json = (await res.json().catch(() => ({ ok: false }))) as {
+            ok: boolean;
+            card?: { id: string };
+          };
+          if (!json.ok || !json.card) {
+            pushToast("Task creation failed.");
+            return;
+          }
+          setMode("board");
+          window.dispatchEvent(new Event("cave:board:reload"));
+          window.location.hash = `card-${json.card.id}`;
+        } catch {
+          pushToast("Task creation failed.");
+        }
+      })();
+      return;
+    }
     if (intent.kind === "open-memory-file") {
       setMode("agents");
       window.location.hash = `memory:${encodeURIComponent(intent.path)}`;

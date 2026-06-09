@@ -16,6 +16,7 @@ type PaletteIntent =
   | { kind: "open-tui-session"; sessionId: string }
   | { kind: "open-board" }
   | { kind: "focus-card"; cardId: string }
+  | { kind: "create-task"; title: string }
   | { kind: "open-memory-file"; path: string };
 
 type Card = {
@@ -60,7 +61,8 @@ type Row =
   | { id: string; kind: "coven-memory"; entry: CovenMemoryEntry; familiar: Familiar | null }
   | { id: string; kind: "fs-memory"; entry: FsMemoryEntry }
   | { id: string; kind: "command"; name: string; hint: string; intent: PaletteIntent }
-  | { id: string; kind: "shortcut"; label: string; shortcut: string; action: () => void };
+  | { id: string; kind: "shortcut"; label: string; shortcut: string; action: () => void }
+  | { id: string; kind: "create-task"; title: string };
 
 const RESULT_LIMITS = {
   familiar: 6,
@@ -303,6 +305,11 @@ export function CommandPalette({
       });
     }
 
+    const trimmedTitle = query.trim();
+    const createRows: Row[] = trimmedTitle
+      ? [{ id: "create-task", kind: "create-task", title: trimmedTitle }]
+      : [];
+
     return [
       ...familiarRows,
       ...sessionRows,
@@ -311,6 +318,7 @@ export function CommandPalette({
       ...fsMemoryRows,
       ...cmdRows,
       ...shortcutRows,
+      ...createRows,
     ];
   }, [familiars, sessions, cards, covenMemory, fsMemory, query, activeFamiliarId]);
 
@@ -337,6 +345,8 @@ export function CommandPalette({
       onIntent({ kind: "open-memory-file", path: row.entry.fullPath });
     } else if (row.kind === "shortcut") {
       row.action();
+    } else if (row.kind === "create-task") {
+      onIntent({ kind: "create-task", title: row.title });
     } else {
       onIntent(row.intent);
     }
@@ -493,6 +503,18 @@ export function CommandPalette({
                     <>
                       <span className="flex-1 text-[var(--text-primary)]">{row.label}</span>
                       <span className="font-mono text-[10px] text-[var(--text-muted)]">{platformizeHint(row.shortcut, keys)}</span>
+                    </>
+                  ) : null}
+                  {row.kind === "create-task" ? (
+                    <>
+                      <Icon name="ph:plus-bold" className="text-[var(--text-secondary)]" width="1.1rem" height="1.1rem" />
+                      <span className="flex min-w-0 flex-1 flex-col">
+                        <span className="truncate text-[var(--text-primary)]">Create task: {row.title}</span>
+                        <span className="truncate text-[10px] text-[var(--text-muted)]">
+                          New card on the board, scoped to the active familiar
+                        </span>
+                      </span>
+                      <span className="text-[10px] text-[var(--text-muted)]">create</span>
                     </>
                   ) : null}
                 </button>

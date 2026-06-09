@@ -36,4 +36,21 @@ for (const block of optionBlocks) {
   );
 }
 
+// Cmd+K can create a board task from the current query.
+assert.match(
+  source,
+  /kind:\s*"create-task";\s*title:\s*string/,
+  "PaletteIntent includes a `create-task` variant",
+);
+assert.match(
+  source,
+  /kind:\s*"create-task"[\s\S]{0,200}title:\s*trimmedTitle/,
+  "a create-task row is appended when the query has a non-empty trimmed title",
+);
+assert.match(
+  source,
+  /onIntent\(\{\s*kind:\s*"create-task"[\s\S]{0,80}title:\s*row\.title/,
+  "selecting the create-task row dispatches the create-task intent",
+);
+
 console.log("command-palette.test.ts OK");

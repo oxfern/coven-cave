@@ -68,6 +68,14 @@ export function BoardView({ familiars, sessions, activeFamiliarId, onJumpToSessi
   useEffect(() => { localStorage.setItem("cave:board:viewMode", viewMode); }, [viewMode]);
   useEffect(() => { localStorage.setItem("cave:board:groupBy", groupBy); }, [groupBy]);
 
+  // External create paths dispatch `cave:board:reload` after POST so the board
+  // picks up the new card without a full surface remount.
+  useEffect(() => {
+    const onReload = () => { void load(); };
+    window.addEventListener("cave:board:reload", onReload);
+    return () => window.removeEventListener("cave:board:reload", onReload);
+  }, [load]);
+
   // Honour `#card-<id>` in the URL: workspace's `focus-card` palette intent
   // (e.g. the Task chip in chat-view) routes to /?…#card-<id>; we pick that
   // up here and open the inspector for the matching card. We wait until the
