@@ -140,15 +140,15 @@ export function NotificationBell({
       </button>
 
       {open ? (
-        <div className="absolute right-0 top-full z-50 mt-1 w-[360px] rounded-xl border border-[var(--border-strong)] bg-[var(--bg-elevated)] shadow-2xl">
+        <div className="group/popover absolute right-0 top-full z-50 mt-1 w-[400px] rounded-xl border border-[var(--border-strong)] bg-[var(--bg-elevated)] shadow-2xl">
           <div className="flex items-center justify-between border-b border-[var(--border-hairline)] px-3 py-2">
-            <span className="text-[10px] uppercase tracking-widest text-[var(--text-secondary)]">
+            <span className="text-[11px] font-medium text-[var(--text-primary)]">
               Notifications
             </span>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <button
                 onClick={() => setSettingsOpen((v) => !v)}
-                className="focus-ring grid h-5 w-5 place-items-center rounded text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                className="focus-ring grid h-5 w-5 place-items-center rounded text-[var(--text-muted)] opacity-0 transition-opacity hover:text-[var(--text-primary)] group-hover/popover:opacity-100"
                 title="Notification settings"
                 aria-label="Notification settings"
               >
@@ -159,9 +159,9 @@ export function NotificationBell({
                   setOpen(false);
                   onOpenInbox();
                 }}
-                className="focus-ring rounded text-[10px] text-[var(--accent-presence)] hover:text-[var(--text-primary)]"
+                className="focus-ring rounded text-[11px] text-[var(--text-muted)] transition-colors hover:text-[var(--accent-presence)]"
               >
-                open inbox →
+                Open inbox →
               </button>
             </div>
           </div>
@@ -237,67 +237,80 @@ export function NotificationBell({
                 No notifications.
               </li>
             ) : null}
-            {recent.map((it) => (
-              <li
-                key={it.id}
-                className="mb-1 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/40 p-2"
-              >
-                <div className="flex items-start gap-2">
-                  <Icon
-                    name={
-                      it.kind === "response-needed"
-                        ? "ph:chat-circle-dots-fill"
-                        : it.kind === "agent"
-                        ? "ph:magic-wand-fill"
-                        : "ph:alarm-fill"
-                    }
-                    className="mt-0.5 shrink-0 text-[var(--text-secondary)]"
-                    width="0.95rem"
-                    height="0.95rem"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-[var(--text-primary)]">{it.title}</div>
-                    {it.body ? (
-                      <div className="mt-0.5 line-clamp-2 text-[10px] text-[var(--text-muted)]">
-                        {it.body}
+            {recent.map((it) => {
+              const fname = it.familiarId ? familiarName(it.familiarId) : null;
+              const muted = it.familiarId ? prefs.mutedFamiliars.includes(it.familiarId) : false;
+              return (
+                <li
+                  key={it.id}
+                  className="mb-1 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/40 p-2.5"
+                >
+                  <div className="flex items-start gap-2.5">
+                    <Icon
+                      name={
+                        it.kind === "response-needed"
+                          ? "ph:chat-circle-dots-fill"
+                          : it.kind === "agent"
+                          ? "ph:magic-wand-fill"
+                          : "ph:alarm-fill"
+                      }
+                      className="mt-0.5 shrink-0 text-[var(--text-muted)]"
+                      width="0.95rem"
+                      height="0.95rem"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-[12px] font-medium text-[var(--text-primary)]">{it.title}</div>
+                      {it.body ? (
+                        <div className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-[var(--text-muted)]">
+                          {it.body}
+                        </div>
+                      ) : null}
+                      <div className="mt-1 text-[10px] text-[var(--text-muted)]">
+                        {it.kind === "response-needed"
+                          ? "Waiting on you"
+                          : relTime(it.status === "fired" ? it.firedAt : it.updatedAt)}
                       </div>
-                    ) : null}
-                    <div className="mt-0.5 text-[9px] text-[var(--text-muted)]">
-                      {it.status === "fired"
-                        ? `fired ${relTime(it.firedAt)}`
-                        : it.kind === "response-needed"
-                        ? "waiting on you"
-                        : relTime(it.updatedAt)}
                     </div>
+                    {it.familiarId ? (
+                      <button
+                        onClick={() => void toggleMute(it.familiarId!)}
+                        title={muted ? `Unmute ${fname}` : `Mute ${fname}`}
+                        aria-label={muted ? `Unmute ${fname}` : `Mute ${fname}`}
+                        className="focus-ring grid h-5 w-5 shrink-0 place-items-center rounded text-[var(--text-muted)] opacity-0 transition-opacity hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] group-hover/popover:opacity-100"
+                      >
+                        <Icon
+                          name={muted ? "ph:bell-slash-fill" : "ph:bell-slash"}
+                          aria-hidden
+                          width="0.85rem"
+                          height="0.85rem"
+                        />
+                      </button>
+                    ) : null}
                   </div>
-                </div>
-                <div className="mt-1.5 flex flex-wrap gap-1">
-                  {onOpenItem ? (
-                    <BellBtn
-                      onClick={() => {
-                        setOpen(false);
-                        onOpenItem(it);
-                      }}
-                    >
-                      Open
-                    </BellBtn>
-                  ) : null}
-                  {it.kind !== "response-needed" ? (
-                    <>
-                      <BellBtn onClick={() => void snooze(it.id)}>Snooze 10m</BellBtn>
-                      <BellBtn onClick={() => void dismiss(it.id)}>Dismiss</BellBtn>
-                    </>
-                  ) : null}
-                  {it.familiarId ? (
-                    <BellBtn onClick={() => void toggleMute(it.familiarId!)}>
-                      {prefs.mutedFamiliars.includes(it.familiarId)
-                        ? `unmute ${familiarName(it.familiarId)}`
-                        : `mute ${familiarName(it.familiarId)}`}
-                    </BellBtn>
-                  ) : null}
-                </div>
-              </li>
-            ))}
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {onOpenItem ? (
+                      <BellBtn
+                        primary
+                        onClick={() => {
+                          setOpen(false);
+                          onOpenItem(it);
+                        }}
+                      >
+                        Open
+                      </BellBtn>
+                    ) : null}
+                    {it.kind !== "response-needed" ? (
+                      <>
+                        <BellBtn onClick={() => void snooze(it.id)} title="Snooze 10 minutes">
+                          Snooze
+                        </BellBtn>
+                        <BellBtn onClick={() => void dismiss(it.id)}>Dismiss</BellBtn>
+                      </>
+                    ) : null}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </div>
       ) : null}
@@ -308,14 +321,23 @@ export function NotificationBell({
 function BellBtn({
   children,
   onClick,
+  title,
+  primary,
 }: {
   children: React.ReactNode;
   onClick: () => void;
+  title?: string;
+  primary?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
-      className="focus-ring rounded border border-[var(--border-hairline)] bg-[var(--bg-raised)] px-1.5 py-0.5 text-[10px] text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+      title={title}
+      className={`focus-ring rounded border px-2 py-0.5 text-[10px] transition-colors ${
+        primary
+          ? "border-[var(--border-strong)] bg-[var(--bg-raised)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
+          : "border-[var(--border-hairline)] bg-transparent text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+      }`}
     >
       {children}
     </button>
