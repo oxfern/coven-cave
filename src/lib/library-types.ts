@@ -49,6 +49,7 @@ export type LibraryReadingItem = {
   status: ReadingStatus;
   progress?: number;
   notes?: string;
+  localPath?: string;      // absolute path to a local file (e.g. PDF)
   tags: string[];
   addedAt: string;
   finishedAt?: string;

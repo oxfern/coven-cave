@@ -247,6 +247,10 @@ function statusStyle(status: ReadingStatus): React.CSSProperties {
 }
 
 function ReadingDetail({ item }: { item: LibraryReadingItem }) {
+  // If we have a local PDF, render the embedded viewer
+  if (item.localPath && item.localPath.toLowerCase().endsWith(".pdf")) {
+    return <PdfViewer localPath={item.localPath} title={item.title} />;
+  }
   return (
     <div className="library-preview">
       <div className="library-preview-header">
@@ -667,6 +671,62 @@ function DocDetail({ doc }: { doc: LibraryDocBody }) {
         document.body,
       )}
     </>
+  );
+}
+
+
+// ── PDF Viewer ────────────────────────────────────────────────────
+// Renders a local PDF file inline. Uses <iframe> with a file:// URL which
+// works both in Tauri (via allowlist) and in the browser (same-origin file).
+// Falls back to a "Open in system viewer" button if the path is unavailable.
+function PdfViewer({ localPath, title }: { localPath: string; title: string }) {
+  const [error, setError] = useState(false);
+  // Use the Next.js API route to serve the PDF (safe, no file:// CSP issues)
+  const filename = localPath.split("/").pop() ?? "";
+  const iframeUrl = `/api/library/pdf?file=${encodeURIComponent(filename)}`;
+  // file:// fallback for Tauri desktop mode
+  const fileUrl = `file://${localPath}`;
+
+  if (error) {
+    return (
+      <div className="library-preview library-preview--empty" style={{ flexDirection: "column", gap: 12 }}>
+        <Icon name="ph:file-text" width={32} className="library-preview-empty-icon" />
+        <span className="library-preview-empty-text">Could not load PDF inline.</span>
+        <button
+          type="button"
+          className="library-preview-action-btn"
+          onClick={() => void openUrl(fileUrl)}
+        >
+          <Icon name="ph:arrow-square-out" width={13} />
+          <span>Open in system viewer</span>
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="library-preview" style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+      <div className="library-preview-header">
+        <div className="library-preview-title">{title}</div>
+        <div className="library-preview-actions">
+          <button
+            type="button"
+            className="library-preview-action-btn"
+            onClick={() => void openUrl(fileUrl)}
+          >
+            <Icon name="ph:arrow-square-out" width={13} />
+            <span>Open externally</span>
+          </button>
+          <CopyButton text={localPath} label="Copy path" />
+        </div>
+      </div>
+      <iframe
+        src={iframeUrl}
+        title={title}
+        style={{ flex: 1, width: "100%", minHeight: 0, border: "none", borderRadius: "0 0 6px 6px" }}
+        onError={() => setError(true)}
+      />
+    </div>
   );
 }
 
