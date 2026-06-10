@@ -105,25 +105,30 @@ echo
 echo "CovenCave mobile is available inside your tailnet."
 echo "Creating a short-lived mobile invite URL..."
 node - "$HOST" "$PORT" <<'NODE'
-const [host, port] = process.argv.slice(2);
-const base = host === "::1"
-  ? `http://[::1]:${port}`
-  : `http://${host}:${port}`;
+(async () => {
+  const [host, port] = process.argv.slice(2);
+  const base = host === "::1"
+    ? `http://[::1]:${port}`
+    : `http://${host}:${port}`;
 
-const res = await fetch(`${base}/api/mobile-handoff`, {
-  method: "POST",
-  headers: { "content-type": "application/json" },
-  body: JSON.stringify({ action: "start" }),
-});
-const json = await res.json().catch(() => ({ ok: false, error: "invalid response" }));
-if (!json.ok) {
-  console.error(json.stderr || json.error || "failed to create mobile invite");
+  const res = await fetch(`${base}/api/mobile-handoff`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ action: "start" }),
+  });
+  const json = await res.json().catch(() => ({ ok: false, error: "invalid response" }));
+  if (!json.ok) {
+    console.error(json.stderr || json.error || "failed to create mobile invite");
+    process.exit(1);
+  }
+  console.log("Open this URL on your phone:");
+  console.log(`  ${json.url}`);
+  console.log(`Expires: ${json.expiresAtIso}`);
+  console.log("The invite is stored as an HTTP-only cookie after the first successful request.");
+})().catch((err) => {
+  console.error(err instanceof Error ? err.message : String(err));
   process.exit(1);
-}
-console.log("Open this URL on your phone:");
-console.log(`  ${json.url}`);
-console.log(`Expires: ${json.expiresAtIso}`);
-console.log("The invite is stored as an HTTP-only cookie after the first successful request.");
+});
 NODE
 echo "Run this to see the base Serve URL:"
 echo "  tailscale serve status --json"
