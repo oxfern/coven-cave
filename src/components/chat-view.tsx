@@ -269,11 +269,9 @@ const STARTER_PROMPTS = [
 
 function ChatEmptyState({
   familiar,
-  modKey,
   onPrompt,
 }: {
   familiar: Familiar;
-  modKey: string;
   onPrompt?: (text: string) => void;
 }) {
 
@@ -312,10 +310,11 @@ function ChatEmptyState({
         </div>
       )}
 
-      {/* Keyboard-shortcut hint is desktop-only; touch devices have no Cmd
-       * key and on-screen keyboards send via a separate button. */}
+      {/* Keyboard-shortcut hint is desktop-only; on-screen keyboards send
+       * via the composer button. Plain Enter sends (see onComposerKey) —
+       * no modifier, matching the composer placeholder. */}
       <p className="cave-chat-empty-hint mt-8 text-[11px] text-[var(--text-muted)]">
-        {modKey}↵ to send
+        ↵ to send · shift↵ for newline
       </p>
     </div>
   );
@@ -1376,7 +1375,7 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
             ) : historyState === "error" ? (
               <ChatHistoryNotice title="Could not load chat history" body="The transcript request failed. You can still continue this session." />
             ) : (
-              <ChatEmptyState familiar={familiar} modKey={keys.mod} onPrompt={(text) => {
+              <ChatEmptyState familiar={familiar} onPrompt={(text) => {
                 setInput(text);
                 inputRef.current?.focus();
               }} />
@@ -1750,10 +1749,8 @@ function TurnRow({
     );
   }
 
-  const duration = fmtDuration(turn.durationMs);
   const { visible, reasoning: inlineReasoning } = splitReasoning(turn.text);
   const reasoning = turn.reasoning?.trim() || inlineReasoning;
-  const toolCount = turn.tools?.length ?? 0;
   const turnStatus = turn.lifecycle ?? (turn.error ? "failed" : turn.pending ? "streaming" : "complete");
 
   return (
@@ -1772,8 +1769,6 @@ function TurnRow({
               </span>
             )}
             {showTimestamp && turn.createdAt ? <span className="opacity-60">{fmtTime(turn.createdAt)}</span> : null}
-            {duration && !turn.pending ? <span className="opacity-50">{duration}</span> : null}
-            {toolCount ? <span className="opacity-60">{toolCount} tool{toolCount === 1 ? "" : "s"}</span> : null}
           </div>
 
           <div className="cave-linear-turn-body">
