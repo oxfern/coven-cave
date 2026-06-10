@@ -92,13 +92,7 @@ assert.match(
 
 assert.match(
   turnRow,
-  /const turnNumber = String\(index \+ 1\)\.padStart\(2, "0"\)/,
-  "Chat turns should expose stable turn numbers for dense review",
-);
-
-assert.match(
-  turnRow,
-  /cave-linear-turn[\s\S]*cave-linear-turn-index[\s\S]*cave-linear-turn-content/,
+  /cave-linear-turn[\s\S]*cave-linear-turn-content/,
   "Chat turns should use the dense linear transcript anatomy",
 );
 
@@ -112,4 +106,73 @@ assert.doesNotMatch(
   source,
   /FamiliarSwitcher/,
   "Chat header should not duplicate the avatar rail's familiar switcher",
+);
+
+assert.doesNotMatch(
+  source,
+  /cave-linear-turn-index/,
+  "Dead turn-index className should be deleted from TurnRow (CSS rule is already display:none)",
+);
+
+assert.doesNotMatch(
+  source,
+  /\{turn\.role === "user" \? "You" : "System"\}/,
+  "User turns should drop the \"You\" label — bubble + right-alignment already convey role",
+);
+
+assert.doesNotMatch(
+  source,
+  /\{familiar\.model \?\? "—"\}/,
+  "Composer dock model pill should be removed — header meta line carries the model",
+);
+
+assert.match(
+  source,
+  /placeholder=\{busy \? "Streaming… \(esc to cancel\)" : `Message \$\{familiar\.display_name\}…  ↵ to send`\}/,
+  "Composer placeholder should include ↵ to send hint in steady state",
+);
+
+const splitFn = source.match(/function splitReasoning\([\s\S]*?\n}\n/)?.[0] ?? "";
+assert.match(
+  splitFn,
+  /DEBUG_PREFIX_RE/,
+  "splitReasoning should reference the debug-prefix filter regex",
+);
+
+const DEBUG_PREFIX_RE = /^\[[a-z][\w-]*(?:\/[\w-]+)+\][^\n]*\n?/gim;
+assert.equal(
+  "[model-fallback/decision] model fallback decision: decision=candidate_succeeded\nreal content".replace(DEBUG_PREFIX_RE, ""),
+  "real content",
+  "Debug-prefix filter should strip [model-fallback/decision] lines but keep real content",
+);
+assert.equal(
+  "see [link] for details".replace(DEBUG_PREFIX_RE, ""),
+  "see [link] for details",
+  "Debug-prefix filter should leave inline brackets alone (only line-anchored matches strip)",
+);
+assert.equal(
+  "[docs](https://example.com) is the place".replace(DEBUG_PREFIX_RE, ""),
+  "[docs](https://example.com) is the place",
+  "Debug-prefix filter should not eat line-leading markdown links (requires a /segment)",
+);
+
+assert.doesNotMatch(
+  source,
+  /cave-chat-linear-header-identity/,
+  "Daemon ready/offline chip should be removed — sidebar presence covers it; mobile keeps its own pill",
+);
+assert.doesNotMatch(
+  source,
+  /<ChatLifecycleStatus\b/,
+  "ChatLifecycleStatus bar should be folded into the header meta line",
+);
+assert.match(
+  source,
+  /<MetaLine\b/,
+  "ChatView header should render the new MetaLine component",
+);
+assert.match(
+  source,
+  /<LinkedContextRow\b/,
+  "ChatView header should render LinkedContextRow for task/GitHub chips",
 );
