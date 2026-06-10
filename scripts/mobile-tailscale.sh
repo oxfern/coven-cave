@@ -104,16 +104,19 @@ tailscale_cmd serve --bg "$TAILSCALE_BACKEND"
 echo
 echo "CovenCave mobile is available inside your tailnet."
 echo "Creating a short-lived mobile invite URL..."
-node - "$HOST" "$PORT" <<'NODE'
+node - "$HOST" "$PORT" "$ACCESS_TOKEN" <<'NODE'
 (async () => {
-  const [host, port] = process.argv.slice(2);
+  const [host, port, accessToken] = process.argv.slice(2);
   const base = host === "::1"
     ? `http://[::1]:${port}`
     : `http://${host}:${port}`;
 
   const res = await fetch(`${base}/api/mobile-handoff`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: {
+      "authorization": `Bearer ${accessToken}`,
+      "content-type": "application/json",
+    },
     body: JSON.stringify({ action: "start" }),
   });
   const json = await res.json().catch(() => ({ ok: false, error: "invalid response" }));
