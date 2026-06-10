@@ -7,6 +7,11 @@ breaking config changes; patch releases stay additive.
 
 ## [Unreleased]
 
+## [0.0.62] — 2026-06-10
+
+### Fixed
+- **Packaged desktop terminal** — loopback sidecar app origins now receive the PTY command permissions needed by the main desktop webview, while Rust still rejects PTY calls from embedded browser child webviews at runtime.
+
 ## [0.0.61] — 2026-06-10
 
 ### Added

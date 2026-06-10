@@ -13,6 +13,12 @@
     ]
   },
   "permissions": [
+    "allow-pty-start",
+    "allow-pty-write",
+    "allow-pty-resize",
+    "allow-pty-stop",
+    "allow-pty-list",
+    "allow-pty-diagnose",
     "allow-browser-navigate",
     "allow-browser-set-bounds",
     "allow-browser-hide",

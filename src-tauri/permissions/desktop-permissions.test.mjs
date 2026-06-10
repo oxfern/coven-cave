@@ -84,7 +84,7 @@ test("packaged desktop app can use native browser and terminal commands", () => 
   }
 });
 
-test("packaged sidecar loopback origins can use restricted native browser commands only", () => {
+test("packaged sidecar loopback origins can use browser commands and main-webview PTY", () => {
   for (const origin of [
     "http://127.0.0.1:3000/",
     "http://localhost:3000/",
@@ -125,6 +125,12 @@ test("packaged sidecar loopback origins can use restricted native browser comman
     "packaged random IPv6 loopback sidecar port should be allowed restricted browser IPC",
   );
   for (const permission of [
+    "allow-pty-start",
+    "allow-pty-write",
+    "allow-pty-resize",
+    "allow-pty-stop",
+    "allow-pty-list",
+    "allow-pty-diagnose",
     "allow-browser-navigate",
     "allow-browser-set-bounds",
     "allow-browser-hide",
@@ -135,7 +141,7 @@ test("packaged sidecar loopback origins can use restricted native browser comman
   ]) {
     assert.ok(
       loopbackBrowserCapability.permissions.includes(permission),
-      `loopback-browser should grant restricted browser permission ${permission}`,
+      `loopback-browser should grant packaged sidecar permission ${permission}`,
     );
   }
   assert.equal(
@@ -146,12 +152,6 @@ test("packaged sidecar loopback origins can use restricted native browser comman
 
   assertCapabilityDoesNotGrant(loopbackBrowserCapability, [
     "default",
-    "allow-pty-start",
-    "allow-pty-write",
-    "allow-pty-resize",
-    "allow-pty-stop",
-    "allow-pty-list",
-    "allow-pty-diagnose",
     "allow-shell-open",
   ]);
 });
