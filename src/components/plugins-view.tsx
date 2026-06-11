@@ -521,10 +521,11 @@ export function PluginsView({
               <button
                 type="button"
                 onClick={onOpenChat}
+                title="Open chat"
                 className="flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-md border border-border bg-card px-3 text-[12px] font-medium text-foreground transition-colors hover:bg-muted"
               >
                 <Icon name="ph:chat-circle-dots-bold" width={12} />
-                <span>Open chat</span>
+                <span>Open</span>
               </button>
             </div>
 
