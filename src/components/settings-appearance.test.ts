@@ -10,6 +10,14 @@ const themeScript = await readFile(
   new URL("./theme-script.tsx", import.meta.url),
   "utf8",
 );
+const layout = await readFile(
+  new URL("../app/layout.tsx", import.meta.url),
+  "utf8",
+);
+const globals = await readFile(
+  new URL("../app/globals.css", import.meta.url),
+  "utf8",
+);
 
 assert.match(
   settings,
@@ -87,4 +95,40 @@ assert.doesNotMatch(
   settings,
   /<SettingsKV label="App version" value="[\d.]+"/,
   "About settings must not hardcode an app version literal",
+);
+
+assert.match(
+  settings,
+  /Screen magnification/,
+  "Appearance settings should expose a screen magnification control",
+);
+
+assert.match(
+  settings,
+  /SCREEN_SCALE_OPTIONS\.map/,
+  "Screen magnification should render the shared scale options",
+);
+
+assert.match(
+  settings,
+  /aria-pressed=\{screenScale === option\}/,
+  "Screen magnification buttons should expose the selected scale to assistive tech",
+);
+
+assert.match(
+  layout,
+  /<ScreenMagnificationController \/>/,
+  "Root layout should mount the global screen magnification controller",
+);
+
+assert.match(
+  globals,
+  /data-screen-scale="125"[\s\S]*--cave-screen-scale: 1\.25/,
+  "Global CSS should map persisted screen magnification values to an app-wide scale",
+);
+
+assert.match(
+  globals,
+  /zoom: var\(--cave-screen-scale\)/,
+  "Global CSS should magnify the entire app surface via the screen scale token",
 );

@@ -77,6 +77,35 @@ test.describe("mobile foundations", () => {
     expect(metrics.bodyOverflow, "body should not be vertically scrollable").toBeLessThanOrEqual(1);
   });
 
+  test("persisted screen magnification scales the app without window scroll", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.goto("/");
+    await page.evaluate(() => {
+      window.localStorage.setItem("cave:screen-scale", "125");
+    });
+    await page.reload();
+    await page.waitForSelector(".shell-frame");
+
+    const metrics = await page.evaluate(() => {
+      const frame = document.querySelector(".shell-frame");
+      const frameRect = frame?.getBoundingClientRect();
+      return {
+        scale: document.documentElement.getAttribute("data-screen-scale"),
+        bodyZoom: getComputedStyle(document.body).zoom,
+        documentOverflow: document.documentElement.scrollHeight - document.documentElement.clientHeight,
+        bodyOverflow: document.body.scrollHeight - document.body.clientHeight,
+        frameBottom: frameRect?.bottom ?? 0,
+        viewportHeight: window.innerHeight,
+      };
+    });
+
+    expect(metrics.scale).toBe("125");
+    expect(metrics.bodyZoom).toBe("1.25");
+    expect(metrics.documentOverflow, "document should not be vertically scrollable at 125%").toBeLessThanOrEqual(1);
+    expect(metrics.bodyOverflow, "body should not be vertically scrollable at 125%").toBeLessThanOrEqual(1);
+    expect(metrics.frameBottom, "magnified app frame should still fit the viewport").toBeLessThanOrEqual(metrics.viewportHeight + 1);
+  });
+
   test("mobile drawer toggles render on phone viewport", async ({ page }) => {
     await page.setViewportSize({ width: 360, height: 720 });
     await page.goto("/");

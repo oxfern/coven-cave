@@ -3,6 +3,7 @@ import { Fredoka, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { SidecarAuthBridge } from "@/components/security/sidecar-auth-bridge";
 import { SidecarAuthMonitor } from "@/components/security/sidecar-auth-monitor";
+import { ScreenMagnificationController } from "@/components/screen-magnification-controller";
 import { ShellBannersProvider } from "@/lib/shell-banners";
 import { LiveRegionProvider } from "@/components/ui/live-region";
 import { PwaRegister } from "@/components/pwa-register";
@@ -69,6 +70,7 @@ export default function RootLayout({
           <LiveRegionProvider>
             <SidecarAuthBridge />
             <SidecarAuthMonitor />
+            <ScreenMagnificationController />
             <PwaRegister />
             {children}
           </LiveRegionProvider>
