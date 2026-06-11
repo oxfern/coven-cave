@@ -60,7 +60,11 @@ export default function AestheticPage() {
       style={{
         background: "var(--bg-base)",
         color: "var(--text-primary)",
-        minHeight: "100vh",
+        // The body no longer scrolls (overflow: hidden in globals.css keeps
+        // the app shell viewport-locked), so this long reference page must
+        // own its scrolling.
+        height: "100vh",
+        overflowY: "auto",
         padding: "48px 64px",
         fontFamily: "var(--font-geist-sans), system-ui",
       }}

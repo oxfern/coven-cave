@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   isSafeConversationSessionId,
+  deleteConversation,
   loadConversation,
   saveConversation,
   type ChatTurn,
@@ -8,7 +9,7 @@ import {
 } from "@/lib/cave-conversations";
 import { linkedContextForSession } from "@/lib/chat-linked-context";
 import { loadConversationFromJsonl } from "@/lib/openclaw-conversation";
-import { loadState, recordSessionFamiliar } from "@/lib/cave-config";
+import { loadState, recordSessionFamiliar, sacrificeSessionLocal } from "@/lib/cave-config";
 import { defaultChatTitleForSession } from "@/lib/cave-chat-titles";
 
 export const dynamic = "force-dynamic";
@@ -197,4 +198,14 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   await saveConversation(conversation);
   await recordSessionFamiliar(id, conversation.familiarId);
   return NextResponse.json({ ok: true, conversation });
+}
+
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  if (!isSafeConversationSessionId(id)) {
+    return jsonError("invalid session id", 400);
+  }
+  const deleted = await deleteConversation(id);
+  const sacrificedAt = await sacrificeSessionLocal(id);
+  return NextResponse.json({ ok: true, deleted, sacrificedAt });
 }

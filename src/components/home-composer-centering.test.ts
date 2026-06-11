@@ -89,13 +89,40 @@ const css = await readFile(
   "utf8",
 );
 
-// --hc-asymmetry: abs(left - right) — the cards are narrowed by this so the
-// composer can translate all the way to viewport center without overflowing
-// under a side panel.
+assert.match(
+  shell,
+  /const homeCenteringActive = navOpen && agentOpen/,
+  "Home viewport-centering only activates when nav and agent panels are both open",
+);
+assert.match(
+  shell,
+  /const homeCenterShift = homeCenteringActive\s*\?\s*Math\.round\(\(detailGaps\.right - detailGaps\.left\) \/ 2\)\s*:\s*0/,
+  "Home center shift is zero for one-sided panel layouts",
+);
+assert.match(
+  shell,
+  /const homeCenterAsymmetry = homeCenteringActive\s*\?\s*Math\.abs\(detailGaps\.left - detailGaps\.right\)\s*:\s*0/,
+  "Home asymmetry narrowing is zero for one-sided panel layouts",
+);
+assert.match(
+  shell,
+  /"--shell-home-center-shift-px": `\$\{homeCenterShift\}px`/,
+  "Shell exposes --shell-home-center-shift-px on .shell-frame",
+);
+assert.match(
+  shell,
+  /"--shell-home-asymmetry-px": `\$\{homeCenterAsymmetry\}px`/,
+  "Shell exposes --shell-home-asymmetry-px on .shell-frame",
+);
+
+// --hc-asymmetry is the active shell-provided narrowing amount. It is zero
+// for one-sided layouts so the composer centers in the detail panel; when both
+// side panels are open it narrows by abs(left - right) so viewport centering
+// can still avoid side-panel overflow.
 assert.match(
   css,
-  /--hc-asymmetry:\s*max\(\s*calc\(var\(--shell-left-gap-px, 0px\) - var\(--shell-right-gap-px, 0px\)\),\s*calc\(var\(--shell-right-gap-px, 0px\) - var\(--shell-left-gap-px, 0px\)\)\s*\)/,
-  "--hc-asymmetry computed as abs(left - right)",
+  /--hc-asymmetry:\s*var\(--shell-home-asymmetry-px, 0px\)/,
+  "--hc-asymmetry uses the shell-provided active asymmetry",
 );
 
 // --hc-max-shift includes the asymmetry/2 term so the clamp upper bound
@@ -106,11 +133,12 @@ assert.match(
   "--hc-max-shift includes asymmetry/2",
 );
 
-// --hc-ideal-shift = (right - left) / 2
+// --hc-ideal-shift is zero in one-sided layouts and (right - left) / 2 when
+// Shell marks viewport-centering active.
 assert.match(
   css,
-  /--hc-ideal-shift:\s*calc\(\s*\(var\(--shell-right-gap-px, 0px\) - var\(--shell-left-gap-px, 0px\)\) \/ 2\s*\)/,
-  "--hc-ideal-shift = (right - left) / 2",
+  /--hc-ideal-shift:\s*var\(--shell-home-center-shift-px, 0px\)/,
+  "--hc-ideal-shift uses the shell-provided active shift",
 );
 
 // transform uses clamp(-max, ideal, max) so the shift is bounded.

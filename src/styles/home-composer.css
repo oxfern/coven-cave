@@ -29,26 +29,17 @@
    * asymmetry (nav present, agent collapsed in home mode) would otherwise
    * push the composer off to the right.
    *
-   * Two coordinated pieces:
-   *   1. --hc-asymmetry — abs(left - right), used to narrow the composer
-   *      cards so there is room to translate them all the way to the
-   *      viewport's center without overflowing under a side panel.
-   *   2. transform: translateX(clamp(...)) — the actual viewport shift,
-   *      capped to the available free space (panel_width − card_width)/2
-   *      so the card never overflows even if the variables get out of sync.
+   * The Shell only activates this correction when side panels are open on both
+   * sides. With only the nav panel open, the start composer should stay
+   * centered in the detail panel instead of drifting toward the viewport center.
    */
-  --hc-asymmetry: max(
-    calc(var(--shell-left-gap-px, 0px) - var(--shell-right-gap-px, 0px)),
-    calc(var(--shell-right-gap-px, 0px) - var(--shell-left-gap-px, 0px))
-  );
+  --hc-asymmetry: var(--shell-home-asymmetry-px, 0px);
   --hc-max-shift: max(
     0px,
     calc((100% - 1200px) / 2),
     calc(var(--hc-asymmetry) / 2)
   );
-  --hc-ideal-shift: calc(
-    (var(--shell-right-gap-px, 0px) - var(--shell-left-gap-px, 0px)) / 2
-  );
+  --hc-ideal-shift: var(--shell-home-center-shift-px, 0px);
   transform: translateX(
     clamp(
       calc(-1 * var(--hc-max-shift)),

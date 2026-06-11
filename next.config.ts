@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   // Mobile dev access goes through Tailscale Serve while Next stays bound to
   // loopback. Next 16 blocks cross-origin dev internals unless the browser
   // origin is explicitly allowlisted, so permit tailnet HTTPS hostnames here.
-  allowedDevOrigins: ["**.ts.net"],
+  allowedDevOrigins: ["**.ts.net", "100.66.68.73"],
   // Keep local git-worktree builds scoped to this app checkout instead of
   // letting Next infer a parent workspace root from sibling lockfiles.
   outputFileTracingRoot: process.cwd(),

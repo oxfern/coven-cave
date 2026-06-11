@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile, appendFile, readdir, stat } from "node:fs/promises";
+import { mkdir, readFile, writeFile, appendFile, readdir, stat, unlink } from "node:fs/promises";
 import path from "node:path";
 import { homedir } from "node:os";
 
@@ -80,6 +80,15 @@ export async function appendTurn(sessionId: string, turn: ChatTurn): Promise<voi
   if (!conv) return;
   conv.turns.push(turn);
   await saveConversation(conv);
+}
+
+export async function deleteConversation(sessionId: string): Promise<boolean> {
+  try {
+    await unlink(pathFor(sessionId));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function listConversations(): Promise<

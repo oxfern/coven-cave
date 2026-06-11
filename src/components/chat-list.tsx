@@ -61,7 +61,6 @@ function statusStyle(s: string) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function ChatList({ familiar, familiars = [], sessions, daemonRunning, onOpen, onNewChat, onSessionsChanged }: Props) {
-  const [busyTuiId, setBusyTuiId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Two-step delete: first trash click arms the row (inline Cancel/Delete
   // confirm replaces the row actions); only the explicit Delete commits.
@@ -126,27 +125,6 @@ export function ChatList({ familiar, familiars = [], sessions, daemonRunning, on
     return deriveChatProjectGroups(filtered);
   }, [filtered]);
 
-  // ── TUI launcher ─────────────────────────────────────────────────────────
-
-  const openInTui = async (e: React.MouseEvent, sessionId: string) => {
-    e.stopPropagation();
-    setBusyTuiId(sessionId);
-    setError(null);
-    try {
-      const res = await fetch("/api/launch", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ mode: "attach", sessionId }),
-      });
-      const json = await res.json();
-      if (!json.ok) setError(json.error ?? "launch failed");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "launch failed");
-    } finally {
-      setBusyTuiId(null);
-    }
-  };
-
   // ── Delete (two-step confirm) ────────────────────────────────────────────
 
   const deleteSession = async (e: React.MouseEvent, sessionId: string) => {
@@ -154,9 +132,9 @@ export function ChatList({ familiar, familiars = [], sessions, daemonRunning, on
     setDeletingId(sessionId);
     setError(null);
     try {
-      const res = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}`, { method: "DELETE" });
+      const res = await fetch(`/api/chat/conversation/${encodeURIComponent(sessionId)}`, { method: "DELETE" });
       const json = await res.json().catch(() => ({ ok: false }));
-      if (!json.ok) {
+      if (!res.ok || !json.ok) {
         setError(json.error ?? "delete failed");
         return;
       }
@@ -506,27 +484,15 @@ export function ChatList({ familiar, familiars = [], sessions, daemonRunning, on
                               </button>
                             </span>
                           ) : (
-                            <>
-                              {/* TUI button — revealed on hover */}
-                              <button
-                                onClick={(e) => openInTui(e, s.id)}
-                                disabled={busyTuiId === s.id}
-                                title="Open in Coven Code TUI"
-                                className="touch-always-visible self-center shrink-0 rounded border border-[var(--border-hairline)] px-2 py-0.5 text-[10px] text-[var(--text-secondary)] opacity-0 transition-all hover:bg-[var(--bg-raised)] group-hover:opacity-100 disabled:opacity-40"
-                              >
-                                {busyTuiId === s.id ? "…" : "tui →"}
-                              </button>
-                              {/* Delete — revealed on hover; arms inline confirmation */}
-                              <button
-                                type="button"
-                                onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(s.id); }}
-                                title="Delete chat"
-                                aria-label={`Delete chat ${s.title || s.id}`}
-                                className="touch-always-visible self-center shrink-0 rounded border border-[var(--border-hairline)] px-1.5 py-0.5 text-[var(--text-muted)] opacity-0 transition-all hover:border-[color-mix(in_oklch,var(--color-danger)_45%,transparent)] hover:bg-[color-mix(in_oklch,var(--color-danger)_14%,transparent)] hover:text-[var(--color-danger)] group-hover:opacity-100"
-                              >
-                                <Icon name="ph:trash" width={12} aria-hidden />
-                              </button>
-                            </>
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(s.id); }}
+                              title="Delete chat"
+                              aria-label={`Delete chat ${s.title || s.id}`}
+                              className="touch-always-visible self-center shrink-0 rounded border border-[var(--border-hairline)] px-1.5 py-0.5 text-[var(--text-muted)] opacity-0 transition-all hover:border-[color-mix(in_oklch,var(--color-danger)_45%,transparent)] hover:bg-[color-mix(in_oklch,var(--color-danger)_14%,transparent)] hover:text-[var(--color-danger)] group-hover:opacity-100"
+                            >
+                              <Icon name="ph:trash" width={12} aria-hidden />
+                            </button>
                           )}
                         </div>
                       </li>

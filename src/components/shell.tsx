@@ -432,15 +432,27 @@ function ShellInner({
     </Group>
   );
 
+  const homeCenteringActive = navOpen && agentOpen;
+  const homeCenterShift = homeCenteringActive
+    ? Math.round((detailGaps.right - detailGaps.left) / 2)
+    : 0;
+  const homeCenterAsymmetry = homeCenteringActive
+    ? Math.abs(detailGaps.left - detailGaps.right)
+    : 0;
+
   const shellFrameStyle: CSSProperties & {
     "--shell-left-gap-px": string;
     "--shell-right-gap-px": string;
+    "--shell-home-center-shift-px": string;
+    "--shell-home-asymmetry-px": string;
   } = {
     // Surfaces that need to visually center on the viewport (e.g. Home)
     // use these to compensate for the asymmetric chrome around the detail
     // panel (side panels, separators, edge rails).
     "--shell-left-gap-px": `${detailGaps.left}px`,
     "--shell-right-gap-px": `${detailGaps.right}px`,
+    "--shell-home-center-shift-px": `${homeCenterShift}px`,
+    "--shell-home-asymmetry-px": `${homeCenterAsymmetry}px`,
   };
 
   return (
