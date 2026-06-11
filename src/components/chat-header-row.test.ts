@@ -67,4 +67,28 @@ assert.doesNotMatch(
   "Standalone lifecycle status bar CSS is removed (folded into meta line)",
 );
 
+// In-chat delete: header trash action with the same two-step confirm as the
+// Chats-page rows — first click only ARMS, the explicit Delete commits, and
+// success refreshes the session list and navigates back.
+assert.match(
+  source,
+  /aria-label="Delete chat"[\s\S]*?onClick=\{\(\) => setConfirmDelete\(true\)\}/,
+  "Header trash button only arms the confirmation — it must not delete",
+);
+assert.match(
+  source,
+  /confirmDelete \?[\s\S]*?Cancel[\s\S]*?Confirm delete chat/,
+  "Armed state offers explicit Cancel and Delete actions",
+);
+assert.match(
+  source,
+  /const deleteChat = async[\s\S]*?fetch\(`\/api\/chat\/conversation\/\$\{encodeURIComponent\(sessionId\)\}`, \{ method: "DELETE" \}\)/,
+  "Confirmed delete calls DELETE /api/chat/conversation/:id",
+);
+assert.match(
+  source,
+  /onSessionsChanged\?\.\(\);\s*\n\s*onBack\?\.\(\);/,
+  "Successful delete refreshes sessions and navigates back to the list",
+);
+
 console.log("chat-header-row.test.ts: ok");

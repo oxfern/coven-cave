@@ -891,6 +891,10 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
   const [error, setError] = useState<string | null>(null);
   const [lastFailedSend, setLastFailedSend] = useState<FailedSend | null>(null);
   const [voiceCallOpen, setVoiceCallOpen] = useState(false);
+  // Two-step delete, matching the Chats-page rows: the trash icon only ARMS
+  // the inline Cancel/Delete confirm; only the explicit Delete commits.
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [csvRaw, setCsvRaw] = useState<string | null>(null);
   const [csvModalOpen, setCsvModalOpen] = useState(false);
   const currentSessionRef = useRef<string | null>(sessionId);
@@ -1574,6 +1578,32 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
     }
   };
 
+  // Disarm a pending delete confirmation when switching sessions.
+  useEffect(() => {
+    setConfirmDelete(false);
+  }, [sessionId]);
+
+  const deleteChat = async () => {
+    if (!sessionId || deleting) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/chat/conversation/${encodeURIComponent(sessionId)}`, { method: "DELETE" });
+      const json = await res.json().catch(() => ({ ok: false }));
+      if (!res.ok || !json.ok) {
+        setError(json.error ?? "delete failed");
+        return;
+      }
+      onSessionsChanged?.();
+      onBack?.();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "delete failed");
+    } finally {
+      setDeleting(false);
+      setConfirmDelete(false);
+    }
+  };
+
   useImperativeHandle(
     ref,
     () => ({
@@ -1674,6 +1704,36 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
               >
                 <Icon name="ph:bug-bold" width={12} aria-hidden />
               </button>
+              {confirmDelete ? (
+                <span className="inline-flex shrink-0 items-center gap-1 text-[10px]">
+                  <button
+                    type="button"
+                    className="focus-ring rounded border border-[var(--border-hairline)] px-1.5 py-0.5 text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-raised)]"
+                    onClick={() => setConfirmDelete(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Confirm delete chat"
+                    className="focus-ring rounded border border-[color-mix(in_oklch,var(--color-danger)_45%,transparent)] bg-[color-mix(in_oklch,var(--color-danger)_14%,transparent)] px-1.5 py-0.5 text-[var(--color-danger)] transition-colors disabled:opacity-40"
+                    onClick={() => void deleteChat()}
+                    disabled={deleting}
+                  >
+                    {deleting ? "Deleting…" : "Delete"}
+                  </button>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  className="focus-ring inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-[var(--text-muted)] transition-colors hover:text-[var(--color-danger)]"
+                  title="Delete chat"
+                  aria-label="Delete chat"
+                  onClick={() => setConfirmDelete(true)}
+                >
+                  <Icon name="ph:trash" width={12} aria-hidden />
+                </button>
+              )}
             </>
           )}
         </MetaLine>
