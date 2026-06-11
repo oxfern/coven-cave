@@ -13,6 +13,7 @@
   display: flex;
   height: 100%;
   min-height: 0;
+  min-width: 0;
   overflow: hidden;
   background: var(--bg-base);
   color: var(--text-primary);
@@ -179,6 +180,8 @@
 
 /* ── Timeline list: compact right-sidebar command surface ─────── */
 .library-timeline {
+  min-height: 0;
+  overflow: hidden;
   background:
     linear-gradient(180deg, color-mix(in oklch, var(--bg-base) 93%, var(--bg-raised)) 0%, var(--bg-base) 44%),
     var(--bg-base);
@@ -340,6 +343,8 @@
 }
 
 .library-timeline-scroll {
+  min-height: 0;
+  overflow-y: auto;
   scrollbar-gutter: stable;
 }
 
@@ -651,6 +656,7 @@
 
 .library-browse-canvas {
   flex: 1;
+  min-height: 0;
   min-width: 0;
   display: flex;
   overflow: hidden;
@@ -659,6 +665,9 @@
 
 .library-browse-content {
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   min-width: 0;
   height: 100%;
   border-inline: 0;
@@ -924,6 +933,7 @@
 
 .library-preview-body {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 28px 32px;
 }
@@ -1067,6 +1077,7 @@ tr:focus-within .library-row-delete {
   display: flex;
   flex-direction: column;
   flex: 1;
+  min-height: 0;
   min-width: 0;
   overflow: hidden;
 }
@@ -1540,6 +1551,7 @@ tr:hover .library-row-delete,
 /* Scrollable body */
 .library-reader-body {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 44px 48px 56px;
   background: var(--bg-base);
@@ -2009,9 +2021,10 @@ h3:hover .library-heading-anchor,
   flex-direction: row;
   align-items: flex-start;
   gap: 0;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 28px 32px;
-  flex: 1;
 }
 
 .library-preview-body--with-toc .library-preview-md {
@@ -2026,6 +2039,7 @@ h3:hover .library-heading-anchor,
   flex-direction: row;
   align-items: flex-start;
   gap: 0;
+  min-height: 0;
 }
 
 .library-reader-body--with-toc .library-preview-md {
@@ -2184,6 +2198,11 @@ h3:hover .library-heading-anchor,
 
   .library-preview {
     display: none;
+  }
+
+  .library-browse-canvas {
+    width: 100%;
+    min-height: 0;
   }
 
   .library-list-panel {
@@ -2352,6 +2371,9 @@ h3:hover .library-heading-anchor,
    containers the low-value Type and Progress columns drop out, padding
    tightens, and Title keeps the remaining space. */
 .library-list-shell .board-table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
   scrollbar-width: thin;
   scrollbar-color: color-mix(in oklch, var(--accent-presence) 22%, transparent) transparent;
 }

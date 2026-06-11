@@ -135,3 +135,45 @@ assert.doesNotMatch(
   /\.library-browse-content\s*\{[\s\S]*?width:\s*min\(920px,\s*100%\)/,
   "Browse list content should not be constrained to the old centered 920px column",
 );
+
+// ── Vertical overflow boundaries ──
+assert.match(
+  libraryCss,
+  /\.library-browse-canvas\s*\{[\s\S]*?min-height:\s*0;[\s\S]*?overflow:\s*hidden;/,
+  "Browse canvas should be height-bounded so its list content can scroll vertically",
+);
+assert.match(
+  libraryCss,
+  /\.library-browse-content\s*\{[\s\S]*?display:\s*flex;[\s\S]*?flex-direction:\s*column;[\s\S]*?min-height:\s*0;/,
+  "Browse content should preserve a min-height-zero flex chain for timeline and table lists",
+);
+assert.match(
+  libraryCss,
+  /\.library-list-shell\s*\{[\s\S]*?flex:\s*1;[\s\S]*?min-height:\s*0;[\s\S]*?overflow:\s*hidden;/,
+  "Saved-list shells should stay bounded inside the library and delegate scrolling to their body",
+);
+assert.match(
+  libraryCss,
+  /\.library-list-shell \.board-table-wrap\s*\{[\s\S]*?flex:\s*1;[\s\S]*?min-height:\s*0;[\s\S]*?overflow:\s*auto;/,
+  "Library table wrappers should own vertical overflow without relying on board.css import order",
+);
+assert.match(
+  libraryCss,
+  /\.library-timeline\s*\{[\s\S]*?min-height:\s*0;[\s\S]*?overflow:\s*hidden;/,
+  "Timeline shell should clamp overflow so only the timeline scroll pane moves",
+);
+assert.match(
+  libraryCss,
+  /\.library-timeline-scroll\s*\{[\s\S]*?min-height:\s*0;[\s\S]*?overflow-y:\s*auto;/,
+  "Timeline scroll pane should be the vertical scroll owner",
+);
+assert.match(
+  libraryCss,
+  /\.library-preview-body\s*\{[\s\S]*?flex:\s*1;[\s\S]*?min-height:\s*0;[\s\S]*?overflow-y:\s*auto;/,
+  "Document preview body should be height-bounded and vertically scrollable",
+);
+assert.match(
+  libraryCss,
+  /\.library-reader-body\s*\{[\s\S]*?flex:\s*1;[\s\S]*?min-height:\s*0;[\s\S]*?overflow-y:\s*auto;/,
+  "Reader modal body should keep long documents inside the modal scrollport",
+);
