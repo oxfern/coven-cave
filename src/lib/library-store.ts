@@ -74,6 +74,19 @@ export function createLibraryStore(root: string = DEFAULT_ROOT) {
         await writeJsonAtomic(paths.reading, items);
       }),
 
+    updateReading: (
+      id: string,
+      updater: (item: LibraryReadingItem) => LibraryReadingItem,
+    ) =>
+      runExclusive(async () => {
+        const items = await readJson<LibraryReadingItem[]>(paths.reading, []);
+        const idx = items.findIndex((item) => item.id === id);
+        if (idx === -1) return null;
+        items[idx] = updater(items[idx]);
+        await writeJsonAtomic(paths.reading, items);
+        return items[idx];
+      }),
+
     appendGithub: (item: LibraryGitHubItem) =>
       runExclusive(async () => {
         const items = await readJson<LibraryGitHubItem[]>(paths.github, []);

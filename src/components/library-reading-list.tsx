@@ -10,6 +10,7 @@ import { useIsCoarsePointer } from "@/lib/use-viewport";
 type SortKey = "title" | "status" | "addedAt";
 type SortDir = "asc" | "desc";
 type GroupBy = "status" | "sourceType" | "none";
+const INLINE_STATUS_OPTIONS: ReadingStatus[] = ["want-to-read", "reading", "done"];
 
 const STATUS_ORDER: Record<ReadingStatus, number> = {
   reading: 0,
@@ -57,6 +58,14 @@ function groupItems(items: LibraryReadingItem[], by: GroupBy): { key: string; la
   return entries;
 }
 
+function filterItems(items: LibraryReadingItem[], query: string): LibraryReadingItem[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return items;
+  return items.filter((item) =>
+    `${item.title} ${item.author ?? ""} ${item.tags.join(" ")}`.toLowerCase().includes(q),
+  );
+}
+
 function statusBadgeStyle(status: ReadingStatus): React.CSSProperties {
   switch (status) {
     case "reading":       return { background: "color-mix(in oklch, var(--accent-presence) 14%, var(--bg-raised))", border: "1px solid color-mix(in oklch, var(--accent-presence) 30%, transparent)" };
@@ -81,28 +90,50 @@ function sourceIcon(sourceType: LibraryReadingItem["sourceType"]) {
 // ── Add form ───────────────────────────────────────────────────────────────
 
 function AddReadingForm({ onAdd, onCancel }: {
-  onAdd: (title: string, sourceType: LibraryReadingItem["sourceType"], status: ReadingStatus) => void;
+  onAdd: (title: string, sourceType: LibraryReadingItem["sourceType"], status: ReadingStatus, url?: string) => void;
   onCancel: () => void;
 }) {
   const [title, setTitle] = useState("");
+  const [url, setUrl] = useState("");
   const [sourceType, setSourceType] = useState<LibraryReadingItem["sourceType"]>("article");
   const [status, setStatus] = useState<ReadingStatus>("want-to-read");
   const coarse = useIsCoarsePointer();
 
+  function resetForm() {
+    setTitle("");
+    setUrl("");
+    setSourceType("article");
+    setStatus("want-to-read");
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
-    onAdd(title.trim(), sourceType, status);
+    const trimmedUrl = url.trim();
+    onAdd(title.trim(), sourceType, status, trimmedUrl || undefined);
+    resetForm();
+  }
+
+  function handleCancel() {
+    resetForm();
+    onCancel();
   }
 
   return (
-    <form className="library-list-add-form" onSubmit={handleSubmit}>
+    <form className="library-list-add-form" onSubmit={handleSubmit} onReset={resetForm}>
       <input
         autoFocus={!coarse}
         className="board-drawer-field-input library-list-add-input"
         placeholder="Title"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
+      />
+      <input
+        className="board-drawer-field-input library-list-add-input"
+        placeholder="URL or DOI (optional)"
+        value={url}
+        onChange={(e) => setUrl(e.target.value)}
+        type="url"
       />
       <select
         className="board-toolbar-select"
@@ -127,7 +158,7 @@ function AddReadingForm({ onAdd, onCancel }: {
         <option value="abandoned">Abandoned</option>
       </select>
       <button type="submit" className="board-toolbar-btn board-toolbar-btn--active">Save</button>
-      <button type="button" className="board-toolbar-btn" onClick={onCancel}>Cancel</button>
+      <button type="button" className="board-toolbar-btn" onClick={handleCancel}>Cancel</button>
     </form>
   );
 }
@@ -154,18 +185,28 @@ export function LibraryReadingList({ selectedId, onSelect, onDelete }: Props) {
   const [groupBy, setGroupBy] = useState<GroupBy>("status");
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [adding, setAdding] = useState(false);
+  const [query, setQuery] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
       const res = await fetch("/api/library/reading", { cache: "no-store" });
       const json = await res.json();
-      if (json.ok) setItems(json.items ?? []);
-    } catch { /* keep */ } finally { setLoading(false); }
+      if (json.ok) {
+        setItems(json.items ?? []);
+        setError(null);
+      } else {
+        setError("Failed to load. Try again.");
+      }
+    } catch { setError("Failed to load. Try again."); } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { void load(); }, [load]);
 
-  const sorted = useMemo(() => sortItems(items, sortKey, sortDir), [items, sortKey, sortDir]);
+  const filtered = useMemo(() => filterItems(items, query), [items, query]);
+  const sorted = useMemo(() => sortItems(filtered, sortKey, sortDir), [filtered, sortKey, sortDir]);
   const groups = useMemo(() => groupItems(sorted, groupBy), [sorted, groupBy]);
 
   function handleCol(key: SortKey) {
@@ -177,15 +218,32 @@ export function LibraryReadingList({ selectedId, onSelect, onDelete }: Props) {
     setCollapsed((prev) => { const n = new Set(prev); if (n.has(key)) n.delete(key); else n.add(key); return n; });
   }
 
-  async function handleAdd(title: string, sourceType: LibraryReadingItem["sourceType"], status: ReadingStatus) {
+  async function handleAdd(title: string, sourceType: LibraryReadingItem["sourceType"], status: ReadingStatus, url?: string) {
     setAdding(false);
     const res = await fetch("/api/library/reading", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ title, sourceType, status }),
+      body: JSON.stringify({ title, sourceType, status, url: url || undefined }),
     });
     const json = await res.json();
     if (json.ok) setItems((prev) => [json.item, ...prev]);
+  }
+
+  async function handleStatusChange(item: LibraryReadingItem, status: ReadingStatus) {
+    const previous = items;
+    setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, status } : i)));
+    try {
+      const res = await fetch("/api/library/reading", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id: item.id, status }),
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error("status update failed");
+      setItems((prev) => prev.map((i) => (i.id === item.id ? json.item : i)));
+    } catch {
+      setItems(previous);
+    }
   }
 
   async function handleDelete(id: string) {
@@ -210,6 +268,29 @@ export function LibraryReadingList({ selectedId, onSelect, onDelete }: Props) {
         </div>
       </div>
 
+      <div className="library-doclist-search">
+        <Icon name="ph:magnifying-glass" width={13} className="library-doclist-search-icon" />
+        <input
+          type="text"
+          className="library-doclist-search-input"
+          placeholder="Search reading…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          spellCheck={false}
+          aria-label="Search reading"
+        />
+        {query && (
+          <button
+            type="button"
+            className="library-doclist-search-clear"
+            onClick={() => setQuery("")}
+            aria-label="Clear search"
+          >
+            <Icon name="ph:x" width={11} />
+          </button>
+        )}
+      </div>
+
       {/* Add form */}
       {adding && (
         <AddReadingForm onAdd={handleAdd} onCancel={() => setAdding(false)} />
@@ -218,8 +299,26 @@ export function LibraryReadingList({ selectedId, onSelect, onDelete }: Props) {
       {/* Table */}
       {loading ? (
         <div className="library-list-empty">Loading…</div>
+      ) : error ? (
+        <div className="library-list-empty" role="alert">
+          <div className="library-list-error-title">
+            <Icon name="ph:warning-circle" width={13} aria-hidden />
+            Couldn&rsquo;t load reading.
+          </div>
+          <div className="library-list-error-message">{error}</div>
+          <button
+            type="button"
+            onClick={() => { void load(); }}
+            className="library-list-retry-btn"
+          >
+            <Icon name="ph:arrow-clockwise" width={11} />
+            Retry
+          </button>
+        </div>
       ) : items.length === 0 ? (
         <div className="library-list-empty">No reading list items yet. Add one above.</div>
+      ) : filtered.length === 0 ? (
+        <div className="library-list-empty">No results for &quot;{query}&quot;.</div>
       ) : (
         <div className="board-table-wrap">
           <table aria-label="Reading list" className="board-table">
@@ -267,9 +366,23 @@ export function LibraryReadingList({ selectedId, onSelect, onDelete }: Props) {
                         )}
                       </td>
                       <td>
-                        <span className="library-status-badge" style={statusBadgeStyle(item.status)}>
-                          {item.status.replace(/-/g, " ")}
-                        </span>
+                        <select
+                          className="library-status-badge library-status-select"
+                          style={statusBadgeStyle(item.status)}
+                          value={item.status}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            void handleStatusChange(item, e.target.value as ReadingStatus);
+                          }}
+                          aria-label={`Status for ${item.title}`}
+                        >
+                          {INLINE_STATUS_OPTIONS.map((status) => (
+                            <option key={status} value={status}>
+                              {status.replace(/-/g, " ")}
+                            </option>
+                          ))}
+                        </select>
                       </td>
                       <td style={{ textAlign: "right" }}>
                         <span className="board-table-muted">{relTime(item.addedAt)}</span>

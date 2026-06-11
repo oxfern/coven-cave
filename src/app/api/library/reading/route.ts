@@ -4,9 +4,14 @@ import { isSafeHttpUrl } from "@/lib/url-safety";
 import type { LibraryReadingItem, ReadingStatus, LinkCapture } from "@/lib/library-types";
 
 const store = createLibraryStore();
+const READING_STATUSES: ReadingStatus[] = ["want-to-read", "reading", "done", "abandoned"];
 
 function generateId(): string {
   return `rd_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function isReadingStatus(value: unknown): value is ReadingStatus {
+  return typeof value === "string" && READING_STATUSES.includes(value as ReadingStatus);
 }
 
 export async function GET() {
@@ -49,25 +54,29 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const id = req.nextUrl.searchParams.get("id");
-  if (!id) return NextResponse.json({ ok: false, error: "id required" }, { status: 400 });
-
-  const patch = await req.json() as Partial<LibraryReadingItem>;
-  if (patch.url && !isSafeHttpUrl(patch.url)) return NextResponse.json({ ok: false, error: "http(s) url required" }, { status: 400 });
-  const items = await store.readReading();
-  const idx = items.findIndex((i) => i.id === id);
-  if (idx === -1) return NextResponse.json({ ok: false, error: "not found" }, { status: 404 });
-
-  if (patch.status === "done" && items[idx].status !== "done") {
-    patch.finishedAt = new Date().toISOString();
+  const body = await req.json() as {
+    id?: string;
+    status?: unknown;
+    progress?: number;
+  };
+  if (!body.id) return NextResponse.json({ ok: false, error: "id required" }, { status: 400 });
+  if (!isReadingStatus(body.status)) return NextResponse.json({ ok: false, error: "status required" }, { status: 400 });
+  if (body.progress != null && (!Number.isFinite(body.progress) || body.progress < 0 || body.progress > 100)) {
+    return NextResponse.json({ ok: false, error: "progress must be 0-100" }, { status: 400 });
   }
 
-  items[idx] = { ...items[idx], ...patch, id };
   try {
-    await store.deleteById("reading", id);
-    await store.appendReading(items[idx]);
+    const item = await store.updateReading(body.id, (existing) => ({
+      ...existing,
+      status: body.status as ReadingStatus,
+      progress: body.progress ?? existing.progress,
+      finishedAt: body.status === "done" && existing.status !== "done"
+        ? new Date().toISOString()
+        : existing.finishedAt,
+    }));
+    if (!item) return NextResponse.json({ ok: false, error: "not found" }, { status: 404 });
+    return NextResponse.json({ ok: true, item });
   } catch { return NextResponse.json({ ok: false, error: "write failed" }, { status: 500 }); }
-  return NextResponse.json({ ok: true, item: items[idx] });
 }
 
 export async function DELETE(req: NextRequest) {

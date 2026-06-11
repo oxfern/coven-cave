@@ -19,6 +19,26 @@ const bm = { id: "bm_1", url: "https://a.com", title: "A", domain: "a.com", tags
 await store.appendBookmark(bm);
 assert.deepStrictEqual(await store.readBookmarks(), [bm]);
 
+// update reading item atomically
+const reading = {
+  id: "rd_1",
+  title: "Paper",
+  sourceType: "paper",
+  status: "want-to-read",
+  tags: [],
+  addedAt: "2026-06-06T00:00:00Z",
+  familiar: "cody",
+};
+await store.appendReading(reading);
+const updatedReading = await store.updateReading("rd_1", (item) => ({
+  ...item,
+  status: "reading",
+  progress: 30,
+}));
+assert.equal(updatedReading?.status, "reading");
+assert.equal(updatedReading?.progress, 30);
+assert.deepStrictEqual(await store.readReading(), [updatedReading]);
+
 // dedup index roundtrip
 await store.appendIndexEntry({ url: "https://a.com", sessionId: null, turnId: null, list: "bookmarks", itemId: "bm_1" });
 const idx = await store.readIndex();

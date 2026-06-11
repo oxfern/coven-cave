@@ -598,6 +598,17 @@ tr:focus-within .library-row-delete {
   text-transform: capitalize;
   white-space: nowrap;
 }
+.library-status-select {
+  min-width: 92px;
+  border: 1px solid var(--border-strong);
+  color: var(--text-primary);
+  cursor: pointer;
+  outline: none;
+}
+.library-status-select:focus-visible {
+  outline: var(--ring-width) solid var(--ring-focus);
+  outline-offset: 1px;
+}
 
 /* ── progress bar ──────────────────────────────────────────────── */
 .library-progress-bar {
@@ -720,6 +731,39 @@ tr:focus-within .library-row-delete {
   color: var(--text-muted);
   font-size: 13px;
   padding: 40px 0;
+}
+.library-list-error-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-danger);
+}
+.library-list-error-message {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.library-list-retry-btn {
+  display: inline-flex;
+  height: 28px;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  padding: 0 8px;
+  border: 1px solid var(--border-hairline);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+}
+.library-list-retry-btn:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+.library-list-retry-btn:focus-visible {
+  outline: var(--ring-width) solid var(--ring-focus);
+  outline-offset: 1px;
 }
 
 /* ── preview link ──────────────────────────────────────────────── */

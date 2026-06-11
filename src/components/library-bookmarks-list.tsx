@@ -47,6 +47,14 @@ function groupItems(items: LibraryBookmark[], by: GroupBy): { key: string; label
     .map(([key, items]) => ({ key, label: key, items }));
 }
 
+function filterItems(items: LibraryBookmark[], query: string): LibraryBookmark[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return items;
+  return items.filter((item) =>
+    `${item.title} ${item.domain} ${item.tags.join(" ")}`.toLowerCase().includes(q),
+  );
+}
+
 
 // ── Favicon ───────────────────────────────────────────────────────────────
 
@@ -165,18 +173,28 @@ export function LibraryBookmarksList({ selectedId, onSelect, onDelete, onAddToBo
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [adding, setAdding] = useState(false);
   const [addedToBoardId, setAddedToBoardId] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
       const res = await fetch("/api/library/bookmarks", { cache: "no-store" });
       const json = await res.json();
-      if (json.ok) setItems(json.items ?? []);
-    } catch { /* keep */ } finally { setLoading(false); }
+      if (json.ok) {
+        setItems(json.items ?? []);
+        setError(null);
+      } else {
+        setError("Failed to load. Try again.");
+      }
+    } catch { setError("Failed to load. Try again."); } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { void load(); }, [load]);
 
-  const sorted = useMemo(() => sortItems(items, sortKey, sortDir), [items, sortKey, sortDir]);
+  const filtered = useMemo(() => filterItems(items, query), [items, query]);
+  const sorted = useMemo(() => sortItems(filtered, sortKey, sortDir), [filtered, sortKey, sortDir]);
   const groups = useMemo(() => groupItems(sorted, groupBy), [sorted, groupBy]);
 
   function handleCol(key: SortKey) {
@@ -230,6 +248,29 @@ export function LibraryBookmarksList({ selectedId, onSelect, onDelete, onAddToBo
         </div>
       </div>
 
+      <div className="library-doclist-search">
+        <Icon name="ph:magnifying-glass" width={13} className="library-doclist-search-icon" />
+        <input
+          type="text"
+          className="library-doclist-search-input"
+          placeholder="Search bookmarks…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          spellCheck={false}
+          aria-label="Search bookmarks"
+        />
+        {query && (
+          <button
+            type="button"
+            className="library-doclist-search-clear"
+            onClick={() => setQuery("")}
+            aria-label="Clear search"
+          >
+            <Icon name="ph:x" width={11} />
+          </button>
+        )}
+      </div>
+
       {/* Add form */}
       {adding && (
         <AddBookmarkForm onAdd={handleAdd} onCancel={() => setAdding(false)} />
@@ -238,8 +279,26 @@ export function LibraryBookmarksList({ selectedId, onSelect, onDelete, onAddToBo
       {/* Table */}
       {loading ? (
         <div className="library-list-empty">Loading…</div>
+      ) : error ? (
+        <div className="library-list-empty" role="alert">
+          <div className="library-list-error-title">
+            <Icon name="ph:warning-circle" width={13} aria-hidden />
+            Couldn&rsquo;t load bookmarks.
+          </div>
+          <div className="library-list-error-message">{error}</div>
+          <button
+            type="button"
+            onClick={() => { void load(); }}
+            className="library-list-retry-btn"
+          >
+            <Icon name="ph:arrow-clockwise" width={11} />
+            Retry
+          </button>
+        </div>
       ) : items.length === 0 ? (
         <div className="library-list-empty">No bookmarks yet. Add one above.</div>
+      ) : filtered.length === 0 ? (
+        <div className="library-list-empty">No results for &quot;{query}&quot;.</div>
       ) : (
         <div className="board-table-wrap">
           <table aria-label="Bookmarks" className="board-table">

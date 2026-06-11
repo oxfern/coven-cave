@@ -53,6 +53,15 @@ function groupItems(items: LibraryGitHubItem[], by: GroupBy): { key: string; lab
     .map(([key, items]) => ({ key, label: key, items }));
 }
 
+function filterItems(items: LibraryGitHubItem[], query: string): LibraryGitHubItem[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return items;
+  return items.filter((item) => {
+    const description = (item as LibraryGitHubItem & { description?: string }).description ?? "";
+    return `${item.title} ${item.repo} ${description}`.toLowerCase().includes(q);
+  });
+}
+
 function kindIcon(kind: GitHubItemKind) {
   switch (kind) {
     case "repo":        return <Icon name="ph:github-logo" width={12} />;
@@ -582,6 +591,7 @@ export function LibraryGitHubList({ selectedId, onSelect, onDelete }: Props) {
   const [adding, setAdding] = useState(false);
   const [attachItem, setAttachItem] = useState<LibraryGitHubItem | null>(null);
   const [handoffItem, setHandoffItem] = useState<LibraryGitHubItem | null>(null);
+  const [query, setQuery] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -593,7 +603,8 @@ export function LibraryGitHubList({ selectedId, onSelect, onDelete }: Props) {
 
   useEffect(() => { void load(); }, [load]);
 
-  const sorted = useMemo(() => sortItems(items, sortKey, sortDir), [items, sortKey, sortDir]);
+  const filtered = useMemo(() => filterItems(items, query), [items, query]);
+  const sorted = useMemo(() => sortItems(filtered, sortKey, sortDir), [filtered, sortKey, sortDir]);
   const groups = useMemo(() => groupItems(sorted, groupBy), [sorted, groupBy]);
 
   function handleCol(key: SortKey) {
@@ -647,6 +658,29 @@ export function LibraryGitHubList({ selectedId, onSelect, onDelete }: Props) {
         </div>
       </div>
 
+      <div className="library-doclist-search">
+        <Icon name="ph:magnifying-glass" width={13} className="library-doclist-search-icon" />
+        <input
+          type="text"
+          className="library-doclist-search-input"
+          placeholder="Search GitHub…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          spellCheck={false}
+          aria-label="Search GitHub"
+        />
+        {query && (
+          <button
+            type="button"
+            className="library-doclist-search-clear"
+            onClick={() => setQuery("")}
+            aria-label="Clear search"
+          >
+            <Icon name="ph:x" width={11} />
+          </button>
+        )}
+      </div>
+
       {/* Add form */}
       {adding && (
         <AddGitHubForm onAdd={handleAdd} onCancel={() => setAdding(false)} />
@@ -657,6 +691,8 @@ export function LibraryGitHubList({ selectedId, onSelect, onDelete }: Props) {
         <div className="library-list-empty">Loading…</div>
       ) : items.length === 0 ? (
         <div className="library-list-empty">No GitHub items saved yet. Add one above.</div>
+      ) : filtered.length === 0 ? (
+        <div className="library-list-empty">No results for &quot;{query}&quot;.</div>
       ) : (
         <div className="board-table-wrap">
           <table className="board-table">
