@@ -1,5 +1,7 @@
 strictDepBuilds: false
 onlyBuiltDependencies:
+  - esbuild
+  - node-pty
   - sharp
   - "@tauri-apps/cli"
   - unrs-resolver

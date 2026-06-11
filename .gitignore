@@ -4,6 +4,7 @@ node_modules
 # Build output
 .next
 out
+server.mjs
 src-tauri/target
 src-tauri/gen
 tsconfig.tsbuildinfo

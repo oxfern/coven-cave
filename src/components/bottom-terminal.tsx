@@ -2,14 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTauriPlatform } from "@/lib/tauri-platform";
+import { PtyWsBridge } from "@/lib/pty-ws-bridge";
 
 // Bottom terminal pane — xterm.js in the browser, hooked up to a
 // portable-pty session on the Rust side (see src-tauri/src/pty.rs).
 //
-// Only mounts inside the Tauri desktop webview. The pty.* Rust commands
-// are cfg(desktop)-gated and not registered on Tauri-mobile (iOS,
-// Android) or in `next dev` outside Tauri; in those cases we render a
-// small placeholder instead of trying to invoke and erroring out.
+// Desktop Tauri uses native pty.* commands. Browser dev/prod uses the
+// WebSocket PTY bridge. Tauri-mobile (iOS, Android) renders a placeholder
+// because the native sandbox cannot spawn a shell.
 
 // Screen-reader mirror: xterm renders to a <canvas>, which is opaque to AT.
 // We keep an offscreen text mirror of recent PTY output (ANSI stripped) and
@@ -59,18 +59,18 @@ export function BottomTerminal({
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const fitRef = useRef<(() => void) | null>(null);
   const termRef = useRef<import("@xterm/xterm").Terminal | null>(null);
+  const wsBridgeRef = useRef<PtyWsBridge | null>(null);
   // Keep a ref to projectRoot so the PTY-start effect always reads the latest
   // value, even when it arrives asynchronously after initial mount.
   const projectRootRef = useRef<string | undefined>(projectRoot);
   useEffect(() => { projectRootRef.current = projectRoot; }, [projectRoot]);
   const [unavailable, setUnavailable] = useState(false);
-  // useTauriPlatform() resolves async and starts at "unknown". Treat
-  // anything that's not confirmed desktop-Tauri as unavailable — the
-  // pty Rust commands are cfg(desktop)-gated so calling them on
-  // Tauri-mobile would error.
+  // useTauriPlatform() resolves async and starts at "unknown". Desktop uses
+  // Tauri IPC, browser dev/prod uses the WebSocket PTY bridge, and native
+  // mobile remains unavailable because the sandbox cannot spawn a shell.
   const platform = useTauriPlatform();
   useEffect(() => {
-    if (platform === "ios" || platform === "android" || platform === "browser") {
+    if (platform === "ios" || platform === "android") {
       setUnavailable(true);
     }
   }, [platform]);
@@ -312,10 +312,121 @@ export function BottomTerminal({
     };
   }, [threadId, platform]);
 
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+    if (platform !== "browser") return;
+
+    let disposed = false;
+    let cleanup: (() => void) | null = null;
+
+    void (async () => {
+      const [{ Terminal }, { FitAddon }, { WebLinksAddon }] = await Promise.all([
+        import("@xterm/xterm"),
+        import("@xterm/addon-fit"),
+        import("@xterm/addon-web-links"),
+      ]);
+
+      const term = new Terminal({
+        fontFamily:
+          'ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
+        fontSize: 12,
+        lineHeight: 1.2,
+        cursorBlink: true,
+        theme: {
+          background: "oklch(0.11 0.022 293)",
+          foreground: "#e6e6f0",
+          cursor: "#9a8ecd",
+          selectionBackground: "rgba(154,142,205,0.35)",
+        },
+      });
+      termRef.current = term;
+      const fit = new FitAddon();
+      term.loadAddon(fit);
+      term.loadAddon(new WebLinksAddon());
+      term.open(wrap);
+      try {
+        fit.fit();
+      } catch {
+        /* DOM not ready yet — first resize event will recover */
+      }
+
+      const bridge = new PtyWsBridge();
+      wsBridgeRef.current = bridge;
+
+      bridge.onData((bytes) => {
+        term.write(bytes);
+        pushToMirror(bytes);
+      });
+      bridge.onExit((code) => {
+        const exitMsg = `\r\n\x1b[2m[exit ${code}]\x1b[0m\r\n`;
+        term.write(exitMsg);
+        pushToMirror(new TextEncoder().encode(exitMsg));
+      });
+
+      try {
+        await bridge.connect(threadId, term.cols, term.rows, projectRootRef.current);
+      } catch (err) {
+        const failMsg = `\r\n\x1b[31mTerminal connection failed: ${String(err)}\x1b[0m\r\n`;
+        term.write(failMsg);
+        pushToMirror(new TextEncoder().encode(failMsg));
+        return;
+      }
+      if (disposed) {
+        bridge.dispose();
+        term.dispose();
+        return;
+      }
+
+      const onDataDispose = term.onData((data) => {
+        bridge.write(new TextEncoder().encode(data));
+      });
+
+      const doResize = () => {
+        try {
+          fit.fit();
+          bridge.resize(term.cols, term.rows);
+        } catch {
+          /* harmless mid-tear-down */
+        }
+      };
+
+      const ro = new ResizeObserver(doResize);
+      ro.observe(wrap);
+
+      fitRef.current = () => {
+        doResize();
+        term.focus();
+      };
+      term.focus();
+
+      cleanup = () => {
+        ro.disconnect();
+        onDataDispose.dispose();
+        if (flushTimerRef.current) {
+          clearTimeout(flushTimerRef.current);
+          flushTimerRef.current = null;
+        }
+        pendingMirrorRef.current = "";
+        termRef.current = null;
+        wsBridgeRef.current = null;
+        bridge.dispose();
+        term.dispose();
+      };
+
+      if (disposed) cleanup();
+    })();
+
+    return () => {
+      disposed = true;
+      cleanup?.();
+    };
+  }, [threadId, platform, pushToMirror]);
+
   if (unavailable) {
     return (
       <div className="flex h-full items-center justify-center text-[11px] text-[var(--text-muted)]">
-        Terminal is only available inside the CovenCave desktop app.
+        Terminal is not available on this device.
       </div>
     );
   }
