@@ -541,7 +541,7 @@ export function ComuxView({ view, sessions: daemonSessions, onOpenSession, onNew
                           id={`terminal-pane-${s.id}`}
                           minSize={18}
                           defaultSize={100 / Math.max(visiblePaneSessions.length, 1)}
-                          className="min-h-0 min-w-0"
+                          className="h-full min-h-0 min-w-0 overflow-hidden"
                         >
                           <div
                             className="comux-terminal-pane"
