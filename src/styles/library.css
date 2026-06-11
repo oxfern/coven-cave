@@ -127,7 +127,10 @@
   overflow: hidden;
   border-left: 1px solid var(--border-hairline);
 }
-.library-list-panel--open  { width: 300px; }
+.library-list-panel--open {
+  width: clamp(380px, 34vw, 520px);
+  max-width: calc(100vw - 240px);
+}
 .library-list-panel--closed { width: 28px; }
 
 /* Toggle strip — always visible narrow edge */
@@ -1119,6 +1122,30 @@ tr:focus-within .library-row-delete {
   white-space: nowrap;
 }
 
+@container (max-width: 460px) {
+  .library-list-header {
+    align-items: stretch;
+  }
+
+  .library-list-header-title {
+    flex-basis: 100%;
+  }
+
+  .library-list-header-controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .library-list-header-controls .board-toolbar-select {
+    flex: 1;
+    max-width: none;
+  }
+
+  .library-list-header-controls .board-toolbar-btn {
+    flex-shrink: 0;
+  }
+}
+
 /* ── add form strip ─────────────────────────────────────────────── */
 .library-list-add-form {
   display: flex;
@@ -2079,6 +2106,7 @@ h3:hover .library-heading-anchor,
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
 }
 
 .library-favicon {
@@ -2095,6 +2123,7 @@ h3:hover .library-heading-anchor,
 }
 
 .library-bookmark-link {
+  min-width: 0;
   color: inherit;
   text-decoration: none;
   overflow: hidden;
@@ -2377,6 +2406,9 @@ h3:hover .library-heading-anchor,
   scrollbar-width: thin;
   scrollbar-color: color-mix(in oklch, var(--accent-presence) 22%, transparent) transparent;
 }
+.library-list-shell .board-table {
+  table-layout: fixed;
+}
 .library-list-shell .board-table-wrap::-webkit-scrollbar { height: 6px; width: 6px; }
 .library-list-shell .board-table-wrap::-webkit-scrollbar-thumb {
   background: color-mix(in oklch, var(--accent-presence) 22%, transparent);
@@ -2398,6 +2430,44 @@ h3:hover .library-heading-anchor,
   .library-reading-table .library-status-select {
     padding-left: 6px;
     padding-right: 18px;
+  }
+}
+
+@container (max-width: 520px) {
+  .library-bookmarks-table th:nth-child(3),
+  .library-bookmarks-table td:nth-child(3),
+  .library-bookmarks-table th:nth-child(4),
+  .library-bookmarks-table td:nth-child(4),
+  .library-github-table th:nth-child(3),
+  .library-github-table td:nth-child(3),
+  .library-github-table th:nth-child(4),
+  .library-github-table td:nth-child(4),
+  .library-github-table th:nth-child(6),
+  .library-github-table td:nth-child(6) {
+    display: none;
+  }
+}
+
+@container (max-width: 460px) {
+  .library-bookmarks-table th:nth-child(2),
+  .library-bookmarks-table td:nth-child(2),
+  .library-github-table th:nth-child(2),
+  .library-github-table td:nth-child(2),
+  .library-github-table th:nth-child(5),
+  .library-github-table td:nth-child(5) {
+    display: none;
+  }
+
+  .library-bookmarks-table thead th,
+  .library-bookmarks-table tbody td,
+  .library-github-table thead th,
+  .library-github-table tbody td {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .library-list-shell .board-table-title {
+    max-width: none;
   }
 }
 

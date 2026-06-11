@@ -159,6 +159,36 @@ assert.match(
 );
 assert.match(
   libraryCss,
+  /\.library-list-panel--open\s*\{\s*width:\s*clamp\(380px,\s*34vw,\s*520px\);/,
+  "Open Library side panel should be wide enough for saved-list controls and row content",
+);
+assert.match(
+  libraryCss,
+  /@container \(max-width: 460px\) \{[\s\S]*?\.library-list-header\s*\{[\s\S]*?align-items:\s*stretch;[\s\S]*?\.library-list-header-controls\s*\{[\s\S]*?width:\s*100%;/,
+  "Narrow side-panel headers should wrap controls below the title instead of overlapping it",
+);
+assert.match(
+  libraryCss,
+  /@container \(max-width: 520px\) \{[\s\S]*?\.library-bookmarks-table th:nth-child\(3\)[\s\S]*?\.library-github-table th:nth-child\(3\)/,
+  "Saved-list side-panel tables should drop timestamp columns before horizontal overflow appears",
+);
+assert.match(
+  libraryCss,
+  /@container \(max-width: 460px\) \{[\s\S]*?\.library-bookmarks-table th:nth-child\(2\)[\s\S]*?\.library-github-table th:nth-child\(2\)/,
+  "Very narrow saved-list side-panel tables should prioritize title/action columns over metadata",
+);
+assert.match(
+  libraryCss,
+  /\.library-list-shell \.board-table\s*\{[\s\S]*?table-layout:\s*fixed;/,
+  "Side-panel saved-list tables should use fixed layout so long titles cannot widen the panel",
+);
+assert.match(
+  libraryCss,
+  /\.library-title-cell\s*\{[\s\S]*?min-width:\s*0;/,
+  "Bookmark title cells should be allowed to shrink inside the side panel",
+);
+assert.match(
+  libraryCss,
   /\.library-timeline\s*\{[\s\S]*?min-height:\s*0;[\s\S]*?overflow:\s*hidden;/,
   "Timeline shell should clamp overflow so only the timeline scroll pane moves",
 );

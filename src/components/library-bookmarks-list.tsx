@@ -334,7 +334,7 @@ export function LibraryBookmarksList({ selectedId, onSelect, onDelete, onAddToBo
         <div className="library-list-empty">No results for &quot;{query}&quot;.</div>
       ) : (
         <div className="board-table-wrap">
-          <table aria-label="Bookmarks" className="board-table">
+          <table aria-label="Bookmarks" className="board-table library-bookmarks-table">
             <thead>
               <tr>
                 {COLS.map((col) => (

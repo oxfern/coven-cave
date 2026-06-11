@@ -555,16 +555,6 @@ export const BrowserPane = forwardRef<BrowserPaneHandle, { label?: string; activ
         onMouseLeave={() => setRailHover(false)}
         aria-label="Browser tabs"
       >
-        {/* Collapsed-state hint: tab-count badge — communicates "tabs exist,
-            here's how many" without taking iframe space. */}
-        {!railExpanded ? (
-          <span
-            aria-hidden
-            className="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 grid h-5 min-w-5 place-items-center rounded-r-full bg-[var(--bg-elevated)] px-1 text-[10px] font-semibold text-[var(--text-muted)] transition-opacity duration-150"
-          >
-            {tabs.length}
-          </span>
-        ) : null}
         {/* Tabs only render their content when the rail is expanded so
             collapsed-state mouse targets stay tiny and the page is not
             visually crowded. The rail itself remains hoverable in both

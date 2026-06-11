@@ -38,14 +38,14 @@ assert.doesNotMatch(
   "Old text-[9px] label must be removed",
 );
 
-// ───────── Task 3: Wider rail + tab-count badge ─────────
+// ───────── Task 3: Wider rail, no collapsed numeric badge ─────────
 assert.match(pane, /w-3\.5 hover:w-12 focus-within:w-12/, "Collapsed rail width must be w-3.5");
 assert.doesNotMatch(pane, /w-1\.5 hover:w-12 focus-within:w-12/, "Old w-1.5 width must be removed");
 assert.match(pane, /minWidth: railExpanded \? 48 : 14/, "minWidth must be 14 when collapsed");
-assert.match(
+assert.doesNotMatch(
   pane,
   /!railExpanded \? \(\s*<span[\s\S]*?>\s*\{tabs\.length\}\s*<\/span>\s*\) : null/,
-  "Tab-count badge renders {tabs.length} when rail collapsed",
+  "Collapsed browser rail must not render a numeric tab-count badge",
 );
 assert.doesNotMatch(
   pane,
