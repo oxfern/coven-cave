@@ -177,6 +177,300 @@
 .library-list-content--visible { opacity: 1; pointer-events: auto; }
 .library-list-content--hidden  { opacity: 0; pointer-events: none; }
 
+/* ── Timeline list: compact right-sidebar command surface ─────── */
+.library-timeline {
+  background:
+    linear-gradient(180deg, color-mix(in oklch, var(--bg-base) 93%, var(--bg-raised)) 0%, var(--bg-base) 44%),
+    var(--bg-base);
+}
+
+.library-timeline-header.ui-view-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  align-items: stretch;
+  padding: 20px 16px 16px;
+  min-height: 0;
+  border-bottom-color: color-mix(in oklch, var(--border-hairline) 82%, transparent);
+  background:
+    radial-gradient(circle at 20% 0%, color-mix(in oklch, var(--accent-presence) 11%, transparent), transparent 36%),
+    color-mix(in oklch, var(--bg-base) 92%, var(--bg-raised));
+}
+
+.library-timeline-header .ui-view-header-meta,
+.library-timeline-header .ui-view-header-search,
+.library-timeline-header .ui-view-header-filter {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+}
+
+.library-timeline-header .ui-view-header-title {
+  font-size: 18px;
+  line-height: 1.15;
+  letter-spacing: 0;
+}
+
+.library-timeline-header .ui-view-header-eyebrow {
+  margin-bottom: 6px;
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.15em;
+}
+
+.library-timeline-header .ui-view-header-search {
+  display: block;
+}
+
+.library-timeline-header .ui-search-input {
+  height: 34px;
+  border-radius: 8px;
+  border-color: color-mix(in oklch, var(--border-strong) 72%, transparent);
+  background: color-mix(in oklch, var(--bg-raised) 68%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in oklch, var(--text-primary) 5%, transparent);
+}
+
+.library-timeline-header .ui-search-input:focus-within {
+  border-color: color-mix(in oklch, var(--accent-presence) 58%, var(--border-strong));
+  background: color-mix(in oklch, var(--bg-elevated) 76%, var(--bg-raised));
+}
+
+.library-timeline-header .ui-search-input-leading {
+  width: 34px;
+}
+
+.library-timeline-header .ui-search-input-field {
+  font-size: 12px;
+}
+
+.library-timeline-search {
+  width: 100%;
+}
+
+.library-timeline-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  width: 100%;
+}
+
+.library-timeline-select,
+.library-timeline-filter-button {
+  width: 100%;
+  height: 32px;
+  border: 1px solid color-mix(in oklch, var(--border-strong) 68%, transparent);
+  border-radius: 7px;
+  background:
+    linear-gradient(180deg, color-mix(in oklch, var(--bg-raised) 78%, transparent), color-mix(in oklch, var(--bg-base) 92%, transparent));
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 1;
+  transition:
+    border-color var(--duration-fast) var(--ease-standard),
+    background-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
+}
+
+.library-timeline-select {
+  appearance: none;
+  padding: 0 32px 0 12px;
+  background-image:
+    linear-gradient(180deg, color-mix(in oklch, var(--bg-raised) 78%, transparent), color-mix(in oklch, var(--bg-base) 92%, transparent)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238a8596' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat, no-repeat;
+  background-position: 0 0, right 11px center;
+  background-size: 100% 100%, 14px 14px;
+}
+
+.library-timeline-filter-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  font-weight: 560;
+}
+
+.library-timeline-select:hover,
+.library-timeline-filter-button:hover {
+  border-color: color-mix(in oklch, var(--accent-presence) 44%, var(--border-strong));
+  background-color: var(--bg-elevated);
+}
+
+.library-timeline-group-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px;
+  width: 100%;
+  height: 32px;
+  padding: 2px;
+  border: 1px solid color-mix(in oklch, var(--border-strong) 68%, transparent);
+  border-radius: 7px;
+  background:
+    linear-gradient(180deg, color-mix(in oklch, var(--bg-raised) 78%, transparent), color-mix(in oklch, var(--bg-base) 92%, transparent));
+}
+
+.library-timeline-group-toggle-option {
+  min-width: 0;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 560;
+  line-height: 1;
+  color: var(--text-muted);
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
+}
+
+.library-timeline-group-toggle-option:hover {
+  color: var(--text-secondary);
+}
+
+.library-timeline-group-toggle-option[aria-pressed="true"] {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--accent-presence) 38%, transparent);
+}
+
+/* Wide enough header → all filter options share one row. */
+@container view-header (min-width: 440px) {
+  .library-timeline-filters {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.library-timeline-scroll {
+  scrollbar-gutter: stable;
+}
+
+.library-timeline-group {
+  border-bottom: 1px solid color-mix(in oklch, var(--border-hairline) 64%, transparent);
+}
+
+.library-timeline-group:last-child {
+  border-bottom: 0;
+}
+
+.library-timeline-group-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 31px;
+  padding: 6px 16px;
+  border-bottom: 1px solid color-mix(in oklch, var(--border-hairline) 76%, transparent);
+  background: color-mix(in oklch, var(--bg-base) 94%, transparent);
+  backdrop-filter: blur(14px);
+}
+
+.library-timeline-group-label {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  line-height: 1;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.library-timeline-group-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 20px;
+  margin-left: auto;
+  border: 1px solid color-mix(in oklch, var(--border-hairline) 70%, transparent);
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--bg-raised) 70%, transparent);
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.library-timeline-row {
+  position: relative;
+  z-index: 0;
+  min-height: 60px;
+  padding: 10px 16px 10px 14px;
+  border-left: 2px solid transparent;
+  border-bottom: 1px solid color-mix(in oklch, var(--border-hairline) 48%, transparent);
+  background: transparent;
+  overflow: hidden;
+  transition:
+    border-color var(--duration-fast) var(--ease-standard),
+    background-color var(--duration-fast) var(--ease-standard);
+}
+
+.library-timeline-row > * {
+  position: relative;
+  z-index: 1;
+}
+
+.library-timeline-row:last-child {
+  border-bottom: 0;
+}
+
+.library-timeline-row::before {
+  content: "";
+  position: absolute;
+  inset: 8px 8px 8px 6px;
+  z-index: 0;
+  border-radius: 8px;
+  background: transparent;
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.library-timeline-row:hover::before {
+  background: color-mix(in oklch, var(--bg-raised) 68%, transparent);
+}
+
+.library-timeline-row--selected {
+  border-left-color: var(--accent-presence);
+}
+
+.library-timeline-row--selected::before {
+  background:
+    linear-gradient(90deg, color-mix(in oklch, var(--accent-presence) 15%, transparent), transparent 74%),
+    color-mix(in oklch, var(--bg-raised) 82%, transparent);
+}
+
+.library-timeline-row-icon {
+  width: 28px;
+  height: 28px;
+  border: 1px solid color-mix(in oklch, var(--border-hairline) 72%, transparent);
+  border-radius: 8px;
+  background: color-mix(in oklch, var(--bg-raised) 72%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in oklch, var(--text-primary) 5%, transparent);
+}
+
+.library-timeline-row-title {
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 560;
+  line-height: 1.3;
+  letter-spacing: 0;
+}
+
+.library-timeline-row-meta {
+  margin-top: 3px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.library-timeline-row-time {
+  align-self: flex-start;
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1;
+}
+
 .library-doclist-search {
   display: flex;
   align-items: center;

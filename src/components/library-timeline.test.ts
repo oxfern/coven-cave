@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 
 const source = await readFile(new URL("./library-timeline.tsx", import.meta.url), "utf8");
 const globals = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+const libraryCss = await readFile(new URL("../styles/library.css", import.meta.url), "utf8");
 
 assert.match(source, /from "@\/components\/ui\/view-header"/, "uses ViewHeader primitive");
 assert.match(source, /from "@\/components\/ui\/search-input"/, "uses SearchInput primitive");
@@ -24,4 +25,16 @@ assert.match(
   "ViewHeader filters should stack into a one-column grid in narrow right rails",
 );
 
-console.log("library-timeline wiring: 10 assertions passed");
+assert.match(
+  source,
+  /library-timeline-group-toggle[\s\S]*aria-pressed=\{groupBy === g\}/,
+  "grouping is a segmented switch toggle, not a cycling button",
+);
+assert.doesNotMatch(source, /Group: \{groupBy\}/, "cycling Group button should be gone");
+assert.match(
+  libraryCss,
+  /@container\s+view-header\s+\(min-width:[^)]*\)[\s\S]*\.library-timeline-filters[\s\S]*grid-template-columns:\s*repeat\(3,/,
+  "filter options share one row when the header is wide enough",
+);
+
+console.log("library-timeline wiring: 13 assertions passed");

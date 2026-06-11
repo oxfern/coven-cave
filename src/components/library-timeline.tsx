@@ -93,8 +93,9 @@ export function LibraryTimeline({
   }, [filtered, groupBy]);
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="library-timeline flex h-full flex-col">
       <ViewHeader
+        className="library-timeline-header"
         eyebrow="LIBRARY"
         title="All"
         search={
@@ -104,12 +105,13 @@ export function LibraryTimeline({
             placeholder="Search links…"
             title="Search links — try chat: github: sage:"
             onClear={() => setSearch("")}
+            containerClassName="library-timeline-search"
           />
         }
         filters={
-          <>
+          <div className="library-timeline-filters">
             <select
-              className="focus-ring rounded border border-[var(--border-hairline)] bg-[var(--bg-raised)] px-2 py-1 text-[11px] text-[var(--text-primary)]"
+              className="library-timeline-select focus-ring"
               value={familiarFilter}
               onChange={(e) => setFamiliarFilter(e.target.value)}
               aria-label="Filter by familiar"
@@ -119,15 +121,21 @@ export function LibraryTimeline({
                 <option key={f.id} value={f.id}>{f.display_name}</option>
               ))}
             </select>
-            <button
-              type="button"
-              onClick={() => setGroupBy((g) => g === "date" ? "source" : "date")}
-              className="focus-ring rounded border border-[var(--border-hairline)] bg-[var(--bg-raised)] px-2 py-1 text-[11px] text-[var(--text-primary)]"
-            >
-              Group: {groupBy}
-            </button>
+            <div className="library-timeline-group-toggle" role="group" aria-label="Group by">
+              {(["date", "source"] as const).map((g) => (
+                <button
+                  key={g}
+                  type="button"
+                  onClick={() => setGroupBy(g)}
+                  aria-pressed={groupBy === g}
+                  className="library-timeline-group-toggle-option focus-ring"
+                >
+                  {g === "date" ? "Date" : "Source"}
+                </button>
+              ))}
+            </div>
             <select
-              className="focus-ring rounded border border-[var(--border-hairline)] bg-[var(--bg-raised)] px-2 py-1 text-[11px] text-[var(--text-primary)]"
+              className="library-timeline-select focus-ring"
               value={listFilter}
               onChange={(e) => setListFilter(e.target.value as ListFilter)}
               aria-label="Filter by list"
@@ -137,10 +145,10 @@ export function LibraryTimeline({
               <option value="reading">Reading</option>
               <option value="github">GitHub</option>
             </select>
-          </>
+          </div>
         }
       />
-      <div className="flex-1 overflow-y-auto">
+      <div className="library-timeline-scroll flex-1 overflow-y-auto">
         {loading ? (
           <div className="p-3"><SkeletonRows count={6} /></div>
         ) : filtered.length === 0 ? (
@@ -151,10 +159,10 @@ export function LibraryTimeline({
           />
         ) : (
           groups.map((g) => (
-            <div key={g.label}>
-              <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-[var(--border-hairline)] bg-[var(--bg-panel)] px-3 py-1.5">
-                <span className="text-[10px] font-medium uppercase tracking-widest text-[var(--text-muted)]">{g.label}</span>
-                <span className="rounded-full bg-[var(--bg-raised)] px-1.5 py-0.5 text-[9px] tabular-nums text-[var(--text-muted)]">{g.items.length}</span>
+            <div className="library-timeline-group" key={g.label}>
+              <div className="library-timeline-group-header">
+                <span className="library-timeline-group-label">{g.label}</span>
+                <span className="library-timeline-group-count">{g.items.length}</span>
               </div>
               {g.items.map((e, index) => (
                 <LibraryTimelineRow

@@ -73,32 +73,32 @@ export function LibraryTimelineRow({
     <button
       type="button"
       onClick={onSelect}
-      className={`focus-ring-inset flex w-full items-center gap-3 border-l-2 px-3 py-2.5 text-left transition-colors ${
+      className={`library-timeline-row focus-ring-inset flex w-full items-center gap-3 text-left ${
         selected
-          ? "border-l-[var(--accent-presence)] bg-[var(--bg-hover)]"
-          : "border-l-transparent hover:bg-[var(--bg-hover)]"
+          ? "library-timeline-row--selected"
+          : ""
       }`}
       aria-current={selected ? "true" : undefined}
     >
       {/* icon / favicon */}
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center">
+      <span className="library-timeline-row-icon flex shrink-0 items-center justify-center">
         <EntryIcon entry={entry} />
       </span>
 
       {/* title + familiar */}
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[13px] text-[var(--text-primary)]">
+        <span className="library-timeline-row-title block truncate">
           {title}
         </span>
         {fam && (
-          <span className="block truncate text-[11px] text-[var(--text-muted)]">
+          <span className="library-timeline-row-meta block truncate">
             {fam.display_name}
           </span>
         )}
       </span>
 
       {/* recency */}
-      <span className="shrink-0 text-[11px] tabular-nums text-[var(--text-muted)]">
+      <span className="library-timeline-row-time shrink-0 tabular-nums">
         {relTime(entry.capturedAt)}
       </span>
     </button>
