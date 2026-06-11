@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 const chatSurface = readFileSync(new URL("./chat-surface.tsx", import.meta.url), "utf8");
 const chatRouter = readFileSync(new URL("./chat-router.tsx", import.meta.url), "utf8");
 const chatList = readFileSync(new URL("./chat-list.tsx", import.meta.url), "utf8");
+const chatProjectSidebar = readFileSync(new URL("./chat-project-sidebar.tsx", import.meta.url), "utf8");
 
 assert.match(
   chatSurface,
@@ -46,6 +47,12 @@ assert.match(
   chatList,
   /defaultFamiliarId/,
   "Project group launch should carry the latest familiar for that working directory",
+);
+
+assert.match(
+  chatProjectSidebar,
+  /onClick=\{\(\) => \{[\s\S]*onSelect\(key\);[\s\S]*onToggleExpanded\(key\);[\s\S]*\}\}[\s\S]*aria-expanded=\{expanded\}[\s\S]*className=\{\[[\s\S]*flex min-w-0 flex-1 items-center/,
+  "Project rows should make the full label/count area the collapse trigger instead of only the caret",
 );
 
 console.log("chat-all-familiars-project-list.test.ts: ok");

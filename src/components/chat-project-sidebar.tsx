@@ -116,24 +116,21 @@ export function ChatProjectSidebar({
                 {isSelected ? <AccentBar tall /> : null}
                 <button
                   type="button"
-                  onClick={() => onToggleExpanded(key)}
+                  onClick={() => {
+                    onSelect(key);
+                    onToggleExpanded(key);
+                  }}
                   aria-expanded={expanded}
                   aria-label={`${expanded ? "Collapse" : "Expand"} ${label} sessions`}
-                  className="focus-ring ml-1 grid h-6 w-4 shrink-0 place-items-center rounded text-[var(--text-muted)] transition-colors hover:text-[var(--text-primary)]"
-                >
-                  <Icon name={expanded ? "ph:caret-down" : "ph:caret-right"} width={10} aria-hidden />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onSelect(key)}
                   aria-current={isSelected ? "true" : undefined}
                   className={[
-                    "flex min-w-0 flex-1 items-center gap-1.5 py-1.5 text-left text-[12px] transition-colors",
+                    "focus-ring ml-1 flex min-w-0 flex-1 items-center gap-1.5 rounded py-1.5 text-left text-[12px] transition-colors",
                     isSelected
                       ? "text-[var(--text-primary)]"
                       : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]",
                   ].join(" ")}
                 >
+                  <Icon name={expanded ? "ph:caret-down" : "ph:caret-right"} width={10} aria-hidden className="shrink-0 text-[var(--text-muted)]" />
                   <Icon
                     name={isSelected ? "ph:folder-open" : "ph:folder"}
                     width={13}
