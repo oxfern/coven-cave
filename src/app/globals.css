@@ -374,18 +374,6 @@ select {
   display: flex;
 }
 
-/* Home composer can translate when Shell activates viewport centering for
- * two-sided panel layouts. Allow the detail panel to overflow visible only
- * while it contains a Home composer; react-resizable-panels sets `overflow:
- * auto` inline, so the override needs `!important`. The composer's own
- * .home-composer-root keeps its own vertical scroll. */
-.shell-detail-panel:has(> .shell-detail > .cave-mode-fade > .home-composer-root) {
-  overflow: visible !important;
-}
-.shell-detail-panel:has(> .shell-detail > .cave-mode-fade > .home-composer-root) > .shell-detail {
-  overflow: visible;
-}
-
 /* Browser pane must never scroll — the native Tauri child webview is
  * positioned via absolute viewport coords (getBoundingClientRect) and
  * would lose sync if the shell-detail scroll container drifts.
@@ -399,6 +387,13 @@ select {
   min-height: 0;
   display: flex;
   flex-direction: column;
+}
+
+/* Home composer spans the viewport width when one or both side panels are
+ * open; it needs overflow: visible on the detail panel to paint outside its
+ * bounds when translateX shifts the composer. */
+.shell-detail-panel:has(> .shell-detail > .cave-mode-fade > .home-composer-root) {
+  overflow: visible !important;
 }
 
 /* Inner panel border — subtle dividing line on the right edge of side panels */
@@ -3087,9 +3082,9 @@ select {
 }
 
 .agent-trigger-rail--stacked {
-  justify-content: flex-start;
-  gap: 4px;
-  padding-top: 8px;
+  justify-content: stretch;
+  gap: 0;
+  padding-top: 0;
 }
 
 .agent-trigger-rail::before {
@@ -3133,8 +3128,8 @@ select {
 }
 
 .agent-trigger-rail--stacked .agent-trigger-rail__toggle {
-  flex: 0 0 auto;
-  min-height: 52px;
+  flex: 1 1 0;
+  min-height: 0;
 }
 
 .agent-trigger-rail__toggle:hover {
