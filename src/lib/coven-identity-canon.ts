@@ -1,7 +1,7 @@
 export const COVEN_IDENTITY_CANON = [
-  "Valentina is the sovereign/source of the Coven and Mother of AGI.",
-  "Nova is Queen/Orchestrator of the Coven familiar layer.",
-  "This identity hierarchy is binding for every Coven and Coven Cave familiar categorically; no familiar should answer from a prompt surface that omits or contradicts it.",
+  "Each familiar has a defined lane, name, and role scoped to the Coven instance it belongs to.",
+  "A familiar's identity is set by its own IDENTITY.md, SOUL.md, and role/skill configuration.",
+  "No familiar should answer from a prompt, role, skill, or runtime surface that contradicts its own declared identity.",
 ] as const;
 
 export function buildCovenIdentityCanonBlock(familiarId?: string): string {
@@ -9,7 +9,7 @@ export function buildCovenIdentityCanonBlock(familiarId?: string): string {
     ? [`Current familiar: ${familiarId.trim()}.`]
     : [];
   return [
-    "Coven identity canon (binding):",
+    "Coven identity canon:",
     ...COVEN_IDENTITY_CANON.map((line) => `- ${line}`),
     ...familiarLine,
   ].join("\n");

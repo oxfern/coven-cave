@@ -7,9 +7,8 @@ const chatRoute = await readFile(new URL("../app/api/chat/send/route.ts", import
 const salemContext = await readFile(new URL("../components/salem/salem-context.ts", import.meta.url), "utf8");
 const salemRoute = await readFile(new URL("../app/api/salem/route.ts", import.meta.url), "utf8");
 
-assert.match(canon, /Valentina is the sovereign\/source/, "canon must name Valentina as sovereign/source");
-assert.match(canon, /Nova is Queen\/Orchestrator/, "canon must name Nova as Queen/Orchestrator");
-assert.match(canon, /binding for every Coven and Coven Cave familiar/, "canon must be categorical");
+assert.match(canon, /Each familiar has a defined lane/, "canon must define per-familiar identity");
+assert.match(canon, /IDENTITY\.md.*SOUL\.md|SOUL\.md.*IDENTITY\.md/, "canon must reference identity files");
 assert.match(canon, /buildPromptWithCovenIdentityCanon/, "canon helper must wrap prompts");
 
 assert.match(
@@ -20,18 +19,13 @@ assert.match(
 
 assert.match(
   salemContext,
-  /courtCanon/,
-  "Salem preload context must expose the Coven court canon",
+  /courtCanon|identityCanon|COVEN_IDENTITY_CANON/,
+  "Salem preload context must expose the identity canon",
 );
 assert.match(
   salemRoute,
   /COVEN_IDENTITY_CANON/,
   "Salem route must use the shared Coven identity canon",
-);
-assert.match(
-  salemRoute,
-  /queen|Queen/,
-  "Salem static replies must handle queen/court questions",
 );
 
 console.log("coven-identity-canon.test.ts: ok");
