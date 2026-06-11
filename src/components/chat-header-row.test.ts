@@ -33,6 +33,30 @@ assert.match(
 
 assert.match(
   source,
+  /function ChatBackButton\(\{ onBack \}[\s\S]*aria-label="Back to chats"[\s\S]*onClick=\{onBack\}[\s\S]*<Icon name="ph:arrow-left-bold"[\s\S]*<\/button>/,
+  "ChatView back button should be a reusable icon-only control",
+);
+
+assert.match(
+  source,
+  /<div className=\{`cave-chat-meta-line[\s\S]*\{onBack \? <ChatBackButton onBack=\{onBack\} \/> : null\}[\s\S]*<ChatTitleEditable/,
+  "ChatView back button should sit inline before the desktop chat title",
+);
+
+assert.match(
+  source,
+  /<div className="cave-mobile-header-familiar">\s*\{onBack \? <ChatBackButton onBack=\{onBack\} \/> : null\}\s*<FamiliarIcon/,
+  "ChatView mobile header should reuse the icon-only back control next to the chat name",
+);
+
+assert.doesNotMatch(
+  source,
+  /aria-label="Back to chats"[\s\S]*>\s*<Icon name="ph:arrow-left-bold"[\s\S]*>\s*Back\s*<\/button>/,
+  "ChatView back button should not render a separate text label",
+);
+
+assert.match(
+  source,
   /<LinkedContextRow\b/,
   "ChatView renders LinkedContextRow for task/GitHub chips",
 );

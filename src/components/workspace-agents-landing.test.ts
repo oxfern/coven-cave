@@ -48,6 +48,12 @@ assert.match(
 
 assert.match(
   workspace,
+  /hideChatTab=\{mode === "chat"\}/,
+  "Workspace should hide the companion rail Chat tab while the main surface is already Chats",
+);
+
+assert.match(
+  workspace,
   /if \(!activeId\) \{\s*queueMicrotask\(\(\) => shellRef\.current\?\.closeAgent\(\)\);\s*return;\s*\}/,
   "Workspace collapses the companion panel when no familiar is selected so empty rails do not crowd every surface",
 );

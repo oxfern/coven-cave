@@ -5,7 +5,6 @@ import { Group, Panel, Separator } from "react-resizable-panels";
 import { ChatRouter, type ChatRouterHandle } from "@/components/chat-router";
 import { AgentsMemoryView } from "@/components/agents-memory-view";
 import { InspectorPane } from "@/components/inspector-pane";
-import { AgentPanel } from "@/components/agent-panel";
 import { DebugPane } from "@/components/debug-pane";
 import { Icon } from "@/lib/icon";
 import type { InboxItem } from "@/lib/cave-inbox";
@@ -16,7 +15,7 @@ import type { PendingChatAction } from "@/lib/pending-chat-action";
 
 type AgentsScope = "conversation" | "memory";
 
-export type RightPanelKind = "inspector" | "chat" | "debug";
+export type RightPanelKind = "inspector" | "debug";
 
 type Props = {
   familiars: Familiar[];
@@ -54,13 +53,8 @@ type Props = {
 function RightPanel({
   panel,
   activeFamiliar,
-  sessions,
-  daemonRunning,
   inboxItems,
   onSetPanel,
-  onSessionStarted,
-  onSlashFromChat,
-  onOpenOnboarding,
   onOpenInbox,
   onCreateReminder,
   onOpenInboxItem,
@@ -68,13 +62,8 @@ function RightPanel({
 }: {
   panel: RightPanelKind;
   activeFamiliar: Familiar | null;
-  sessions: SessionRow[];
-  daemonRunning: boolean;
   inboxItems: InboxItem[];
   onSetPanel: (p: RightPanelKind | null) => void;
-  onSessionStarted: () => void;
-  onSlashFromChat: (cmd: string, args: string) => boolean;
-  onOpenOnboarding: () => void;
   onOpenInbox: () => void;
   onCreateReminder: (familiarId: string) => void;
   onOpenInboxItem: (item: InboxItem) => void;
@@ -83,14 +72,6 @@ function RightPanel({
   return (
     <aside className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col border-l border-[var(--border-hairline)]">
       <div className="right-panel-tabs">
-        <button
-          type="button"
-          className={`right-panel-tab${panel === "chat" ? " right-panel-tab--active" : ""}`}
-          onClick={() => onSetPanel("chat")}
-        >
-          <Icon name="ph:chats" width={13} />
-          Chat
-        </button>
         <button
           type="button"
           className={`right-panel-tab${panel === "inspector" ? " right-panel-tab--active" : ""}`}
@@ -120,17 +101,6 @@ function RightPanel({
             onCreateReminder={onCreateReminder}
             onOpenInboxItem={onOpenInboxItem}
             onInboxItemChanged={onInboxItemChanged}
-          />
-        )}
-        {panel === "chat" && (
-          <AgentPanel
-            ref={null}
-            familiar={activeFamiliar}
-            sessions={sessions}
-            daemonRunning={daemonRunning}
-            onSessionStarted={onSessionStarted}
-            onSlashFromChat={onSlashFromChat}
-            onOpenOnboarding={onOpenOnboarding}
           />
         )}
         {panel === "debug" && <DebugPane />}
@@ -362,13 +332,8 @@ export function ChatSurface({
                   <RightPanel
                     panel={rightPanel}
                     activeFamiliar={activeFamiliar}
-                    sessions={sessions}
-                    daemonRunning={daemonRunning}
                     inboxItems={inboxItems}
                     onSetPanel={setRightPanel}
-                    onSessionStarted={onSessionStarted}
-                    onSlashFromChat={onSlashFromChat}
-                    onOpenOnboarding={onOpenOnboarding}
                     onOpenInbox={onOpenInbox}
                     onCreateReminder={onCreateReminder}
                     onOpenInboxItem={onOpenInboxItem}

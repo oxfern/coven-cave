@@ -373,7 +373,7 @@ export function LibraryReadingList({ selectedId, onSelect, onDelete }: Props) {
                       className={item.id === selectedId ? "selected" : ""}
                       onClick={() => onSelect(item)}>
                       <td>
-                        <span className="board-table-title">{item.title}</span>
+                        <span className="board-table-title library-reading-title">{item.title}</span>
                         {item.author && (
                           <div className="board-table-muted" style={{ marginTop: 2 }}>{item.author}</div>
                         )}

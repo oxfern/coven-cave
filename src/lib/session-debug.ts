@@ -1,4 +1,4 @@
-import type { SessionRow } from "@/lib/types";
+import type { SessionRow } from "./types.ts";
 
 /** Raw daemon event as returned by GET /api/sessions/[id]/events.
  *  Mirrors the shape in src/app/api/sessions/[id]/events/route.ts. */

@@ -53,6 +53,16 @@ function age(iso: string): string {
   return `${Math.floor(d / 7)} weeks ago`;
 }
 
+function chatDate(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat([], {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+}
+
 /** Repo name — last non-empty path segment. */
 function repoName(p: string): string {
   if (!p) return "";
@@ -521,8 +531,10 @@ export function ChatList({ familiar, familiars = [], sessions, daemonRunning, on
                                 </span>
                                 {s.origin ? <OriginChip origin={s.origin} /> : null}
                               </span>
-                              <span className="shrink-0 text-[11px] text-[var(--text-muted)]">
-                                {age(s.updated_at)}
+                              <span className="flex shrink-0 items-baseline gap-1 text-[11px] text-[var(--text-muted)]">
+                                <span>{chatDate(s.updated_at)}</span>
+                                <span aria-hidden>·</span>
+                                <span>{age(s.updated_at)}</span>
                               </span>
                             </span>
 

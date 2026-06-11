@@ -823,6 +823,18 @@
   padding: 28px 32px;
 }
 
+.library-reading-title {
+  display: -webkit-box;
+  max-width: 100%;
+  line-height: 1.35;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  white-space: normal;
+}
+
 /* ── Row delete button ─────────────────────────────────────────── */
 .library-row-delete {
   display: inline-flex;

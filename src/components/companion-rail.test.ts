@@ -18,3 +18,13 @@ assert.match(source, /Memory/, "Memory label rendered");
 assert.match(source, /Salem/, "Salem label rendered");
 assert.match(source, /activeTab/, "Rail should support externally selected tabs");
 assert.match(source, /No familiar yet/, "Empty state copy when no familiar");
+assert.match(
+  source,
+  /hideChatTab/,
+  "Rail should support hiding the Chat tab when the current main surface is already Chats",
+);
+assert.match(
+  source,
+  /hideChatTab \? null : \(/,
+  "Rail should omit the Chat tab button when hideChatTab is set",
+);

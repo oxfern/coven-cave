@@ -25,6 +25,7 @@ type Props = {
    * empty state (e.g. the chat surface), set this true so the rail doesn't
    * render a second redundant CTA. */
   suppressEmpty?: boolean;
+  hideChatTab?: boolean;
 };
 
 // forwardRef handle is wired in Task 2.3; ref is forwarded to the chatSlot consumer.
@@ -43,11 +44,14 @@ const CompanionRailInner = forwardRef<ChatRouterHandle, Props>(
       daemonRunning,
       onTabChange,
       suppressEmpty = false,
+      hideChatTab = false,
     } = props;
     const resolvedFamiliars = useResolvedFamiliars(familiar ? [familiar] : [], { includeArchived: true });
     const resolvedFamiliar = resolvedFamiliars[0];
     const [tab, setTab] = useState<CompanionTab>(defaultTab);
-    const selectedTab = activeTab ?? tab;
+    const requestedTab = activeTab ?? tab;
+    const fallbackTab: CompanionTab = salemSlot ? "salem" : "inspector";
+    const selectedTab = hideChatTab && requestedTab === "chat" ? fallbackTab : requestedTab;
 
     useEffect(() => {
       if (activeTab) setTab(activeTab);
@@ -106,15 +110,17 @@ const CompanionRailInner = forwardRef<ChatRouterHandle, Props>(
           />
         </header>
         <nav className="companion-rail__tabs" aria-label="Companion sections">
-          <button
-            type="button"
-            className={`companion-rail__tab${selectedTab === "chat" ? " companion-rail__tab--active" : ""}`}
-            onClick={() => switchTab("chat")}
-            aria-current={selectedTab === "chat"}
-            title="Chat"
-          >
-            <Icon name="ph:chats" width={14} />
-          </button>
+          {hideChatTab ? null : (
+            <button
+              type="button"
+              className={`companion-rail__tab${selectedTab === "chat" ? " companion-rail__tab--active" : ""}`}
+              onClick={() => switchTab("chat")}
+              aria-current={selectedTab === "chat"}
+              title="Chat"
+            >
+              <Icon name="ph:chats" width={14} />
+            </button>
+          )}
           <button
             type="button"
             className={`companion-rail__tab${selectedTab === "inspector" ? " companion-rail__tab--active" : ""}`}
@@ -146,9 +152,11 @@ const CompanionRailInner = forwardRef<ChatRouterHandle, Props>(
           ) : null}
         </nav>
         <div className="companion-rail__body">
-          <div hidden={selectedTab !== "chat"} className="companion-rail__pane">
-            {chatSlot}
-          </div>
+          {hideChatTab ? null : (
+            <div hidden={selectedTab !== "chat"} className="companion-rail__pane">
+              {chatSlot}
+            </div>
+          )}
           <div hidden={selectedTab !== "inspector"} className="companion-rail__pane">
             {inspectorSlot}
           </div>

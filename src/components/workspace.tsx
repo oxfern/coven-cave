@@ -1159,6 +1159,7 @@ export function Workspace() {
               onTabChange={setRailTab}
               daemonRunning={daemonRunning}
               onCreateFamiliar={openOnboarding}
+              hideChatTab={mode === "chat"}
               // Chat surface already shows a "Choose a familiar" CTA in the
               // detail panel — suppress the rail's duplicate prompt there.
               suppressEmpty={mode === "chat"}

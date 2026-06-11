@@ -17,6 +17,18 @@ assert.match(reading, /\(a\.title \?\? ""\)\.localeCompare\(b\.title \?\? ""\)/,
 assert.match(reading, /\(a\.addedAt \?\? ""\)\.localeCompare\(b\.addedAt \?\? ""\)/, "reading addedAt null-guard");
 assert.match(reading, /\(a\.label \?\? ""\)\.localeCompare\(b\.label \?\? ""\)/,     "reading label null-guard");
 
+const libraryCss = await readFile(new URL("../styles/library.css", import.meta.url), "utf8");
+assert.match(
+  reading,
+  /className="board-table-title library-reading-title"/,
+  "reading titles should opt into library-specific wrapping instead of the shared one-line board title style",
+);
+assert.match(
+  libraryCss,
+  /\.library-reading-title\s*\{[\s\S]*?-webkit-line-clamp:\s*3[\s\S]*?white-space:\s*normal/,
+  "reading titles should wrap and clamp at three visible lines",
+);
+
 // github — title, repo, savedAt
 assert.match(github, /\(a\.title \?\? ""\)\.localeCompare\(b\.title \?\? ""\)/,   "github title null-guard");
 assert.match(github, /\(a\.repo \?\? ""\)\.localeCompare\(b\.repo \?\? ""\)/,     "github repo null-guard");

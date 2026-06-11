@@ -596,6 +596,19 @@ function metaLineString(args: {
   return parts.join(" · ");
 }
 
+function ChatBackButton({ onBack }: { onBack: () => void }) {
+  return (
+    <button
+      type="button"
+      className="focus-ring inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/45 text-[var(--text-secondary)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+      aria-label="Back to chats"
+      onClick={onBack}
+    >
+      <Icon name="ph:arrow-left-bold" width={12} aria-hidden />
+    </button>
+  );
+}
+
 /** Single header row: editable title left, harness/model/status meta right.
  *  Ephemeral state (streaming, failed, daemon offline) recolors the line and
  *  rewrites the meta string instead of emitting separate pills/bars. */
@@ -610,6 +623,7 @@ function MetaLine({
   familiar,
   projectRoot,
   onSessionsChanged,
+  onBack,
   children,
 }: {
   session: SessionRow | null;
@@ -622,6 +636,7 @@ function MetaLine({
   familiar: Familiar;
   projectRoot?: string;
   onSessionsChanged?: () => void;
+  onBack?: () => void;
   children?: React.ReactNode;
 }) {
   const state = metaLineState({ busy, lifecycle, error, daemonRunning });
@@ -643,6 +658,7 @@ function MetaLine({
   return (
     <div className={`cave-chat-meta-line cave-chat-meta-line--${state}`} role="status" aria-live="polite" data-lifecycle={state}>
       {state !== "complete" ? <span className="cave-chat-meta-line__dot" aria-hidden /> : null}
+      {onBack ? <ChatBackButton onBack={onBack} /> : null}
       {session ? (
         <ChatTitleEditable
           session={session}
@@ -1633,19 +1649,9 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
   return (
     <section className="cave-chat-linear flex h-full flex-col bg-[var(--bg-base)] text-[var(--text-primary)]">
       <header className="cave-chat-linear-header">
-        {onBack && (
-          <button
-            type="button"
-            className="focus-ring mb-2 inline-flex h-7 w-fit items-center gap-1.5 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/50 px-2.5 text-[11px] font-medium text-[var(--text-secondary)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
-            aria-label="Back to chats"
-            onClick={onBack}
-          >
-            <Icon name="ph:arrow-left-bold" width={12} aria-hidden />
-            Back
-          </button>
-        )}
         <div className="cave-mobile-header-identity">
           <div className="cave-mobile-header-familiar">
+            {onBack ? <ChatBackButton onBack={onBack} /> : null}
             <FamiliarIcon familiar={familiar} size="sm" />
             <div className="min-w-0">
               <div className="truncate text-[13px] font-semibold leading-tight text-[var(--text-primary)]">{familiar.display_name}</div>
@@ -1687,6 +1693,7 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
           familiar={familiar}
           projectRoot={projectRoot}
           onSessionsChanged={onSessionsChanged}
+          onBack={onBack}
         >
           {sessionId && (
             <>

@@ -45,6 +45,18 @@ assert.match(
 
 assert.match(
   chatList,
+  /function chatDate\(iso: string\): string/,
+  "ChatList should expose an absolute chat date formatter for visible metadata",
+);
+
+assert.match(
+  chatList,
+  /\{chatDate\(s\.updated_at\)\}[\s\S]*\{age\(s\.updated_at\)\}/,
+  "Chat rows should show the absolute date next to the relative updated age",
+);
+
+assert.match(
+  chatList,
   /defaultFamiliarId/,
   "Project group launch should carry the latest familiar for that working directory",
 );
