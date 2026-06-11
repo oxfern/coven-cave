@@ -23,3 +23,11 @@ assert.doesNotMatch(
   /setView\(\{ kind: "list" \}\)/,
   "Changing familiars should not always bounce the user back to the chat list",
 );
+
+assert.match(
+  familiarChangeEffect,
+  /prev\.familiarId === nextFamiliarId[\s\S]*?\? prev/,
+  "A familiar change that matches the chat view's own familiarId (router-initiated open) must keep the view — not wipe the sessionId",
+);
+
+console.log("chat-router-switching.test.ts: ok");

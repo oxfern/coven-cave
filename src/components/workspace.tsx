@@ -1077,6 +1077,7 @@ export function Workspace() {
         familiars={familiars}
         activeFamiliarId={activeId}
         sessions={sessions}
+        onSetActiveFamiliar={setActiveId}
         onStartChat={(prompt, fid) => startAgentChat(fid, null, prompt)}
         onNavigateToBoard={() => setMode("board")}
         onNavigateToInbox={() => setMode("inbox")}

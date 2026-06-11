@@ -302,6 +302,57 @@ function scanFenceFilenames(markdown: string): Array<string | null> {
   return filenames;
 }
 
+// ---------------------------------------------------------------------------
+// Table cells: @create-markdown/preview emits header/row cells as escaped
+// plain text, so `**bold**`, `_em_`, `` `code` `` and [links] inside a table
+// show up literally. Re-render each cell through the inline (paragraph) path
+// and rebuild the table; mdToHtml substitutes these positionally for the
+// renderer's own <table> output.
+// ---------------------------------------------------------------------------
+
+type RenderAsyncFn = (blocks: Block[]) => Promise<string>;
+
+type TableBlock = {
+  type: "table";
+  props: {
+    headers?: string[];
+    rows?: string[][];
+    alignments?: Array<string | null>;
+  };
+};
+
+async function renderInlineMd(text: string, renderAsync: RenderAsyncFn): Promise<string> {
+  const trimmed = text.trim();
+  if (!trimmed) return "";
+  const html = (await renderAsync(parse(trimmed))).trim();
+  // Single paragraph (the normal cell shape) → unwrap to its inline HTML.
+  const para = /^<div class="cm-preview"><p[^>]*>([\s\S]*)<\/p><\/div>$/.exec(html);
+  if (para) return para[1];
+  // Anything else (cell parsed as heading/list/etc.) → keep block HTML, drop wrapper.
+  return html.replace(/^<div class="cm-preview">/, "").replace(/<\/div>$/, "");
+}
+
+async function renderTableBlock(block: TableBlock, renderAsync: RenderAsyncFn): Promise<string> {
+  const headers = block.props.headers ?? [];
+  const rows = block.props.rows ?? [];
+  const alignments = block.props.alignments ?? [];
+  const alignAttr = (i: number) =>
+    alignments[i] ? ` style="text-align: ${alignments[i]}"` : "";
+
+  const ths = await Promise.all(
+    headers.map(async (h, i) => `<th${alignAttr(i)}>${await renderInlineMd(h, renderAsync)}</th>`),
+  );
+  const trs = await Promise.all(
+    rows.map(async (row) => {
+      const tds = await Promise.all(
+        row.map(async (cell, i) => `<td${alignAttr(i)}>${await renderInlineMd(cell, renderAsync)}</td>`),
+      );
+      return `<tr>${tds.join("")}</tr>`;
+    }),
+  );
+  return `<table class="cm-table"><thead><tr>${ths.join("")}</tr></thead><tbody>${trs.join("")}</tbody></table>`;
+}
+
 async function mdToHtml(markdown: string): Promise<string> {
   if (renderCache.has(markdown)) return renderCache.get(markdown)!;
 
@@ -363,6 +414,28 @@ async function mdToHtml(markdown: string): Promise<string> {
   }
   html += proseHtml.slice(lastIdx);
 
+  // Same positional substitution for tables: the i-th rendered <table> in the
+  // prose corresponds to the i-th table block in parse order.
+  const tableBlocks = blocks.filter((b): b is Block & TableBlock => b.type === "table");
+  if (tableBlocks.length > 0) {
+    const tableReplacements = await Promise.all(
+      tableBlocks.map((block) => renderTableBlock(block, renderAsync)),
+    );
+    const tableRe = /<table[^>]*>[\s\S]*?<\/table>/g;
+    let tableHtml = "";
+    let tableLastIdx = 0;
+    let tableIdx = 0;
+    let tableMatch: RegExpExecArray | null;
+    while ((tableMatch = tableRe.exec(html)) !== null) {
+      tableHtml += html.slice(tableLastIdx, tableMatch.index);
+      tableHtml += tableReplacements[tableIdx] ?? tableMatch[0];
+      tableLastIdx = tableRe.lastIndex;
+      tableIdx += 1;
+    }
+    tableHtml += html.slice(tableLastIdx);
+    html = tableHtml;
+  }
+
   const sanitizedHtml = sanitizeHtml(html);
   renderCache.set(markdown, sanitizedHtml);
   return sanitizedHtml;
@@ -398,7 +471,6 @@ function wireCopyButtons(container: HTMLElement) {
 function MarkdownContent({ text, pending }: { text: string; pending?: boolean }) {
   const [html, setHtml] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const lastTextRef = useRef<string>("");
 
   useEffect(() => {
     if (pending) {
@@ -406,8 +478,12 @@ function MarkdownContent({ text, pending }: { text: string; pending?: boolean })
       setHtml(null);
       return;
     }
-    if (!text || text === lastTextRef.current) return;
-    lastTextRef.current = text;
+    // No "same text" guard here: the effect only re-fires when text/pending
+    // change, and a ref-based guard poisons itself under StrictMode's
+    // double-invoke (run 1 marks the text seen, then gets cancelled; run 2
+    // early-returns and the bubble is stuck on the plain-text fallback).
+    // mdToHtml memoizes per-text, so re-entry is cheap.
+    if (!text) return;
     let cancelled = false;
     mdToHtml(text)
       .then((h) => { if (!cancelled) setHtml(h); })

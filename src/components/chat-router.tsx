@@ -94,13 +94,19 @@ export const ChatRouter = forwardRef<ChatRouterHandle, Props>(function ChatRoute
       nextFamiliarId === null
         ? { kind: "list" }
         : prev.kind === "chat"
-          ? {
-              kind: "chat",
-              sessionId: null,
-              projectRoot: prev.projectRoot,
-              initialPrompt: prev.initialPrompt,
-              familiarId: nextFamiliarId,
-            }
+          ? prev.familiarId === nextFamiliarId
+            // The router itself activated this familiar while opening a
+            // session (openSession/onOpen/newChat) — keep the view, or the
+            // reset below would wipe the just-opened sessionId and land the
+            // user in an empty new chat instead of the transcript.
+            ? prev
+            : {
+                kind: "chat",
+                sessionId: null,
+                projectRoot: prev.projectRoot,
+                initialPrompt: prev.initialPrompt,
+                familiarId: nextFamiliarId,
+              }
         : { kind: "list" },
     );
   }, [familiar?.id]);

@@ -2,6 +2,8 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Icon } from "@/lib/icon";
+import { useUndoDelete } from "@/lib/use-undo-delete";
+import { LibraryUndoToast } from "@/components/library-undo-toast";
 import type { LibraryReadingItem, ReadingStatus } from "@/lib/library-types";
 import { useIsCoarsePointer } from "@/lib/use-viewport";
 
@@ -246,10 +248,21 @@ export function LibraryReadingList({ selectedId, onSelect, onDelete }: Props) {
     }
   }
 
-  async function handleDelete(id: string) {
-    await fetch(`/api/library/reading?id=${encodeURIComponent(id)}`, { method: "DELETE" });
-    setItems((prev) => prev.filter((i) => i.id !== id));
-    onDelete?.(id);
+  const { pending: undoPending, scheduleDelete, undo: undoDelete, commit: commitDelete } = useUndoDelete<LibraryReadingItem>();
+
+  function handleDelete(item: LibraryReadingItem) {
+    setItems((prev) => prev.filter((i) => i.id !== item.id));
+    scheduleDelete(
+      item,
+      item.title,
+      () => fetch(`/api/library/reading?id=${encodeURIComponent(item.id)}`, { method: "DELETE" }).then(() => {}),
+    );
+  }
+
+  function handleUndoDelete() {
+    if (!undoPending) return;
+    setItems((prev) => [undoPending.item, ...prev]);
+    undoDelete();
   }
 
   return (
@@ -404,7 +417,7 @@ export function LibraryReadingList({ selectedId, onSelect, onDelete }: Props) {
                           <span className="board-table-muted">—</span>
                         )}
                       </td>
-                      <td onClick={(e) => { e.stopPropagation(); void handleDelete(item.id); }}>
+                      <td onClick={(e) => { e.stopPropagation(); handleDelete(item); }}>
                         <span className="library-row-delete" title="Remove">
                           <Icon name="ph:x" width={11} />
                         </span>
@@ -417,6 +430,13 @@ export function LibraryReadingList({ selectedId, onSelect, onDelete }: Props) {
           </table>
         </div>
       )}
-    </div>
+          {undoPending && (
+        <LibraryUndoToast
+          label={undoPending.label}
+          onUndo={handleUndoDelete}
+          onDismiss={commitDelete}
+        />
+      )}
+</div>
   );
 }

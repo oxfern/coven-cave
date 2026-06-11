@@ -43,8 +43,20 @@ assert.doesNotMatch(
 
 assert.match(
   source,
-  /onStartChat\(prompt, fid\)/,
-  "HomeComposer should hand the chat prompt to the workspace, which opens a new chat that auto-sends it",
+  /onStartChat\(prompt, selectedFamiliarId\)/,
+  "HomeComposer should hand the selected agent chat prompt to the workspace, which opens a new chat that auto-sends it",
+);
+
+assert.match(
+  source,
+  /onSetActiveFamiliar: \(id: string\) => void/,
+  "HomeComposer should accept an active familiar setter for its home-screen agent selector",
+);
+
+assert.match(
+  source,
+  /aria-label="Choose chat agent"[\s\S]*value=\{selectedFamiliarId\}/,
+  "HomeComposer should include an agent selector when starting chat from home",
 );
 
 assert.doesNotMatch(

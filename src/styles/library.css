@@ -2051,3 +2051,92 @@ tr:hover .library-row-delete,
     display: none;
   }
 }
+
+/* ── Undo delete toast ──────────────────────────────────────────── */
+.library-undo-toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  min-width: 280px;
+  max-width: 420px;
+  border-radius: 8px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-elevated);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  animation: library-toast-enter 0.18s var(--ease-decelerate, ease-out);
+}
+@keyframes library-toast-enter {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+.library-undo-toast-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+}
+.library-undo-toast-icon {
+  color: var(--text-muted);
+  flex-shrink: 0;
+  font-size: 14px;
+}
+.library-undo-toast-label {
+  flex: 1;
+  font-size: 12px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.library-undo-toast-label strong {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+.library-undo-toast-undo {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-presence);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: background 0.1s;
+}
+.library-undo-toast-undo:hover {
+  background: color-mix(in oklch, var(--accent-presence) 15%, transparent);
+}
+.library-undo-toast-undo:focus-visible {
+  outline: var(--ring-width) solid var(--ring-focus);
+  outline-offset: 1px;
+}
+.library-undo-toast-dismiss {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  border-radius: 4px;
+  font-size: 10px;
+  transition: color 0.1s, background 0.1s;
+}
+.library-undo-toast-dismiss:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+.library-undo-toast-dismiss:focus-visible {
+  outline: var(--ring-width) solid var(--ring-focus);
+}
+.library-undo-toast-progress {
+  height: 2px;
+  background: var(--accent-presence);
+  transition: width 0.1s linear;
+}

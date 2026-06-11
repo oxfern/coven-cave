@@ -3,9 +3,8 @@
 /**
  * HomeComposer — universal intent surface; the Cave's cold-start view.
  *
- * Familiar is always the one currently selected in the avatar rail —
- * the rail is the single switcher for active focus, so this composer
- * never duplicates that control.
+ * Home can start chat directly, so it includes an agent selector next to the
+ * destination controls instead of requiring a detour through the sidebar.
  */
 
 import {
@@ -41,6 +40,7 @@ type Props = {
   familiars: Familiar[];
   activeFamiliarId: string | null;
   sessions: SessionRow[];
+  onSetActiveFamiliar: (id: string) => void;
   /** Open a new chat that sends `prompt` through ChatView's streaming path.
    *  Home never talks to the chat API itself — a fire-and-cancel send here
    *  aborts the request, which kills the harness before the transcript saves. */
@@ -65,6 +65,7 @@ export function HomeComposer({
   familiars,
   activeFamiliarId,
   sessions,
+  onSetActiveFamiliar,
   onStartChat,
   onNavigateToBoard,
   onNavigateToInbox,
@@ -80,6 +81,7 @@ export function HomeComposer({
   const [historyIdx, setHistoryIdx] = useState<number>(-1);
   const [slashIdx, setSlashIdx] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const selectedFamiliarId = activeFamiliarId ?? familiars[0]?.id ?? "";
 
   // Mirror the chat composer's matching rule: surface only while the user is
   // still typing the command token (no whitespace yet).
@@ -227,14 +229,13 @@ export function HomeComposer({
     try {
       switch (destination) {
         case "chat": {
-          const fid = activeFamiliarId ?? familiars[0]?.id;
-          if (!fid) { onToast("No familiar selected — add one in Settings."); break; }
+          if (!selectedFamiliarId) { onToast("No familiar selected — add one in Settings."); break; }
           // Hand the prompt to ChatView, which owns the streaming send. Doing
           // the send here and canceling on the session event aborts the
           // request server-side — the harness is killed mid-run and the
           // transcript never saves, so the opened chat 404s.
           setText("");
-          onStartChat(prompt, fid);
+          onStartChat(prompt, selectedFamiliarId);
           break;
         }
         case "board": {
@@ -264,7 +265,7 @@ export function HomeComposer({
       setSending(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [text, destination, activeFamiliarId, familiars, sending, onSlash, onStartChat]);
+  }, [text, destination, activeFamiliarId, selectedFamiliarId, sending, onSlash, onStartChat]);
 
   return (
     <div className="home-composer-root">
@@ -331,6 +332,29 @@ export function HomeComposer({
 
         {/* Action bar */}
         <div className="hc-action-bar">
+          <label className="hc-familiar-selector">
+            <Icon name="ph:sparkle" width={13} className="hc-familiar-glyph" aria-hidden />
+            <select
+              aria-label="Choose chat agent"
+              className="hc-familiar-select"
+              value={selectedFamiliarId}
+              onChange={(e) => {
+                if (e.currentTarget.value) onSetActiveFamiliar(e.currentTarget.value);
+              }}
+              disabled={familiars.length === 0 || sending}
+            >
+              {familiars.length === 0 ? (
+                <option value="">No agents</option>
+              ) : (
+                familiars.map((familiar) => (
+                  <option key={familiar.id} value={familiar.id}>
+                    {familiar.display_name}
+                  </option>
+                ))
+              )}
+            </select>
+            <Icon name="ph:caret-up-down-bold" width={10} className="hc-select-caret" aria-hidden />
+          </label>
 
           {/* Destination pills */}
           <div className="hc-dest-pills">

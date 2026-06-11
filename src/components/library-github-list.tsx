@@ -3,6 +3,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@/lib/icon";
+import { useUndoDelete } from "@/lib/use-undo-delete";
+import { LibraryUndoToast } from "@/components/library-undo-toast";
 import type { CardGitHubLink, CardStatus } from "@/lib/cave-board-types";
 import type { LibraryGitHubItem, GitHubItemKind } from "@/lib/library-types";
 import {
@@ -627,10 +629,21 @@ export function LibraryGitHubList({ selectedId, onSelect, onDelete }: Props) {
     if (json.ok) setItems((prev) => [json.item, ...prev]);
   }
 
-  async function handleDelete(id: string) {
-    await fetch(`/api/library/github?id=${encodeURIComponent(id)}`, { method: "DELETE" });
-    setItems((prev) => prev.filter((i) => i.id !== id));
-    onDelete?.(id);
+  const { pending: undoPending, scheduleDelete, undo: undoDelete, commit: commitDelete } = useUndoDelete<LibraryGitHubItem>();
+
+  function handleDelete(item: LibraryGitHubItem) {
+    setItems((prev) => prev.filter((i) => i.id !== item.id));
+    scheduleDelete(
+      item,
+      item.title || item.repo,
+      () => fetch(`/api/library/github?id=${encodeURIComponent(item.id)}`, { method: "DELETE" }).then(() => {}),
+    );
+  }
+
+  function handleUndoDelete() {
+    if (!undoPending) return;
+    setItems((prev) => [undoPending.item, ...prev]);
+    undoDelete();
   }
 
   return (
@@ -773,7 +786,7 @@ export function LibraryGitHubList({ selectedId, onSelect, onDelete }: Props) {
                               )}
                             </div>
                           </td>
-                          <td onClick={(e) => { e.stopPropagation(); void handleDelete(item.id); }}>
+                          <td onClick={(e) => { e.stopPropagation(); handleDelete(item); }}>
                             <span className="library-row-delete" title="Remove">
                               <Icon name="ph:x" width={11} />
                             </span>
@@ -822,6 +835,13 @@ export function LibraryGitHubList({ selectedId, onSelect, onDelete }: Props) {
           onLaunched={() => { /* could open chat pane here */ }}
         />
       )}
-    </div>
+          {undoPending && (
+        <LibraryUndoToast
+          label={undoPending.label}
+          onUndo={handleUndoDelete}
+          onDismiss={commitDelete}
+        />
+      )}
+</div>
   );
 }
