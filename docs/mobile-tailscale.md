@@ -17,15 +17,44 @@ This runs CovenCave's browser surface on your development machine and exposes it
 pnpm mobile:tailscale
 ```
 
-Open the HTTPS URL printed by:
+The script starts Cave on loopback, publishes it through Tailscale Serve, creates a signed invite, stores it in a private local state directory, and copies the invite URL to the Mac clipboard. The raw invite URL is not printed by default so chat logs and terminal captures do not accidentally leak the Tailscale hostname or token.
+
+Default state lives under:
 
 ```bash
-pnpm mobile:tailscale
+${XDG_STATE_HOME:-~/.local/state}/coven-cave/mobile-tailscale-3000/
 ```
 
-The script starts Cave on loopback, publishes it through Tailscale Serve, then prints a ready-to-open invite URL containing a signed `coven_access_token`. The app stores the invite in an HTTP-only cookie after the first successful request and removes it from the visible URL.
+Useful commands:
+
+```bash
+pnpm mobile:tailscale          # start the persistent loopback server and create an invite
+pnpm mobile:tailscale:invite   # create a fresh invite for the running server
+pnpm mobile:tailscale:status   # show process/state info with host/token redacted
+pnpm mobile:tailscale:stop     # stop the dev server and reset Tailscale Serve
+```
+
+Set `PRINT_URL=1` only when you intentionally want the raw invite printed in a trusted local terminal:
+
+```bash
+PRINT_URL=1 pnpm mobile:tailscale:invite
+```
+
+The app stores the invite in an HTTP-only cookie after the first successful request and removes it from the visible URL.
 
 In the packaged desktop app, click **Open on phone** in the top bar to create the same kind of invite as a QR code. Scan it from a phone signed into the same tailnet.
+
+## Remote Agent Handoff
+
+When asking an agent to run the mobile version remotely, the safest repeatable flow is:
+
+```bash
+pnpm mobile:tailscale:status
+pnpm mobile:tailscale
+pnpm mobile:tailscale:invite
+```
+
+The agent should verify that the invite redirects, stores the cookie, and loads the app shell before reporting success. It should not paste the raw invite into chat by default. If a fresh invite expires while you are away from the laptop, ask the agent to run `pnpm mobile:tailscale:invite`; the command refreshes the invite without restarting the dev server.
 
 Do not open the Serve URL without the invite query. When `COVEN_CAVE_ACCESS_TOKEN` is set, CovenCave rejects requests until a valid invite is supplied by query, cookie, bearer header, or the equivalent internal request path.
 
@@ -66,8 +95,7 @@ Do not run CovenCave with `-H 0.0.0.0` for mobile access. Binding to all interfa
 ## Stop
 
 ```bash
-tailscale serve reset
-pkill -f "next dev.*3000" || true
+pnpm mobile:tailscale:stop
 ```
 
 ## Troubleshooting
@@ -76,7 +104,7 @@ If the phone cannot open the URL:
 
 ```bash
 tailscale status --self
-tailscale serve status
+pnpm mobile:tailscale:status
 curl -I http://127.0.0.1:3000
 ```
 

@@ -3,10 +3,22 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+COMMAND="${1:-start}"
 PORT="${PORT:-3000}"
 HOST="${HOST:-127.0.0.1}"
 TAILSCALE_TIMEOUT_MS="${TAILSCALE_TIMEOUT_MS:-8000}"
-ACCESS_TOKEN="${COVEN_CAVE_ACCESS_TOKEN:-}"
+PRINT_URL="${PRINT_URL:-0}"
+COPY_INVITE="${COPY_INVITE:-1}"
+USE_TMUX="${USE_TMUX:-1}"
+
+STATE_ROOT="${COVEN_CAVE_MOBILE_STATE_ROOT:-${XDG_STATE_HOME:-$HOME/.local/state}/coven-cave}"
+STATE_DIR="${COVEN_CAVE_MOBILE_STATE_DIR:-$STATE_ROOT/mobile-tailscale-${PORT}}"
+TOKEN_FILE="$STATE_DIR/access-token"
+PID_FILE="$STATE_DIR/next.pid"
+INVITE_FILE="$STATE_DIR/invite.url"
+EXPIRES_FILE="$STATE_DIR/invite.expires"
+LOG_FILE="${COVEN_CAVE_MOBILE_LOG:-$STATE_DIR/next.log}"
+TMUX_SESSION="${COVEN_CAVE_MOBILE_TMUX_SESSION:-coven-cave-mobile-${PORT}}"
 
 case "$HOST" in
   127.0.0.1|localhost|::1) ;;
@@ -21,6 +33,11 @@ need() {
     echo "missing required command: $1" >&2
     exit 1
   }
+}
+
+ensure_state_dir() {
+  mkdir -p "$STATE_DIR"
+  chmod 700 "$STATE_DIR"
 }
 
 port_is_listening() {
@@ -58,55 +75,109 @@ process.exit(res.status ?? 1);
 NODE
 }
 
-need pnpm
-need node
-need tailscale
+masked_serve_status() {
+  tailscale_cmd serve status 2>/dev/null |
+    sed -E 's#https://[^ ]+#https://[tailscale-host-redacted]#g; s#coven_access_token=[^[:space:]&]+#coven_access_token=[redacted]#g' ||
+    true
+}
 
-if [ -z "$ACCESS_TOKEN" ]; then
-  ACCESS_TOKEN="$(node -e "console.log(require(\"node:crypto\").randomBytes(32).toString(\"base64url\"))")"
-fi
+load_or_create_token() {
+  ensure_state_dir
 
-if ! tailscale_cmd status --self >/dev/null 2>&1; then
-  echo "tailscale is not connected or did not respond. Run: tailscale up" >&2
-  exit 1
-fi
+  if [ -n "${COVEN_CAVE_ACCESS_TOKEN:-}" ]; then
+    printf '%s' "$COVEN_CAVE_ACCESS_TOKEN" >"$TOKEN_FILE"
+  elif [ ! -s "$TOKEN_FILE" ]; then
+    node -e "console.log(require(\"node:crypto\").randomBytes(32).toString(\"base64url\"))" >"$TOKEN_FILE"
+  fi
 
-if port_is_listening >/dev/null 2>&1; then
-  echo "Refusing to publish an already-running server on ${HOST}:${PORT}." >&2
-  echo "Stop it first so this script can start CovenCave with COVEN_CAVE_ACCESS_TOKEN set." >&2
-  exit 1
-else
-  echo "Starting Next server on ${HOST}:${PORT}"
-  COVEN_CAVE_ACCESS_TOKEN="$ACCESS_TOKEN" pnpm exec next dev -H "$HOST" -p "$PORT" >"/tmp/coven-cave-mobile-${PORT}.log" 2>&1 &
-  NEXT_PID="$!"
-  for _ in $(seq 1 40); do
+  chmod 600 "$TOKEN_FILE"
+  ACCESS_TOKEN="$(cat "$TOKEN_FILE")"
+  export ACCESS_TOKEN
+}
+
+ensure_tailscale() {
+  need node
+  need tailscale
+  if ! tailscale_cmd status --self >/dev/null 2>&1; then
+    echo "tailscale is not connected or did not respond. Run: tailscale up" >&2
+    exit 1
+  fi
+}
+
+wait_for_server() {
+  for _ in $(seq 1 80); do
     if port_is_listening >/dev/null 2>&1; then
-      break
+      return 0
     fi
     sleep 0.25
   done
-  if ! port_is_listening >/dev/null 2>&1; then
-    echo "Next server did not start. See /tmp/coven-cave-mobile-${PORT}.log" >&2
-    kill "$NEXT_PID" >/dev/null 2>&1 || true
+  return 1
+}
+
+start_with_tmux() {
+  need tmux
+  if tmux has-session -t "$TMUX_SESSION" 2>/dev/null; then
+    tmux kill-session -t "$TMUX_SESSION"
+  fi
+
+  tmux new-session -d -s "$TMUX_SESSION" -c "$PWD" \
+    "bash -lc 'COVEN_CAVE_ACCESS_TOKEN=\"\$(cat \"$TOKEN_FILE\")\" exec pnpm exec next dev -H \"$HOST\" -p \"$PORT\" >>\"$LOG_FILE\" 2>&1'"
+  tmux display-message -p -t "$TMUX_SESSION" '#{pane_pid}' >"$PID_FILE"
+}
+
+start_with_nohup() {
+  nohup env COVEN_CAVE_ACCESS_TOKEN="$ACCESS_TOKEN" pnpm exec next dev -H "$HOST" -p "$PORT" >"$LOG_FILE" 2>&1 </dev/null &
+  echo "$!" >"$PID_FILE"
+}
+
+start_next_server() {
+  need pnpm
+  need node
+
+  if port_is_listening >/dev/null 2>&1; then
+    ensure_state_dir
+    if [ -n "${COVEN_CAVE_ACCESS_TOKEN:-}" ] || [ -s "$TOKEN_FILE" ]; then
+      load_or_create_token
+      echo "CovenCave mobile server is already listening on ${HOST}:${PORT}."
+      return 0
+    fi
+    echo "Refusing to publish an already-running server on ${HOST}:${PORT} without a stored mobile token." >&2
     exit 1
   fi
-  sleep 0.25
-fi
-if ! port_is_listening >/dev/null 2>&1; then
-  echo "Next server did not start. See /tmp/coven-cave-mobile-${PORT}.log" >&2
-  kill "$NEXT_PID" >/dev/null 2>&1 || true
-  exit 1
-fi
 
-TAILSCALE_BACKEND="$(backend_url)"
-tailscale_cmd serve --bg "$TAILSCALE_BACKEND"
+  load_or_create_token
+  : >"$LOG_FILE"
+  echo "Starting Next server on ${HOST}:${PORT}"
+  if [ "$USE_TMUX" = "1" ] && command -v tmux >/dev/null 2>&1; then
+    start_with_tmux
+    echo "Server is running in tmux session: ${TMUX_SESSION}"
+  else
+    start_with_nohup
+    echo "Server is running as background pid: $(cat "$PID_FILE")"
+  fi
 
-echo
-echo "CovenCave mobile is available inside your tailnet."
-echo "Creating a short-lived mobile invite URL..."
-node - "$HOST" "$PORT" "$ACCESS_TOKEN" <<'NODE'
+  if ! wait_for_server; then
+    echo "Next server did not start. See ${LOG_FILE}" >&2
+    tail -80 "$LOG_FILE" >&2 || true
+    exit 1
+  fi
+}
+
+create_invite() {
+  need node
+  load_or_create_token
+  ensure_tailscale
+
+  if ! port_is_listening >/dev/null 2>&1; then
+    echo "CovenCave mobile server is not listening on ${HOST}:${PORT}. Run: pnpm mobile:tailscale" >&2
+    exit 1
+  fi
+
+  node - "$HOST" "$PORT" "$ACCESS_TOKEN" "$INVITE_FILE" "$EXPIRES_FILE" <<'NODE'
+const fs = require("node:fs");
+
 (async () => {
-  const [host, port, accessToken] = process.argv.slice(2);
+  const [host, port, accessToken, invitePath, expiresPath] = process.argv.slice(2);
   const base = host === "::1"
     ? `http://[::1]:${port}`
     : `http://${host}:${port}`;
@@ -124,16 +195,106 @@ node - "$HOST" "$PORT" "$ACCESS_TOKEN" <<'NODE'
     console.error(json.stderr || json.error || "failed to create mobile invite");
     process.exit(1);
   }
-  console.log("Open this URL on your phone:");
-  console.log(`  ${json.url}`);
-  console.log(`Expires: ${json.expiresAtIso}`);
-  console.log("The invite is stored as an HTTP-only cookie after the first successful request.");
+  fs.writeFileSync(invitePath, `${json.url}\n`, { mode: 0o600 });
+  fs.writeFileSync(expiresPath, `${json.expiresAtIso}\n`, { mode: 0o600 });
 })().catch((err) => {
   console.error(err instanceof Error ? err.message : String(err));
   process.exit(1);
 });
 NODE
-echo "Run this to see the base Serve URL:"
-echo "  tailscale serve status --json"
-echo
-tailscale_cmd serve status || true
+
+  chmod 600 "$INVITE_FILE" "$EXPIRES_FILE"
+}
+
+copy_invite_to_clipboard() {
+  if [ "$COPY_INVITE" != "1" ]; then
+    return 0
+  fi
+
+  if command -v pbcopy >/dev/null 2>&1; then
+    pbcopy <"$INVITE_FILE"
+    echo "Invite URL copied to the Mac clipboard."
+  else
+    echo "Clipboard copy skipped: pbcopy is unavailable."
+  fi
+}
+
+print_invite_summary() {
+  echo "Invite stored at: ${INVITE_FILE}"
+  if [ -s "$EXPIRES_FILE" ]; then
+    echo "Invite expires: $(cat "$EXPIRES_FILE")"
+  fi
+
+  if [ "$PRINT_URL" = "1" ]; then
+    cat "$INVITE_FILE"
+  else
+    echo "Raw invite URL suppressed. Set PRINT_URL=1 to print it, or read ${INVITE_FILE} locally."
+  fi
+}
+
+start_command() {
+  ensure_tailscale
+  start_next_server
+  create_invite
+  copy_invite_to_clipboard
+  print_invite_summary
+  echo
+  masked_serve_status
+}
+
+invite_command() {
+  create_invite
+  copy_invite_to_clipboard
+  print_invite_summary
+}
+
+status_command() {
+  ensure_state_dir
+  if port_is_listening >/dev/null 2>&1; then
+    echo "CovenCave mobile server: running on ${HOST}:${PORT}"
+  else
+    echo "CovenCave mobile server: not listening on ${HOST}:${PORT}"
+  fi
+  echo "State directory: ${STATE_DIR}"
+  echo "Log file: ${LOG_FILE}"
+  if [ -s "$PID_FILE" ]; then
+    echo "Recorded pid: $(cat "$PID_FILE")"
+  fi
+  if [ -s "$EXPIRES_FILE" ]; then
+    echo "Last invite expires: $(cat "$EXPIRES_FILE")"
+  fi
+  masked_serve_status
+}
+
+stop_command() {
+  if command -v tmux >/dev/null 2>&1 && tmux has-session -t "$TMUX_SESSION" 2>/dev/null; then
+    tmux kill-session -t "$TMUX_SESSION"
+    echo "Stopped tmux session: ${TMUX_SESSION}"
+  fi
+
+  if [ -s "$PID_FILE" ]; then
+    pid="$(cat "$PID_FILE")"
+    if kill -0 "$pid" >/dev/null 2>&1; then
+      kill "$pid" >/dev/null 2>&1 || true
+      echo "Stopped pid: ${pid}"
+    fi
+  fi
+
+  if command -v tailscale >/dev/null 2>&1; then
+    tailscale_cmd serve reset >/dev/null 2>&1 || true
+  fi
+  rm -f "$PID_FILE" "$INVITE_FILE" "$EXPIRES_FILE"
+  echo "CovenCave mobile Tailscale state stopped."
+}
+
+case "$COMMAND" in
+  start) start_command ;;
+  invite) invite_command ;;
+  status) status_command ;;
+  stop) stop_command ;;
+  *)
+    echo "Usage: pnpm mobile:tailscale[:invite|:status|:stop]" >&2
+    echo "       bash scripts/mobile-tailscale.sh {start|invite|status|stop}" >&2
+    exit 2
+    ;;
+esac

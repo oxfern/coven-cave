@@ -118,7 +118,7 @@ For private phone testing on the same tailnet, start Cave with a one-time access
 pnpm mobile:tailscale
 ```
 
-Open the HTTPS URL from `tailscale serve status` with the `?coven_access_token=...` query parameter printed by the script. Do not bind the dev server to `0.0.0.0`; Cave's local APIs can drive your workspace and should not be exposed without the access token. See `docs/mobile-tailscale.md`.
+The script keeps the loopback dev server alive after the wrapper exits, stores the short-lived invite in a private local state directory, and copies the invite URL to the Mac clipboard without printing the raw token by default. Regenerate an invite for an already-running server with `pnpm mobile:tailscale:invite`, check it with `pnpm mobile:tailscale:status`, and stop it with `pnpm mobile:tailscale:stop`. Do not bind the dev server to `0.0.0.0`; Cave's local APIs can drive your workspace and should not be exposed without the access token. See `docs/mobile-tailscale.md`.
 
 ### Pre-commit hook
 
