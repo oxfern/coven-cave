@@ -12,6 +12,8 @@ export type LocalConversationSummary = {
   sessionId: string;
   familiarId: string;
   harness?: string;
+  model?: string;
+  runtime?: string;
   title?: string;
   createdAt?: string;
   updatedAt: string;
@@ -35,6 +37,8 @@ function localConversationToSession(
     id: conv.sessionId,
     project_root: "",
     harness: conv.harness ?? "chat",
+    ...(conv.model ? { model: conv.model } : {}),
+    ...(conv.runtime ? { runtime: conv.runtime } : {}),
     title,
     status: "completed",
     exit_code: 0,

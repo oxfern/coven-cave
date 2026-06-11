@@ -35,11 +35,29 @@ function sortItems(items: LibraryBookmark[], key: SortKey, dir: SortDir): Librar
   });
 }
 
+function bookmarkTags(item: LibraryBookmark): string[] {
+  return Array.isArray(item.tags)
+    ? item.tags
+      .filter((tag): tag is string => typeof tag === "string")
+      .map((tag) => tag.trim())
+      .filter(Boolean)
+    : [];
+}
+
+function displayDomain(item: LibraryBookmark): string {
+  const domain = item.domain?.trim();
+  if (domain) return domain;
+  try { return new URL(item.url).hostname.replace(/^www\./, ""); }
+  catch { return "(unknown)"; }
+}
+
 function groupItems(items: LibraryBookmark[], by: GroupBy): { key: string; label: string; items: LibraryBookmark[] }[] {
   if (by === "none") return [{ key: "all", label: "", items }];
   const map = new Map<string, LibraryBookmark[]>();
   for (const item of items) {
-    const keys = by === "domain" ? [item.domain] : (item.tags.length > 0 ? item.tags : ["(untagged)"]);
+    const tags = bookmarkTags(item);
+    const domain = displayDomain(item);
+    const keys = by === "domain" ? [domain] : (tags.length > 0 ? tags : ["(untagged)"]);
     for (const k of keys) {
       if (!map.has(k)) map.set(k, []);
       map.get(k)!.push(item);
@@ -53,9 +71,10 @@ function groupItems(items: LibraryBookmark[], by: GroupBy): { key: string; label
 function filterItems(items: LibraryBookmark[], query: string): LibraryBookmark[] {
   const q = query.trim().toLowerCase();
   if (!q) return items;
-  return items.filter((item) =>
-    `${item.title} ${item.domain} ${item.tags.join(" ")}`.toLowerCase().includes(q),
-  );
+  return items.filter((item) => {
+    const tags = bookmarkTags(item);
+    return `${item.title ?? ""} ${displayDomain(item)} ${tags.join(" ")}`.toLowerCase().includes(q);
+  });
 }
 
 

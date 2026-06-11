@@ -653,16 +653,15 @@
   flex: 1;
   min-width: 0;
   display: flex;
-  justify-content: center;
   overflow: hidden;
   background: var(--bg-base);
 }
 
 .library-browse-content {
-  width: min(920px, 100%);
+  width: 100%;
   min-width: 0;
   height: 100%;
-  border-inline: 1px solid var(--border-hairline);
+  border-inline: 0;
   background: var(--bg-base);
   overflow: hidden;
 }

@@ -5,12 +5,17 @@ import { readFile } from "node:fs/promises";
 const bookmarks = await readFile(new URL("./library-bookmarks-list.tsx", import.meta.url), "utf8");
 const reading   = await readFile(new URL("./library-reading-list.tsx",   import.meta.url), "utf8");
 const github    = await readFile(new URL("./library-github-list.tsx",    import.meta.url), "utf8");
+const bookmarksRoute = await readFile(new URL("../app/api/library/bookmarks/route.ts", import.meta.url), "utf8");
 
 // ───────── Task 1: localeCompare null-guards ─────────
 // bookmarks — title, domain, savedAt
 assert.match(bookmarks, /\(a\.title \?\? ""\)\.localeCompare\(b\.title \?\? ""\)/,    "bookmarks title null-guard");
 assert.match(bookmarks, /\(a\.domain \?\? ""\)\.localeCompare\(b\.domain \?\? ""\)/,  "bookmarks domain null-guard");
 assert.match(bookmarks, /\(a\.savedAt \?\? ""\)\.localeCompare\(b\.savedAt \?\? ""\)/,"bookmarks savedAt null-guard");
+assert.match(bookmarks, /function bookmarkTags\(item: LibraryBookmark\): string\[\]/, "bookmarks normalize tag arrays before grouping/searching");
+assert.match(bookmarks, /const domain = displayDomain\(item\);[\s\S]{0,120}const keys = by === "domain" \? \[domain\] : \(tags\.length > 0 \? tags : \["\(untagged\)"\]\);/, "bookmarks group by a display-safe domain");
+assert.match(bookmarksRoute, /function normalizeBookmark\(item: Partial<LibraryBookmark>\): LibraryBookmark/, "bookmarks API normalizes legacy bookmark records");
+assert.match(bookmarksRoute, /const domain = cleanString\(item\.domain\) \|\| \(url \? domainFrom\(url\) : "\(unknown\)"\);/, "bookmarks API backfills missing domains");
 
 // reading — title, addedAt, label
 assert.match(reading, /\(a\.title \?\? ""\)\.localeCompare\(b\.title \?\? ""\)/,     "reading title null-guard");
@@ -119,4 +124,14 @@ assert.match(
   libraryCss,
   /\.library-browse-canvas\s*\{[\s\S]*?flex:\s*1;[\s\S]*?overflow:\s*hidden;/,
   "Center browse canvas should own the available library width without overflowing",
+);
+assert.match(
+  libraryCss,
+  /\.library-browse-content\s*\{[\s\S]*?width:\s*100%;[\s\S]*?border-inline:\s*0;/,
+  "Browse list content should fill the full center pane instead of being capped to a narrow column",
+);
+assert.doesNotMatch(
+  libraryCss,
+  /\.library-browse-content\s*\{[\s\S]*?width:\s*min\(920px,\s*100%\)/,
+  "Browse list content should not be constrained to the old centered 920px column",
 );

@@ -1140,6 +1140,10 @@ export function Workspace() {
         familiars={familiars}
         sessions={sessions}
         activeFamiliarId={activeId}
+        onOpenUrl={(url) => {
+          setMode("browser");
+          requestAnimationFrame(() => browserPaneRef.current?.navigateTo(url));
+        }}
         onJumpToSession={(sessionId, familiarId) => {
           openAgentSession(sessionId, familiarId);
         }}

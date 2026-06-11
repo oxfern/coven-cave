@@ -53,6 +53,7 @@ import {
   parseStreamJsonUsage,
   type TurnUsage,
 } from "@/lib/usage-format";
+import type { ChatResponseMetadata } from "@/lib/chat-response-metadata";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -91,6 +92,7 @@ type StreamEvent =
       sessionId?: string;
       usage?: TurnUsage;
       costUsd?: number;
+      responseMetadata?: ChatResponseMetadata;
     }
   | { kind: "error"; message: string; code?: string };
 
@@ -444,6 +446,7 @@ function openClawChatResponse(args: {
   promptText: string;
   harnessPrompt: string;
   attachments: ChatAttachment[];
+  model: string;
 }): Response {
   const stream = new ReadableStream<Uint8Array>({
     start: async (controller) => {
@@ -482,6 +485,12 @@ function openClawChatResponse(args: {
       pushProgress("openclaw-resolve", "OpenClaw agent resolved", "done", agentId);
       const argv = openClawAgentArgs(args.body, args.harnessPrompt, agentId);
       const cwd = await resolveCwd(args.body.projectRoot);
+      const responseMetadata: ChatResponseMetadata = {
+        familiarId: args.body.familiarId,
+        harness: "openclaw",
+        model: args.model,
+        runtime: `local:${cwd}`,
+      };
       pushProgress("openclaw-start", "Starting OpenClaw bridge", "running", cwd);
       const child = spawn("openclaw", argv, {
         cwd,
@@ -519,6 +528,7 @@ function openClawChatResponse(args: {
           kind: "done",
           durationMs: Date.now() - startedAt,
           isError: true,
+          responseMetadata,
         });
         args.req.signal.removeEventListener("abort", onAbort);
         close();
@@ -587,11 +597,15 @@ function openClawChatResponse(args: {
             sessionId,
             familiarId: args.body.familiarId,
             harness: "openclaw",
+            model: responseMetadata.model,
+            runtime: responseMetadata.runtime,
             title: chatTitle,
             createdAt: now,
             updatedAt: now,
             turns: [],
           };
+          conv.model = responseMetadata.model;
+          conv.runtime = responseMetadata.runtime;
           conv.turns.push(
             {
               id: userTurnId,
@@ -607,6 +621,7 @@ function openClawChatResponse(args: {
               createdAt: new Date().toISOString(),
               durationMs,
               isError,
+              responseMetadata,
               ...(cancelledByUser ? { cancelled: true } : {}),
             },
           );
@@ -633,6 +648,7 @@ function openClawChatResponse(args: {
           durationMs,
           isError,
           sessionId: sessionId ?? undefined,
+          responseMetadata,
         });
         await sleep(20);
         close();
@@ -753,6 +769,7 @@ export async function POST(req: Request) {
       promptText,
       harnessPrompt,
       attachments: persistedAttachments,
+      model: binding.model,
     });
   }
 
@@ -767,6 +784,14 @@ export async function POST(req: Request) {
   const familiarWorkspace = !sshRuntime && !body.projectRoot
     ? await resolveFamiliarWorkspace(body.familiarId)
     : undefined;
+  const responseMetadata: ChatResponseMetadata = {
+    familiarId: body.familiarId,
+    harness: binding.harness,
+    model: binding.model,
+    runtime: sshRuntime
+      ? `ssh:${sshRuntime.host}:${sshRuntime.cwd}`
+      : `local:${familiarWorkspace ?? cwd}`,
+  };
 
   // Build coven run argv.
   // Important: pass every flag BEFORE the prompt and add a `--` separator,
@@ -1178,16 +1203,21 @@ export async function POST(req: Request) {
           ...(cancelledByUser ? { cancelled: true } : {}),
           ...(result.usage ? { usage: result.usage } : {}),
           ...(result.costUsd !== undefined ? { costUsd: result.costUsd } : {}),
+          responseMetadata,
         };
         const conv = existing ?? {
           sessionId: finalSessionId,
           familiarId: body.familiarId,
           harness: binding.harness,
+          model: responseMetadata.model,
+          runtime: responseMetadata.runtime,
           title: chatTitle,
           createdAt: now,
           updatedAt: now,
           turns: [],
         };
+        conv.model = responseMetadata.model;
+        conv.runtime = responseMetadata.runtime;
         conv.turns.push(userTurn, assistantTurn);
         await saveConversation(conv);
         pushProgress("save-transcript", "Transcript saved", "done");
@@ -1218,6 +1248,7 @@ export async function POST(req: Request) {
         sessionId: finalSessionId ?? undefined,
         ...(result.usage ? { usage: result.usage } : {}),
         ...(result.costUsd !== undefined ? { costUsd: result.costUsd } : {}),
+        responseMetadata,
       });
       // Best-effort temp cleanup: the harness child process has already
       // exited (including any resume retry), so nothing can still be reading

@@ -53,4 +53,17 @@ assert.match(
   "selecting the create-task row dispatches the create-task intent",
 );
 
+// A leading "/task" slash command is stripped from the created card's title.
+const stripMatch = source.match(/trimmedTitle = .*\.replace\((\/.*?\/[a-z]*),/);
+assert.ok(stripMatch, "create-task title strips a leading /task prefix via replace()");
+{
+  const re = new Function(`return ${stripMatch[1]}`)();
+  const strip = (s) => s.trim().replace(re, "").trim();
+  assert.equal(strip("/task fix login"), "fix login", "strips '/task ' prefix");
+  assert.equal(strip("/TASK fix login"), "fix login", "strip is case-insensitive");
+  assert.equal(strip("/task"), "", "bare '/task' yields empty title (no create row)");
+  assert.equal(strip("fix /task login"), "fix /task login", "mid-string '/task' untouched");
+  assert.equal(strip("/taskforce roster"), "/taskforce roster", "'/taskforce' is not stripped");
+}
+
 console.log("command-palette.test.ts OK");

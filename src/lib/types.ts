@@ -40,6 +40,8 @@ export type SessionRow = {
   id: string;
   project_root: string;
   harness: string;
+  model?: string | null;
+  runtime?: string | null;
   title: string;
   status: string;
   exit_code: number | null;

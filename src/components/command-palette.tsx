@@ -305,7 +305,9 @@ export function CommandPalette({
       });
     }
 
-    const trimmedTitle = query.trim();
+    // Strip a leading "/task" so the slash command never leaks into the
+    // created card's title (e.g. "/task fix login" → "fix login").
+    const trimmedTitle = query.trim().replace(/^\/task(\s+|$)/i, "").trim();
     const createRows: Row[] = trimmedTitle
       ? [{ id: "create-task", kind: "create-task", title: trimmedTitle }]
       : [];

@@ -1,6 +1,6 @@
 // @ts-nocheck
-// New chats can specify a working directory, and task chats run in the CWD
-// tied to the task — prompting (optionally) for one when the card has none.
+// Chats can specify or update a working directory, and task chats run in the
+// CWD tied to the task — prompting (optionally) for one when the card has none.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
@@ -11,27 +11,52 @@ const taskChatRoute = readFileSync(
   "utf8",
 );
 
-// ── New chat: user-specified CWD ─────────────────────────────────────────────
+// ── Chat: user-specified CWD ─────────────────────────────────────────────────
 
 assert.match(
   chatView,
+  /const \[cwdRootDraft, setCwdRootDraft\] = useState\(session\?\.project_root \?\? projectRoot \?\? ""\)/,
+  "ChatView seeds the editable ROOT from the opened session or pending project root",
+);
+assert.match(
+  chatView,
   /const \[cwdDraft, setCwdDraft\] = useState\(""\)/,
-  "ChatView keeps a CWD draft for not-yet-started chats",
+  "ChatView keeps the CWD override separate so relative paths can resolve under ROOT",
 );
 assert.match(
   chatView,
-  /projectRoot: cwdDraft\.trim\(\) \|\| projectRoot/,
-  "First send prefers the user-typed CWD over the pre-wired projectRoot",
+  /resolveRootedCwd\(cwdDraft, cwdRootDraft, projectRoot\)/,
+  "ChatView resolves relative CWD values against the editable ROOT before sending",
 );
 assert.match(
   chatView,
-  /onCwdChange=\{!sessionId \? setCwdDraft : undefined\}/,
-  "The CWD field is only editable before the session exists",
+  /\.\.\.\(effectiveProjectRoot \? \{ projectRoot: effectiveProjectRoot \} : \{\}\)/,
+  "Every send includes the edited CWD when present, even for existing sessions",
+);
+assert.match(
+  chatView,
+  /onCwdChange=\{setCwdDraft\}/,
+  "The CWD field remains editable after the session exists",
+);
+assert.match(
+  chatView,
+  /function InlineCwdField[\s\S]*aria-label="Working directory for this chat"/,
+  "Active chats expose a compact CWD editor in the header",
+);
+assert.match(
+  chatView,
+  /sessionId && \(\s*<>\s*<InlineCwdField[\s\S]*root=\{cwdRootDraft\}[\s\S]*onRootChange=\{setCwdRootDraft\}[\s\S]*cwd=\{cwdDraft\}[\s\S]*onCwdChange=\{setCwdDraft\}/,
+  "The active-chat ROOT and CWD editors share the same drafts used by send",
 );
 assert.match(
   chatView,
   /aria-label="Working directory for this chat"/,
   "Empty state exposes a labeled working-directory input",
+);
+assert.match(
+  chatView,
+  /aria-label="Root directory for relative CWD"/,
+  "ChatView exposes an editable ROOT for resolving short relative CWD values",
 );
 
 // ── Task chat: card CWD wins; optional prompt when absent ───────────────────

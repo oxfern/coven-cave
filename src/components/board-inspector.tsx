@@ -43,6 +43,7 @@ type Props = {
   onCardReplaced: (card: Card) => void;
   onJumpToSession?: (sessionId: string, familiarId: string | null) => void;
   onOpenTaskChat?: (id: string) => Promise<void>;
+  onOpenUrl?: (url: string) => void;
   chatLinking?: boolean;
   /** Surfaces an in-drawer error when /api/board/:id/chat fails (typically
    *  daemon offline → 502). Without this the failure only appears as a
@@ -168,10 +169,12 @@ function GitHubAttachSection({
   card,
   familiars,
   onPatch,
+  onOpenUrl,
 }: {
   card: Card;
   familiars: Familiar[];
   onPatch: (id: string, patch: Partial<Card>) => void;
+  onOpenUrl?: (url: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<GitHubItem[]>([]);
@@ -263,10 +266,30 @@ function GitHubAttachSection({
               background: "var(--bg-elevated)", borderRadius: 6,
               padding: "5px 8px", border: "1px solid var(--border-hairline)"
             }}>
-              <Icon name={iconName(item.kind)} width={12} className={STATE_COLOR[item.state ?? ""] ?? "text-[var(--text-muted)]"} />
-              <span style={{ flex: 1, minWidth: 0, fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text-primary)" }}>
-                {item.repo}{item.number != null ? " #" + item.number : ""} — {item.title}
-              </span>
+              <button
+                type="button"
+                className="board-github-attachment-open"
+                onClick={() => onOpenUrl?.(item.url)}
+                title="Open in app browser"
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  border: 0,
+                  padding: 0,
+                  background: "transparent",
+                  color: "var(--text-primary)",
+                  textAlign: "left",
+                  cursor: "pointer",
+                }}
+              >
+                <Icon name={iconName(item.kind)} width={12} className={STATE_COLOR[item.state ?? ""] ?? "text-[var(--text-muted)]"} />
+                <span style={{ flex: 1, minWidth: 0, fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {item.repo}{item.number != null ? " #" + item.number : ""} — {item.title}
+                </span>
+              </button>
               <button
                 type="button"
                 className="board-toolbar-btn"
@@ -383,9 +406,11 @@ function GitHubAttachSection({
 function LinksSection({
   card,
   onPatch,
+  onOpenUrl,
 }: {
   card: Card;
   onPatch: (id: string, patch: Partial<Card>) => void;
+  onOpenUrl?: (url: string) => void;
 }) {
   const [draft, setDraft] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -480,23 +505,28 @@ function LinksSection({
               >
                 <Icon name="ph:link-simple" width={10} className="shrink-0 text-[var(--text-muted)]" />
                 {href ? (
-                  <a
-                    href={href}
-                    target="_blank"
-                    rel="noreferrer"
+                  <button
+                    type="button"
+                    onClick={() => onOpenUrl?.(href)}
                     style={{
                       flex: 1,
                       fontSize: 12,
                       color: "var(--text-primary)",
                       textDecoration: "none",
+                      textAlign: "left",
+                      border: 0,
+                      padding: 0,
+                      background: "transparent",
+                      cursor: "pointer",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                       whiteSpace: "nowrap",
                     }}
+                    title="Open in app browser"
                     className="link-item-anchor"
                   >
                     {formatLinkLabel(link)}
-                  </a>
+                  </button>
                 ) : (
                   <span style={{
                     flex: 1,
@@ -791,7 +821,7 @@ function StepsSection({
   );
 }
 
-export function BoardInspector({ card, familiars, sessions, onClose, onPatch, onMoveStatus, onDelete, onCardReplaced, onJumpToSession, onOpenTaskChat, chatLinking = false, chatLinkError }: Props) {
+export function BoardInspector({ card, familiars, sessions, onClose, onPatch, onMoveStatus, onDelete, onCardReplaced, onJumpToSession, onOpenTaskChat, onOpenUrl, chatLinking = false, chatLinkError }: Props) {
   const [closing, setClosing] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [lifecycleBusy, setLifecycleBusy] = useState<CardLifecycle | null>(null);
@@ -999,9 +1029,9 @@ export function BoardInspector({ card, familiars, sessions, onClose, onPatch, on
 
           <StepsSection card={card} onPatch={onPatch} />
 
-          <LinksSection card={card} onPatch={onPatch} />
+          <LinksSection card={card} onPatch={onPatch} onOpenUrl={onOpenUrl} />
 
-          <GitHubAttachSection card={card} familiars={familiars} onPatch={onPatch} />
+          <GitHubAttachSection card={card} familiars={familiars} onPatch={onPatch} onOpenUrl={onOpenUrl} />
 
           <div className="board-drawer-field">
             <div className="board-drawer-field-label"><Icon name="ph:note-bold" width={11} /> Notes</div>

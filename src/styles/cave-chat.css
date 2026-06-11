@@ -1075,11 +1075,11 @@ details[open] > .cave-tool-summary::before {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 6px;
+  gap: 4px;
   width: 100%;
   border-bottom: 1px solid var(--border-hairline);
   background: var(--bg-raised);
-  padding: 8px 14px;
+  padding: 6px 12px 7px;
 }
 
 .cave-mobile-header-identity,
@@ -1094,14 +1094,22 @@ details[open] > .cave-tool-summary::before {
   min-width: 0;
   width: 100%;
   align-items: center;
-  gap: 10px;
-  min-height: 26px;
+  gap: 7px;
+  min-height: 24px;
   font-size: 12px;
+}
+
+.cave-chat-meta-line .cave-chat-title-input {
+  flex: 1 1 auto;
+  max-width: min(38vw, 460px);
+  font-size: 13px;
+  line-height: 1.2;
 }
 
 .cave-chat-meta-line__meta {
   margin-left: auto;
-  flex: 0 1 auto;
+  flex: 0 2 auto;
+  max-width: min(32vw, 520px);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1118,12 +1126,18 @@ details[open] > .cave-tool-summary::before {
 }
 
 .cave-chat-meta-line__dot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   flex-shrink: 0;
   border-radius: 999px;
   background: currentColor;
-  box-shadow: 0 0 0 3px color-mix(in oklch, currentColor 14%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in oklch, currentColor 14%, transparent);
+}
+
+.cave-chat-back-button {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
 }
 
 .cave-chat-meta-line--streaming {
@@ -1143,6 +1157,27 @@ details[open] > .cave-tool-summary::before {
 .cave-chat-meta-line--failed .cave-chat-meta-line__meta,
 .cave-chat-meta-line--offline .cave-chat-meta-line__meta {
   color: var(--color-danger);
+}
+
+.cave-chat-cwd-pair {
+  display: inline-flex;
+  min-width: 0;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 4px;
+}
+
+.cave-chat-cwd-inline {
+  display: inline-flex;
+  width: clamp(112px, 14vw, 190px);
+  min-width: 0;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--border-hairline);
+  border-radius: 6px;
+  background: color-mix(in oklch, var(--bg-raised) 45%, transparent);
+  padding: 1px 6px;
 }
 
 @keyframes cave-chat-meta-blip {
@@ -1238,10 +1273,25 @@ details[open] > .cave-tool-summary::before {
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
+  min-height: 22px;
   overflow-x: auto;
   scrollbar-width: none;
   white-space: nowrap;
+}
+
+.cave-chat-linked-chip {
+  min-height: 22px;
+  max-width: min(36vw, 360px);
+  gap: 5px;
+  padding: 0 7px;
+  border-radius: 7px;
+  font-size: 10.5px;
+  line-height: 1;
+}
+
+.cave-chat-linked-chip--github {
+  max-width: min(26vw, 280px);
 }
 
 .cave-chat-linked-context::-webkit-scrollbar {

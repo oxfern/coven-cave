@@ -22,14 +22,38 @@ function syntheticId(item: Partial<LibraryBookmark>): string {
   return `bm_legacy_${(h >>> 0).toString(36)}`;
 }
 
+function cleanString(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function cleanTags(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.map(cleanString).filter(Boolean)
+    : [];
+}
+
+function normalizeBookmark(item: Partial<LibraryBookmark>): LibraryBookmark {
+  const url = cleanString(item.url);
+  const domain = cleanString(item.domain) || (url ? domainFrom(url) : "(unknown)");
+  return {
+    ...item,
+    id: cleanString(item.id) || syntheticId(item),
+    url,
+    title: cleanString(item.title) || (url ? fallbackTitle(url) : domain),
+    domain,
+    favicon: cleanString(item.favicon),
+    notes: cleanString(item.notes) || undefined,
+    tags: cleanTags(item.tags),
+    savedAt: cleanString(item.savedAt) || new Date(0).toISOString(),
+    familiar: cleanString(item.familiar) || "unknown",
+    capture: item.capture,
+  };
+}
+
 export async function GET() {
   const raw = await store.readBookmarks();
   const items = raw
-    .map((item) => ({
-      ...item,
-      id: item.id || syntheticId(item),
-      savedAt: item.savedAt || new Date(0).toISOString(),
-    }))
+    .map(normalizeBookmark)
     .slice()
     .sort((a, b) => (a.savedAt < b.savedAt ? 1 : -1));
   return NextResponse.json({ ok: true, items });

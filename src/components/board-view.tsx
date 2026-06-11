@@ -28,9 +28,10 @@ type Props = {
   sessions: SessionRow[];
   activeFamiliarId: string | null;
   onJumpToSession?: (sessionId: string, familiarId: string | null) => void;
+  onOpenUrl?: (url: string) => void;
 };
 
-export function BoardView({ familiars, sessions, activeFamiliarId, onJumpToSession }: Props) {
+export function BoardView({ familiars, sessions, activeFamiliarId, onJumpToSession, onOpenUrl }: Props) {
   const isMobile = useIsMobile();
   const [cards, setCards] = useState<Card[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -418,6 +419,7 @@ export function BoardView({ familiars, sessions, activeFamiliarId, onJumpToSessi
           onCardReplaced={(next) => setCards((prev) => prev.map((c) => (c.id === next.id ? next : c)))}
           onJumpToSession={onJumpToSession}
           onOpenTaskChat={onOpenTaskChat}
+          onOpenUrl={onOpenUrl}
           chatLinking={chatLinkingId === selectedCard.id}
           chatLinkError={chatLinkingId === null && !selectedCard.sessionId ? chatLinkError : null}
         />

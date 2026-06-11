@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile, appendFile, readdir, stat, unlink } from "node:fs/promises";
 import path from "node:path";
 import { homedir } from "node:os";
+import type { ChatResponseMetadata } from "./chat-response-metadata.ts";
 
 const CONV_DIR = path.join(homedir(), ".coven", "cave-conversations");
 
@@ -34,6 +35,7 @@ export type ChatTurn = {
   usage?: import("./usage-format").TurnUsage;
   /** Total cost in USD from the harness result event (CHAT-D12-02). */
   costUsd?: number;
+  responseMetadata?: ChatResponseMetadata;
   origin?: "chat" | "voice";
   voiceCallId?: string;
 };
@@ -42,6 +44,8 @@ export type ConversationFile = {
   sessionId: string;
   familiarId: string;
   harness: string;
+  model?: string;
+  runtime?: string;
   title?: string;
   createdAt: string;
   updatedAt: string;
@@ -109,6 +113,8 @@ export async function listConversations(): Promise<
     sessionId: string;
     familiarId: string;
     harness?: string;
+    model?: string;
+    runtime?: string;
     title?: string;
     createdAt?: string;
     updatedAt: string;
@@ -125,6 +131,8 @@ export async function listConversations(): Promise<
     sessionId: string;
     familiarId: string;
     harness?: string;
+    model?: string;
+    runtime?: string;
     title?: string;
     createdAt?: string;
     updatedAt: string;
@@ -139,6 +147,8 @@ export async function listConversations(): Promise<
           sessionId: conv.sessionId,
           familiarId: conv.familiarId,
           harness: conv.harness,
+          model: conv.model,
+          runtime: conv.runtime,
           title: conv.title,
           createdAt: conv.createdAt,
           updatedAt: conv.updatedAt,

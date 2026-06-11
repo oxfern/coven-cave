@@ -88,6 +88,17 @@ assert.match(
   "Meta string should truncate instead of wrapping the header taller",
 );
 
+assert.match(
+  styles,
+  /\.cave-chat-cwd-pair\s*\{[\s\S]*?display:\s*inline-flex[\s\S]*?gap:\s*4px/,
+  "Header ROOT/CWD editor pair should stay compact inside the meta row",
+);
+assert.match(
+  styles,
+  /\.cave-chat-cwd-inline\s*\{[\s\S]*?width:\s*clamp\(112px,\s*14vw,\s*190px\)/,
+  "Each header ROOT/CWD editor should stay narrow inside the meta row",
+);
+
 assert.doesNotMatch(
   styles,
   /\.cave-chat-lifecycle-status/,

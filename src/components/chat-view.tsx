@@ -36,6 +36,12 @@ import { VoiceCallOverlay } from "./voice-call-overlay";
 import { CsvImportModal } from "./csv-import-modal";
 import { looksLikeCsv } from "@/lib/csv-import";
 import { usageBreakdown, usageSummary, type TurnUsage } from "@/lib/usage-format";
+import {
+  modelLabel,
+  runtimeLabel,
+  type ChatResponseMetadata,
+} from "@/lib/chat-response-metadata";
+import { resolveRootedCwd } from "@/lib/chat-cwd-root";
 import { toolArgSummary } from "@/lib/tool-arg-summary";
 import { toolInputAsDiff } from "@/lib/tool-input-diff";
 import { findMatchingTurnIds } from "@/lib/transcript-find";
@@ -90,6 +96,7 @@ type Turn = {
    *  Absent when the harness emitted none (e.g. the OpenClaw bridge). */
   usage?: TurnUsage;
   costUsd?: number;
+  responseMetadata?: ChatResponseMetadata;
   origin?: "chat" | "voice";
   voiceCallId?: string;
 };
@@ -125,7 +132,7 @@ type StreamEvent =
   | { kind: "assistant_chunk"; text: string }
   | { kind: "progress"; id?: string; label: string; detail?: string; status?: "running" | "done" | "error"; durationMs?: number }
   | { kind: "tool_use"; id?: string; name: string; input?: string; output?: string; status?: "running" | "ok" | "error"; durationMs?: number }
-  | { kind: "done"; durationMs?: number; isError?: boolean; sessionId?: string; usage?: TurnUsage; costUsd?: number }
+  | { kind: "done"; durationMs?: number; isError?: boolean; sessionId?: string; usage?: TurnUsage; costUsd?: number; responseMetadata?: ChatResponseMetadata }
   | { kind: "error"; message: string; code?: string };
 
 type ComposerAttachment = ChatAttachment & { id: string };
@@ -402,18 +409,24 @@ const STARTER_PROMPTS = [
 function ChatEmptyState({
   familiar,
   onPrompt,
+  root,
   cwd,
   defaultCwd,
+  onRootChange,
   onCwdChange,
   fileMentions = false,
 }: {
   familiar: Familiar;
   onPrompt?: (text: string) => void;
-  /** Draft working directory for the not-yet-started session. */
+  /** Root directory used to resolve relative CWD entries. */
+  root?: string;
+  /** Draft working directory for the chat. */
   cwd?: string;
   /** Pre-wired project root (e.g. "New chat in <project>") shown as the placeholder. */
   defaultCwd?: string;
-  /** Present only while the chat has no session — the CWD is fixed after the first send. */
+  /** Updates the root used to resolve relative CWD entries. */
+  onRootChange?: (value: string) => void;
+  /** Updates the CWD used for the next send. */
   onCwdChange?: (value: string) => void;
   /** True when the chat knows a project root, so `@` opens the file picker (CHAT-D1-04). */
   fileMentions?: boolean;
@@ -448,18 +461,32 @@ function ChatEmptyState({
         ) : null}
       </p>
 
-      {onCwdChange && (
-        <label className="mb-6 flex items-center gap-1.5 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/40 px-2 py-1 focus-within:border-[var(--border-strong)]">
-          <Icon name="ph:folder-open" width={12} className="shrink-0 text-[var(--text-muted)]" aria-hidden />
-          <input
-            type="text"
-            value={cwd ?? ""}
-            onChange={(e) => onCwdChange(e.target.value)}
-            placeholder={defaultCwd || "Working directory (optional)"}
-            aria-label="Working directory for this chat"
-            className="w-72 bg-transparent font-mono text-[11px] text-[var(--text-secondary)] outline-none placeholder:text-[var(--text-muted)]/70"
-          />
-        </label>
+      {onCwdChange && onRootChange && (
+        <div className="mb-6 flex max-w-[min(42rem,100%)] flex-col gap-1.5">
+          <label className="flex items-center gap-1.5 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/40 px-2 py-1 focus-within:border-[var(--border-strong)]">
+            <span className="w-9 shrink-0 font-mono text-[10px] font-semibold text-[var(--text-muted)]">ROOT</span>
+            <input
+              type="text"
+              value={root ?? ""}
+              onChange={(e) => onRootChange(e.target.value)}
+              placeholder={defaultCwd || "Root directory"}
+              aria-label="Root directory for relative CWD"
+              className="min-w-0 flex-1 bg-transparent font-mono text-[11px] text-[var(--text-secondary)] outline-none placeholder:text-[var(--text-muted)]/70"
+            />
+          </label>
+          <label className="flex items-center gap-1.5 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/40 px-2 py-1 focus-within:border-[var(--border-strong)]">
+            <Icon name="ph:folder-open" width={12} className="shrink-0 text-[var(--text-muted)]" aria-hidden />
+            <span className="w-6 shrink-0 font-mono text-[10px] font-semibold text-[var(--text-muted)]">CWD</span>
+            <input
+              type="text"
+              value={cwd ?? ""}
+              onChange={(e) => onCwdChange(e.target.value)}
+              placeholder="Relative path or absolute override"
+              aria-label="Working directory for this chat"
+              className="min-w-0 flex-1 bg-transparent font-mono text-[11px] text-[var(--text-secondary)] outline-none placeholder:text-[var(--text-muted)]/70"
+            />
+          </label>
+        </div>
       )}
 
       {onPrompt && (
@@ -483,6 +510,47 @@ function ChatEmptyState({
       <p className="cave-chat-empty-hint mt-8 text-[11px] text-[var(--text-muted)]">
         ↵ to send · shift↵ for newline
       </p>
+    </div>
+  );
+}
+
+function InlineCwdField({
+  root,
+  cwd,
+  defaultCwd,
+  onRootChange,
+  onCwdChange,
+}: {
+  root: string;
+  cwd: string;
+  defaultCwd?: string;
+  onRootChange: (value: string) => void;
+  onCwdChange: (value: string) => void;
+}) {
+  return (
+    <div className="cave-chat-cwd-pair" title={resolveRootedCwd(cwd, root, defaultCwd) || "Working directory"}>
+      <label className="cave-chat-cwd-inline focus-within:border-[var(--border-strong)]">
+        <span className="font-mono text-[9px] font-semibold text-[var(--text-muted)]">ROOT</span>
+        <input
+          type="text"
+          value={root}
+          onChange={(e) => onRootChange(e.target.value)}
+          placeholder={defaultCwd || "ROOT"}
+          aria-label="Root directory for relative CWD"
+          className="min-w-0 flex-1 bg-transparent font-mono text-[10px] text-[var(--text-secondary)] outline-none placeholder:text-[var(--text-muted)]/70"
+        />
+      </label>
+      <label className="cave-chat-cwd-inline focus-within:border-[var(--border-strong)]">
+        <Icon name="ph:folder-open" width={11} className="shrink-0 text-[var(--text-muted)]" aria-hidden />
+        <input
+          type="text"
+          value={cwd}
+          onChange={(e) => onCwdChange(e.target.value)}
+          placeholder="CWD"
+          aria-label="Working directory for this chat"
+          className="min-w-0 flex-1 bg-transparent font-mono text-[10px] text-[var(--text-secondary)] outline-none placeholder:text-[var(--text-muted)]/70"
+        />
+      </label>
     </div>
   );
 }
@@ -655,6 +723,20 @@ function ChatTitleEditable({
   );
 }
 
+function ResponseMetadataText({ metadata }: { metadata?: ChatResponseMetadata }) {
+  const model = modelLabel(metadata?.model);
+  const runtime = runtimeLabel(metadata?.runtime);
+  if (!model && !runtime) return null;
+  return (
+    <span
+      className="font-mono text-[10px] text-[var(--text-muted)]"
+      title={[metadata?.harness, model, runtime].filter(Boolean).join(" · ") || undefined}
+    >
+      {[model, runtime].filter(Boolean).join(" · ")}
+    </span>
+  );
+}
+
 type MetaLineState = "complete" | "streaming" | "failed" | "offline";
 
 function metaLineState(args: {
@@ -674,6 +756,7 @@ function metaLineString(args: {
   lifecycle: ChatTurnLifecycle | null;
   harness?: string;
   model?: string;
+  runtime?: string | null;
   projectRoot?: string | null;
   durationMs?: number;
   usage?: TurnUsage;
@@ -683,17 +766,26 @@ function metaLineString(args: {
   if (args.state === "offline") {
     parts.push("daemon offline · check Coven");
   } else if (args.state === "failed") {
-    if (args.model) parts.push(args.model);
+    const model = modelLabel(args.model);
+    if (model) parts.push(model);
+    const runtime = runtimeLabel(args.runtime);
+    if (runtime) parts.push(runtime);
     parts.push("failed");
   } else if (args.state === "streaming") {
-    if (args.model) parts.push(args.model);
+    const model = modelLabel(args.model);
+    if (model) parts.push(model);
+    const runtime = runtimeLabel(args.runtime);
+    if (runtime) parts.push(runtime);
     parts.push(args.lifecycle === "tooling" ? "using tools…" : args.lifecycle === "connecting" || args.lifecycle === "queued" ? "connecting…" : "writing…");
     // CHAT-D3-06: the "· 14s" ticker + esc hint tail is rendered by MetaLine
     // itself so the ticking elapsed can live in an aria-hidden span — keeping
     // the per-second rewrite out of the role="status" live region.
   } else {
     if (args.harness) parts.push(args.harness);
-    if (args.model) parts.push(args.model);
+    const model = modelLabel(args.model);
+    if (model) parts.push(model);
+    const runtime = runtimeLabel(args.runtime);
+    if (runtime) parts.push(runtime);
     const repo = repoName(args.projectRoot);
     if (repo) parts.push(repo);
     const dur = fmtDuration(args.durationMs);
@@ -825,7 +917,7 @@ function ChatBackButton({ onBack }: { onBack: () => void }) {
   return (
     <button
       type="button"
-      className="focus-ring inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/45 text-[var(--text-secondary)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+      className="cave-chat-back-button focus-ring inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/45 text-[var(--text-secondary)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
       aria-label="Back to chats"
       onClick={onBack}
     >
@@ -869,6 +961,7 @@ function MetaLine({
   durationMs,
   usage,
   costUsd,
+  responseMetadata,
   familiar,
   projectRoot,
   onSessionsChanged,
@@ -886,6 +979,7 @@ function MetaLine({
   durationMs: number | undefined;
   usage?: TurnUsage;
   costUsd?: number;
+  responseMetadata?: ChatResponseMetadata;
   familiar: Familiar;
   projectRoot?: string;
   onSessionsChanged?: () => void;
@@ -897,7 +991,8 @@ function MetaLine({
     state,
     lifecycle,
     harness: familiar.harness ?? undefined,
-    model: familiar.model ?? undefined,
+    model: responseMetadata?.model ?? session?.model ?? familiar.model ?? undefined,
+    runtime: responseMetadata?.runtime ?? session?.runtime,
     projectRoot: session?.project_root ?? projectRoot,
     durationMs,
     usage,
@@ -950,7 +1045,7 @@ function LinkedContextRow({
             type="button"
             onClick={() => onOpenTask(task.id)}
             title={`Open task: ${task.title}`}
-            className="focus-ring inline-flex min-w-0 max-w-[24rem] items-center gap-1.5 rounded-md border border-[color-mix(in_oklch,var(--accent-presence)_35%,transparent)] bg-[color-mix(in_oklch,var(--accent-presence)_12%,transparent)] px-2 py-1 text-[11px] text-[var(--text-secondary)] transition-colors hover:border-[color-mix(in_oklch,var(--accent-presence)_55%,transparent)] hover:bg-[color-mix(in_oklch,var(--accent-presence)_18%,transparent)] hover:text-[var(--text-primary)]"
+            className="cave-chat-linked-chip cave-chat-linked-chip--task focus-ring inline-flex min-w-0 max-w-[24rem] items-center gap-1.5 rounded-md border border-[color-mix(in_oklch,var(--accent-presence)_35%,transparent)] bg-[color-mix(in_oklch,var(--accent-presence)_12%,transparent)] px-2 py-1 text-[11px] text-[var(--text-secondary)] transition-colors hover:border-[color-mix(in_oklch,var(--accent-presence)_55%,transparent)] hover:bg-[color-mix(in_oklch,var(--accent-presence)_18%,transparent)] hover:text-[var(--text-primary)]"
           >
             <Icon name="ph:kanban" width={12} className="shrink-0 text-[var(--accent-presence)]" />
             <span className="shrink-0 font-medium">Task</span>
@@ -960,7 +1055,7 @@ function LinkedContextRow({
             <Icon name="ph:arrow-square-out" width={10} className="shrink-0 text-[var(--text-muted)]" />
           </button>
         ) : (
-          <span className="inline-flex min-w-0 max-w-[24rem] items-center gap-1.5 rounded-md border border-[color-mix(in_oklch,var(--accent-presence)_35%,transparent)] bg-[color-mix(in_oklch,var(--accent-presence)_12%,transparent)] px-2 py-1 text-[11px] text-[var(--text-secondary)]">
+          <span className="cave-chat-linked-chip cave-chat-linked-chip--task inline-flex min-w-0 max-w-[24rem] items-center gap-1.5 rounded-md border border-[color-mix(in_oklch,var(--accent-presence)_35%,transparent)] bg-[color-mix(in_oklch,var(--accent-presence)_12%,transparent)] px-2 py-1 text-[11px] text-[var(--text-secondary)]">
             <Icon name="ph:kanban" width={12} className="shrink-0 text-[var(--accent-presence)]" />
             <span className="shrink-0 font-medium">Task</span>
             <span className="min-w-0 truncate">{task.title}</span>
@@ -976,7 +1071,7 @@ function LinkedContextRow({
           target="_blank"
           rel="noreferrer"
           title={`Open on GitHub: ${item.title}`}
-          className="inline-flex min-w-0 max-w-[18rem] items-center gap-1.5 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/35 px-2 py-1 text-[11px] text-[var(--text-secondary)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-primary)]"
+          className="cave-chat-linked-chip cave-chat-linked-chip--github inline-flex min-w-0 max-w-[18rem] items-center gap-1.5 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/35 px-2 py-1 text-[11px] text-[var(--text-secondary)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-primary)]"
         >
           <Icon name={githubIcon(item.kind)} width={12} className="shrink-0 text-[var(--text-muted)]" />
           <span className="shrink-0">{githubLabel(item.kind)}</span>
@@ -1173,9 +1268,9 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
   // the inline Cancel/Delete confirm; only the explicit Delete commits.
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  // User-typed working directory for a not-yet-started chat. Overrides the
-  // pre-wired projectRoot prop on the first send; ignored once a session
-  // exists (the CWD is fixed at session start).
+  // ROOT holds the long absolute base. CWD can stay short and relative to ROOT;
+  // an absolute CWD still overrides ROOT when the request is sent.
+  const [cwdRootDraft, setCwdRootDraft] = useState(session?.project_root ?? projectRoot ?? "");
   const [cwdDraft, setCwdDraft] = useState("");
   const [csvRaw, setCsvRaw] = useState<string | null>(null);
   const [csvModalOpen, setCsvModalOpen] = useState(false);
@@ -1399,7 +1494,7 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
   // send body uses. The file index is fetched once per root from
   // /api/project/files and fuzzy-filtered client-side. Mentions stay
   // disjoint from the slash menu: `@` is mid-token, `/` is first-token only.
-  const mentionRoot = (session?.project_root?.trim() || cwdDraft.trim() || projectRoot || "").trim();
+  const mentionRoot = resolveRootedCwd(cwdDraft, cwdRootDraft, projectRoot).trim();
   const [composerCaret, setComposerCaret] = useState(0);
   const [mentionIdx, setMentionIdx] = useState(0);
   // Esc hides the picker for the current input; any edit brings it back.
@@ -1590,6 +1685,7 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
               isError?: boolean;
               usage?: TurnUsage;
               costUsd?: number;
+              responseMetadata?: ChatResponseMetadata;
               createdAt?: string;
               origin?: "chat" | "voice";
               voiceCallId?: string;
@@ -1613,6 +1709,7 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
                   isError?: boolean;
                   usage?: TurnUsage;
                   costUsd?: number;
+                  responseMetadata?: ChatResponseMetadata;
                   cancelled?: boolean;
                   createdAt?: string;
                   origin?: "chat" | "voice";
@@ -1629,6 +1726,7 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
                   durationMs: t.durationMs,
                   usage: t.usage,
                   costUsd: t.costUsd,
+                  responseMetadata: t.responseMetadata,
                   error: t.isError,
                   lifecycle: t.cancelled ? ("cancelled" as const) : undefined,
                   createdAt: t.createdAt ?? new Date().toISOString(),
@@ -1928,6 +2026,7 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
     abortRef.current = controller;
     try {
       setAssistantLifecycle(assistantId, "connecting");
+      const effectiveProjectRoot = resolveRootedCwd(cwdDraft, cwdRootDraft, projectRoot);
       const res = await fetch("/api/chat/send", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -1936,9 +2035,7 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
           prompt: trimmed,
           ...(outgoingAttachments.length ? { attachments: stripPreviewOnlyAttachmentFieldsKeepingImages(outgoingAttachments) } : {}),
           sessionId: currentSessionRef.current,
-          ...((cwdDraft.trim() || projectRoot) && !currentSessionRef.current
-            ? { projectRoot: cwdDraft.trim() || projectRoot }
-            : {}),
+          ...(effectiveProjectRoot ? { projectRoot: effectiveProjectRoot } : {}),
           // CHAT-D1-04: @-mentioned repo files ride with the root they are
           // relative to — resumed sessions don't resend projectRoot above.
           ...(outgoingMentions.length && mentionRoot
@@ -2240,6 +2337,7 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
                   durationMs: ev.durationMs,
                   usage: ev.usage,
                   costUsd: ev.costUsd,
+                  responseMetadata: ev.responseMetadata,
                   progress: settleRunningProgress(t.progress, ev.isError ? "error" : "done"),
                 }
               : t,
@@ -2393,13 +2491,15 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
     }
   };
 
-  // Disarm a pending delete confirmation (and drop any CWD draft and staged
-  // file mentions) when switching sessions.
+  // Disarm a pending delete confirmation and sync the editable CWD when
+  // switching sessions. Drop staged file mentions because they are scoped to
+  // the previous session/root.
   useEffect(() => {
     setConfirmDelete(false);
+    setCwdRootDraft(session?.project_root ?? projectRoot ?? "");
     setCwdDraft("");
     setMentionedFiles([]);
-  }, [sessionId]);
+  }, [sessionId, session?.project_root, projectRoot]);
 
   const deleteChat = async () => {
     if (!sessionId || deleting) return;
@@ -2525,6 +2625,7 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
           durationMs={lastSettledAssistantTurn?.durationMs}
           usage={lastSettledAssistantTurn?.usage}
           costUsd={lastSettledAssistantTurn?.costUsd}
+          responseMetadata={lastSettledAssistantTurn?.responseMetadata}
           familiar={familiar}
           projectRoot={projectRoot}
           onSessionsChanged={onSessionsChanged}
@@ -2546,6 +2647,13 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
           ) : null}
           {sessionId && (
             <>
+              <InlineCwdField
+                root={cwdRootDraft}
+                cwd={cwdDraft}
+                defaultCwd={projectRoot}
+                onRootChange={setCwdRootDraft}
+                onCwdChange={setCwdDraft}
+              />
               <VoiceCallButton
                 familiar={familiar}
                 callActive={voiceCallOpen}
@@ -2625,9 +2733,11 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
                   setInput(text);
                   inputRef.current?.focus();
                 }}
+                root={cwdRootDraft}
                 cwd={cwdDraft}
                 defaultCwd={projectRoot}
-                onCwdChange={!sessionId ? setCwdDraft : undefined}
+                onRootChange={setCwdRootDraft}
+                onCwdChange={setCwdDraft}
                 fileMentions={Boolean(mentionRoot)}
               />
             )
@@ -3162,6 +3272,7 @@ function TurnRow({
               </button>
             ) : null}
             {showTimestamp && turn.createdAt ? <span className="opacity-60">{fmtTime(turn.createdAt)}</span> : null}
+            <ResponseMetadataText metadata={turn.responseMetadata} />
             <UsageText usage={turn.usage} costUsd={turn.costUsd} />
           </div>
 

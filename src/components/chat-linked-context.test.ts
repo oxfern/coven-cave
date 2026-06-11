@@ -12,6 +12,7 @@ async function source(url: URL): Promise<string> {
 
 const chatView = await readFile(new URL("./chat-view.tsx", import.meta.url), "utf8");
 const chatRouter = await readFile(new URL("./chat-router.tsx", import.meta.url), "utf8");
+const workspace = await readFile(new URL("./workspace.tsx", import.meta.url), "utf8");
 const conversationRoute = await readFile(new URL("../app/api/chat/conversation/[id]/route.ts", import.meta.url), "utf8");
 const contextLib = await source(new URL("../lib/chat-linked-context.ts", import.meta.url));
 
@@ -79,6 +80,18 @@ assert.match(
   chatView,
   /function LinkedContextRow[\s\S]*const task = linkedContext\?\.task[\s\S]*const github = linkedContext\?\.github[\s\S]*github\.map[\s\S]*Open on GitHub/,
   "ChatView should render task and GitHub context chips in the chat header",
+);
+
+assert.match(
+  chatView,
+  /onClick=\{\(\) => onOpenTask\(task\.id\)\}/,
+  "Clicking the linked task chip should emit the task id",
+);
+
+assert.match(
+  workspace,
+  /if \(intent\.kind === "focus-card"\) \{[\s\S]*setMode\("board"\)[\s\S]*window\.location\.hash = `card-\$\{intent\.cardId\}`/,
+  "Workspace should open the board view and focus the linked task card",
 );
 
 assert.match(
