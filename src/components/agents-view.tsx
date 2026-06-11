@@ -563,10 +563,11 @@ function AgentDetailPanel({
           <button
             type="button"
             onClick={onStartChat}
+            title="Start chat"
             className="focus-ring inline-flex h-7 items-center gap-1 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)] px-2 text-[11px] text-[var(--text-primary)] hover:bg-[var(--bg-raised)]/80"
           >
             <Icon name="ph:chat-circle-dots" width={12} />
-            Start chat
+            Start
           </button>
           <button
             type="button"
