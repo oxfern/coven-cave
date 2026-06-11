@@ -21,21 +21,27 @@ assert.match(
 );
 
 assert.match(
-  workspace,
-  /roles: "Roles"/,
-  "Workspace surface labels should include Roles",
+  sidebar,
+  /\{ id: "roles", label: "Roles", iconName: "ph:mask-happy", group: "tools" \}/,
+  "Sidebar navigation should expose Roles as a tools surface",
 );
 
 assert.match(
   workspace,
-  /mode === "roles"[\s\S]*<PluginsView[\s\S]*tabs=\{\["roles", "workflows"\]\}/,
-  "Workspace should render Roles and Workflows as a Tools surface",
+  /mode === "roles"[\s\S]*<PluginsView[\s\S]*tabs=\{\["roles", "workflows", "plugins", "skills"\]\}/,
+  "The Roles surface should expose roles, workflows, plugins, and skills",
 );
 
-assert.match(
+assert.doesNotMatch(
   settings,
-  /<PluginsView[\s\S]*tabs=\{\["plugins", "skills"\]\}/,
-  "Settings Plugins should only expose marketplace plugins and skills",
+  /PluginsView/,
+  "Settings must not render PluginsView — plugins and skills live on the Roles page",
+);
+
+assert.doesNotMatch(
+  settings,
+  /"plugins"/,
+  "Settings must not declare a plugins section",
 );
 
 assert.match(
