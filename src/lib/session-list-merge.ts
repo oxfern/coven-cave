@@ -79,7 +79,7 @@ export function mergeSessionRows({
     const row: SessionRow = {
       ...session,
       // Daemon titles derive from the harness prompt, which the chat route
-      // prefixes with the identity canon \u2014 sanitize so the preamble never
+      // prefixes with the identity canon — sanitize so the preamble never
       // surfaces as a session title.
       title:
         titleOverride ??

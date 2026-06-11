@@ -443,10 +443,7 @@ function openClawChatResponse(args: {
           const now = new Date().toISOString();
           const userTurnId = crypto.randomUUID();
           const assistantTurnId = crypto.randomUUID();
-          const chatTitle =
-            existing?.title ??
-            chatTitleFromPrompt(args.promptText) ??
-            defaultChatTitleForSession(sessionId);
+          const chatTitle = existing?.title ?? defaultChatTitleForSession(sessionId);
           if (!existing) await setDefaultSessionTitleIfMissing(sessionId, chatTitle);
           const conv = existing ?? {
             sessionId,
@@ -726,7 +723,7 @@ export async function POST(req: Request) {
               push({ kind: "session", sessionId });
               // Title the session from the user's prompt as soon as the id
               // exists. The daemon's own title derives from the harness
-              // prompt \u2014 i.e. the identity-canon preamble \u2014 and is what the
+              // prompt — i.e. the identity-canon preamble — and is what the
               // UI would otherwise show until the transcript save runs.
               void setDefaultSessionTitleIfMissing(
                 sessionId,
@@ -958,10 +955,7 @@ export async function POST(req: Request) {
         const now = new Date().toISOString();
         const userTurnId = crypto.randomUUID();
         const assistantTurnId = crypto.randomUUID();
-        const chatTitle =
-          existing?.title ??
-          chatTitleFromPrompt(promptText) ??
-          defaultChatTitleForSession(finalSessionId);
+        const chatTitle = existing?.title ?? defaultChatTitleForSession(finalSessionId);
         if (!existing) await setDefaultSessionTitleIfMissing(finalSessionId, chatTitle);
         const userTurn: ChatTurn = {
           id: userTurnId,

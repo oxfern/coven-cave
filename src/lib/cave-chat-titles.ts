@@ -29,7 +29,7 @@ export function chatTitleFromPrompt(prompt: string | null | undefined): string |
   const normalized = normalizeChatTitle(prompt);
   if (!normalized) return null;
   if (normalized.length <= MAX_PROMPT_TITLE_LENGTH) return normalized;
-  return `${normalized.slice(0, MAX_PROMPT_TITLE_LENGTH - 1).trimEnd()}\u2026`;
+  return `${normalized.slice(0, MAX_PROMPT_TITLE_LENGTH - 1).trimEnd()}…`;
 }
 
 // Matches the current header ("Coven identity canon:") and legacy variants

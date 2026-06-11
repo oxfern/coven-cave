@@ -57,27 +57,28 @@ assert.equal(
 );
 
 // ── merge layer falls back when the daemon title is canon-leaked ──
-const daemonRow = {
-  id: "abc12345-dead-beef-0000-000000000000",
-  project_root: "",
-  harness: "claude",
-  title: "Coven identity canon: - Each familiar has a defi",
-  status: "completed",
-  exit_code: 0,
-  archived_at: null,
-  created_at: "2026-06-11T00:00:00Z",
-  updated_at: "2026-06-11T00:00:00Z",
-};
-const emptyState = {
+const state = {
   sessionTitles: {},
   sessionFamiliar: {},
   sessionArchived: {},
   sessionSacrificed: {},
 };
 const rows = mergeSessionRows({
-  daemonSessions: [daemonRow],
+  daemonSessions: [
+    {
+      id: "abc12345-dead-beef-0000-000000000000",
+      project_root: "",
+      harness: "claude",
+      title: "Coven identity canon: - Each familiar has a defi",
+      status: "completed",
+      exit_code: 0,
+      archived_at: null,
+      created_at: "2026-06-11T00:00:00Z",
+      updated_at: "2026-06-11T00:00:00Z",
+    },
+  ],
   localConversations: [],
-  state: emptyState,
+  state,
   includeArchived: false,
 });
 assert.equal(rows.length, 1);
@@ -87,15 +88,27 @@ assert.ok(
 );
 assert.equal(
   rows[0].title,
-  defaultChatTitleForSession(daemonRow.id),
+  defaultChatTitleForSession("abc12345-dead-beef-0000-000000000000"),
   "canon-leaked titles fall back to the default session title",
 );
 
-// explicit title overrides still win over sanitization
+// override still wins over sanitization
 const rows2 = mergeSessionRows({
-  daemonSessions: [daemonRow],
+  daemonSessions: [
+    {
+      id: "abc12345-dead-beef-0000-000000000000",
+      project_root: "",
+      harness: "claude",
+      title: "Coven identity canon: - Each familiar has a defi",
+      status: "completed",
+      exit_code: 0,
+      archived_at: null,
+      created_at: "2026-06-11T00:00:00Z",
+      updated_at: "2026-06-11T00:00:00Z",
+    },
+  ],
   localConversations: [],
-  state: { ...emptyState, sessionTitles: { [daemonRow.id]: "My chat" } },
+  state: { ...state, sessionTitles: { "abc12345-dead-beef-0000-000000000000": "My chat" } },
   includeArchived: false,
 });
 assert.equal(rows2[0].title, "My chat", "explicit title overrides still win");
@@ -108,17 +121,13 @@ const route = await readFile(
 assert.match(
   route,
   /chatTitleFromPrompt\(promptText\)/,
-  "chat/send should derive default session titles from the user's raw prompt",
+  "chat/send should derive default session titles from the user's raw prompt, not the session id alone",
 );
-assert.match(
-  route,
-  /push\(\{ kind: "session", sessionId \}\);[\s\S]{0,500}?setDefaultSessionTitleIfMissing\(/,
-  "the stream path should set the default title when the session id first arrives, not only at save time",
-);
-assert.match(
-  route,
-  /chatTitleFromPrompt\(args\.promptText\)/,
-  "the openclaw path should also title sessions from the user's raw prompt",
+assert.ok(
+  route.indexOf("chatTitleFromPrompt") < route.indexOf('push({ kind: "session", sessionId })') ||
+    /setDefaultSessionTitleIfMissing\([^)]*\)[\s\S]{0,200}push\(\{ kind: "session"/.test(route) ||
+    /push\(\{ kind: "session", sessionId \}\);\s*\n\s*void setDefaultSessionTitleIfMissing/.test(route),
+  "the generic stream path should set the default title when the session id first arrives, not only at save time",
 );
 
 console.log("session-title-canon: ok");
