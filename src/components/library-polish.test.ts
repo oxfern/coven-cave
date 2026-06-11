@@ -33,6 +33,41 @@ assert.match(
   /\.library-reading-title\s*\{[\s\S]*?-webkit-line-clamp:\s*2[\s\S]*?white-space:\s*normal/,
   "reading titles should wrap and clamp at two visible lines",
 );
+assert.match(
+  reading,
+  /className="library-reading-add-form"/,
+  "Reading add form should use a dedicated polished layout instead of the shared saved-list strip",
+);
+assert.match(
+  reading,
+  /aria-label="Reading title"[\s\S]{0,180}className="library-reading-add-input"/,
+  "Reading add form title input should keep a precise accessible label",
+);
+assert.match(
+  reading,
+  /className="library-reading-add-button library-reading-add-button--primary"[\s\S]{0,120}<Icon name="ph:check"/,
+  "Reading add form save action should use the compact primary icon button treatment",
+);
+assert.match(
+  reading,
+  /className="library-reading-add-button"[\s\S]{0,140}<Icon name="ph:x"/,
+  "Reading add form cancel action should use the compact secondary icon button treatment",
+);
+assert.match(
+  libraryCss,
+  /\.library-reading-add-form\s*\{[\s\S]*?display:\s*grid;[\s\S]*?grid-template-columns:\s*minmax\(142px,\s*1\.15fr\)\s*minmax\(116px,\s*\.8fr\)\s*minmax\(104px,\s*auto\)\s*minmax\(126px,\s*auto\)\s*auto;/,
+  "Reading add form should use a compact responsive grid for side-panel fit",
+);
+assert.match(
+  libraryCss,
+  /@container \(max-width: 640px\) \{[\s\S]*?\.library-reading-add-form\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\)\s*minmax\(0,\s*1fr\);/,
+  "Reading add form should wrap cleanly in narrow library containers",
+);
+assert.match(
+  libraryCss,
+  /@container \(max-width: 430px\) \{[\s\S]*?\.library-reading-add-form\s*\{[\s\S]*?grid-template-columns:\s*1fr;/,
+  "Reading add form should collapse to one column in the narrowest side-panel view",
+);
 
 // github — title, repo, savedAt
 assert.match(github, /\(a\.title \?\? ""\)\.localeCompare\(b\.title \?\? ""\)/,   "github title null-guard");
@@ -87,8 +122,43 @@ assert.match(
 );
 assert.match(
   libraryCss,
-  /@container \(max-width: 560px\) \{[\s\S]*?\.library-reading-table th:nth-child\(4\)/,
-  "Narrow panels drop the Type/Progress columns so Title keeps the space",
+  /@container \(max-width: 560px\) \{[\s\S]*?\.library-reading-row\s*\{[\s\S]*?display:\s*grid;[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\)\s*minmax\(126px,\s*142px\)\s*44px;/,
+  "Narrow reading panels should render rows as a compact grid that gives Title flexible space",
+);
+assert.match(
+  reading,
+  /className=\{`library-reading-row\$\{item\.id === selectedId \? " selected" : ""\}`\}/,
+  "Reading rows should expose a stable class for responsive side-panel layout",
+);
+assert.match(
+  reading,
+  /className="library-reading-col-status"[\s\S]{0,200}<select[\s\S]{0,120}className="library-status-badge library-status-select"/,
+  "Reading status controls should live in a targetable column so they can keep a readable width",
+);
+assert.match(
+  libraryCss,
+  /@container \(max-width: 560px\) \{[\s\S]*?\.library-reading-table \.library-reading-col-source,[\s\S]*?\.library-reading-table \.library-reading-col-progress,[\s\S]*?\.library-reading-table \.library-reading-col-actions\s*\{[\s\S]*?display:\s*none;/,
+  "Narrow reading panels should drop Type, Progress, and row actions from the primary row layout",
+);
+assert.match(
+  libraryCss,
+  /@container \(max-width: 560px\) \{[\s\S]*?\.library-reading-table \.library-status-select\s*\{[\s\S]*?width:\s*100%;/,
+  "Reading status selects should use the full status column instead of clipping label text",
+);
+assert.match(
+  reading,
+  /className="board-table-muted library-source-type" aria-label=\{`Type: \$\{item\.sourceType\}`\}[\s\S]*?className="library-source-type__label"/,
+  "Reading type cells should wrap source type text in a truncating label",
+);
+assert.match(
+  libraryCss,
+  /\.library-source-type\s*\{[\s\S]*?display:\s*inline-flex;[\s\S]*?white-space:\s*nowrap;/,
+  "Reading type badges should keep icon and label on one line",
+);
+assert.match(
+  libraryCss,
+  /\.library-reading-table \.library-reading-col-source\s*\{[\s\S]*?width:\s*92px;[\s\S]*?max-width:\s*92px;/,
+  "Reading type column should have a stable compact width",
 );
 
 // ── Projects section owns the full canvas (was: ComuxView crushed into the

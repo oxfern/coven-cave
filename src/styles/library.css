@@ -954,6 +954,12 @@
   -webkit-line-clamp: 2;
   white-space: normal;
 }
+.library-reading-author {
+  margin-top: 2px;
+}
+.library-reading-col-added {
+  text-align: right;
+}
 
 /* ── Row delete button ─────────────────────────────────────────── */
 .library-row-delete {
@@ -1173,6 +1179,116 @@ tr:focus-within .library-row-delete {
   box-shadow: 0 0 0 2px color-mix(in oklch, var(--accent-presence) 18%, transparent);
 }
 
+.library-reading-add-form {
+  display: grid;
+  grid-template-columns: minmax(142px, 1.15fr) minmax(116px, .8fr) minmax(104px, auto) minmax(126px, auto) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-hairline);
+  background:
+    linear-gradient(180deg,
+      color-mix(in oklch, var(--bg-raised) 74%, transparent),
+      color-mix(in oklch, var(--bg-base) 92%, transparent));
+  flex-shrink: 0;
+}
+.library-reading-add-input,
+.library-reading-add-select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: 34px;
+  border: 1px solid color-mix(in oklch, var(--border-strong) 78%, transparent);
+  border-radius: 7px;
+  background: color-mix(in oklch, var(--bg-base) 88%, transparent);
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1;
+  outline: none;
+  transition: border-color .12s ease, background .12s ease, box-shadow .12s ease;
+}
+.library-reading-add-input {
+  padding: 0 11px;
+}
+.library-reading-add-input::placeholder {
+  color: color-mix(in oklch, var(--text-muted) 78%, transparent);
+}
+.library-reading-add-select {
+  appearance: none;
+  padding: 0 30px 0 11px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
+    linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+  background-position:
+    calc(100% - 15px) 50%,
+    calc(100% - 10px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+.library-reading-add-input:hover,
+.library-reading-add-select:hover {
+  border-color: color-mix(in oklch, var(--text-muted) 44%, var(--border-strong));
+  background-color: color-mix(in oklch, var(--bg-raised) 55%, var(--bg-base));
+}
+.library-reading-add-input:focus,
+.library-reading-add-select:focus {
+  border-color: color-mix(in oklch, var(--accent-presence) 52%, var(--border-strong));
+  background-color: var(--bg-base);
+  box-shadow: 0 0 0 2px color-mix(in oklch, var(--accent-presence) 18%, transparent);
+}
+.library-reading-add-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+}
+.library-reading-add-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 34px;
+  padding: 0 9px;
+  border: 1px solid color-mix(in oklch, var(--border-strong) 76%, transparent);
+  border-radius: 7px;
+  background: color-mix(in oklch, var(--bg-base) 82%, transparent);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 520;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color .12s ease, background .12s ease, color .12s ease, opacity .12s ease;
+}
+.library-reading-add-button:hover {
+  border-color: color-mix(in oklch, var(--text-muted) 44%, var(--border-strong));
+  background: color-mix(in oklch, var(--bg-hover) 72%, var(--bg-base));
+  color: var(--text-primary);
+}
+.library-reading-add-button:focus-visible {
+  outline: var(--ring-width) solid var(--ring-focus);
+  outline-offset: 2px;
+}
+.library-reading-add-button:disabled {
+  cursor: default;
+  opacity: .45;
+}
+.library-reading-add-button:disabled:hover {
+  border-color: color-mix(in oklch, var(--border-strong) 76%, transparent);
+  background: color-mix(in oklch, var(--bg-base) 82%, transparent);
+  color: var(--text-secondary);
+}
+.library-reading-add-button--primary {
+  border-color: color-mix(in oklch, var(--accent-presence) 38%, var(--border-strong));
+  background: color-mix(in oklch, var(--accent-presence) 14%, var(--bg-raised));
+  color: var(--text-primary);
+}
+.library-reading-add-button--primary:hover {
+  border-color: color-mix(in oklch, var(--accent-presence) 52%, var(--border-strong));
+  background: color-mix(in oklch, var(--accent-presence) 18%, var(--bg-raised));
+}
+
 /* ── list empty state ───────────────────────────────────────────── */
 .library-list-empty {
   display: flex;
@@ -1250,12 +1366,27 @@ tr:hover .library-row-delete,
 
 /* ── source type badge ──────────────────────────────────────────── */
 .library-source-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  min-width: 0;
   font-size: 11px;
   color: var(--text-muted);
   background: var(--bg-raised);
   border: 1px solid var(--border-hairline);
   border-radius: 3px;
   padding: 1px 5px;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.library-source-type svg {
+  flex: 0 0 auto;
+}
+.library-source-type__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ── Document preview markdown overrides ─────────────────────────
@@ -2397,8 +2528,8 @@ h3:hover .library-heading-anchor,
 /* ── Reading table fit ──────────────────────────────────────────────
    The list panel can be a narrow column; six fixed-width columns were
    crushing Title into a sliver and overflowing horizontally. In narrow
-   containers the low-value Type and Progress columns drop out, padding
-   tightens, and Title keeps the remaining space. */
+   containers rows become a compact grid that prioritizes title, status,
+   and recency while dropping low-value metadata. */
 .library-list-shell .board-table-wrap {
   flex: 1;
   min-height: 0;
@@ -2409,27 +2540,92 @@ h3:hover .library-heading-anchor,
 .library-list-shell .board-table {
   table-layout: fixed;
 }
+.library-reading-table .library-reading-col-source {
+  width: 92px;
+  max-width: 92px;
+}
+.library-reading-table td.library-reading-col-source {
+  overflow: hidden;
+}
 .library-list-shell .board-table-wrap::-webkit-scrollbar { height: 6px; width: 6px; }
 .library-list-shell .board-table-wrap::-webkit-scrollbar-thumb {
   background: color-mix(in oklch, var(--accent-presence) 22%, transparent);
   border-radius: 999px;
 }
 
+@container (max-width: 640px) {
+  .library-reading-add-form {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .library-reading-add-actions {
+    grid-column: 1 / -1;
+  }
+}
+
+@container (max-width: 430px) {
+  .library-reading-add-form {
+    grid-template-columns: 1fr;
+  }
+  .library-reading-add-actions {
+    grid-column: auto;
+    justify-content: stretch;
+  }
+  .library-reading-add-button {
+    flex: 1;
+  }
+}
+
 @container (max-width: 560px) {
-  .library-reading-table th:nth-child(4),
-  .library-reading-table td:nth-child(4),
-  .library-reading-table th:nth-child(5),
-  .library-reading-table td:nth-child(5) {
+  .library-reading-table {
+    table-layout: auto;
+  }
+  .library-reading-table thead {
     display: none;
   }
-  .library-reading-table thead th,
-  .library-reading-table tbody td {
-    padding-left: 8px;
-    padding-right: 8px;
+  .library-reading-table tbody {
+    display: block;
+    width: 100%;
+  }
+  .library-reading-table .board-table-group-row {
+    display: block;
+  }
+  .library-reading-table .board-table-group-row td {
+    box-sizing: border-box;
+    display: flex;
+    width: 100%;
+  }
+  .library-reading-row {
+    box-sizing: border-box;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(126px, 142px) 44px;
+    align-items: center;
+    column-gap: 10px;
+    min-height: 72px;
+    width: 100%;
+  }
+  .library-reading-row > td {
+    box-sizing: border-box;
+    display: block;
+    min-width: 0;
+    padding: 12px 0;
+  }
+  .library-reading-row > .library-reading-col-title {
+    padding-left: 12px;
+  }
+  .library-reading-row > .library-reading-col-added {
+    padding-right: 12px;
+  }
+  .library-reading-table .library-reading-col-source,
+  .library-reading-table .library-reading-col-progress,
+  .library-reading-table .library-reading-col-actions {
+    display: none;
   }
   .library-reading-table .library-status-select {
-    padding-left: 6px;
-    padding-right: 18px;
+    box-sizing: border-box;
+    min-width: 0;
+    width: 100%;
+    padding-left: 10px;
+    padding-right: 24px;
   }
 }
 
@@ -2485,8 +2681,10 @@ h3:hover .library-heading-anchor,
 /* Ultra-narrow panels: the Added timestamp goes too (Title + Status +
    delete remain) so the table never scrolls horizontally. */
 @container (max-width: 400px) {
-  .library-reading-table th:nth-child(3),
-  .library-reading-table td:nth-child(3) {
+  .library-reading-row {
+    grid-template-columns: minmax(0, 1fr) minmax(112px, 128px);
+  }
+  .library-reading-table .library-reading-col-added {
     display: none;
   }
 }

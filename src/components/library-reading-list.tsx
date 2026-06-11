@@ -122,23 +122,27 @@ function AddReadingForm({ onAdd, onCancel }: {
   }
 
   return (
-    <form className="library-list-add-form" onSubmit={handleSubmit} onReset={resetForm}>
+    <form className="library-reading-add-form" onSubmit={handleSubmit} onReset={resetForm}>
       <input
         autoFocus={!coarse}
-        className="board-drawer-field-input library-list-add-input"
+        aria-label="Reading title"
+        className="library-reading-add-input"
         placeholder="Title"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
       />
       <input
-        className="board-drawer-field-input library-list-add-input"
-        placeholder="URL or DOI (optional)"
+        aria-label="Reading URL or DOI"
+        className="library-reading-add-input"
+        inputMode="url"
+        placeholder="URL or DOI"
         value={url}
         onChange={(e) => setUrl(e.target.value)}
-        type="url"
+        type="text"
       />
       <select
-        className="board-toolbar-select"
+        aria-label="Reading source type"
+        className="library-reading-add-select"
         value={sourceType}
         onChange={(e) => setSourceType(e.target.value as LibraryReadingItem["sourceType"])}
       >
@@ -150,7 +154,8 @@ function AddReadingForm({ onAdd, onCancel }: {
         <option value="other">Other</option>
       </select>
       <select
-        className="board-toolbar-select"
+        aria-label="Reading status"
+        className="library-reading-add-select"
         value={status}
         onChange={(e) => setStatus(e.target.value as ReadingStatus)}
       >
@@ -159,8 +164,18 @@ function AddReadingForm({ onAdd, onCancel }: {
         <option value="done">Done</option>
         <option value="abandoned">Abandoned</option>
       </select>
-      <button type="submit" className="board-toolbar-btn board-toolbar-btn--active">Save</button>
-      <button type="button" className="board-toolbar-btn" onClick={handleCancel}>Cancel</button>
+      <div className="library-reading-add-actions">
+        <button
+          type="submit"
+          className="library-reading-add-button library-reading-add-button--primary"
+          disabled={!title.trim()}
+        >
+          <Icon name="ph:check" width={12} /> Save
+        </button>
+        <button type="button" className="library-reading-add-button" onClick={handleCancel}>
+          <Icon name="ph:x" width={12} /> Cancel
+        </button>
+      </div>
     </form>
   );
 }
@@ -173,10 +188,10 @@ type Props = {
   onDelete?: (id: string) => void;
 };
 
-const COLS: { key: SortKey; label: string; width?: string }[] = [
-  { key: "title",   label: "Title" },
-  { key: "status",  label: "Status",   width: "104px" },
-  { key: "addedAt", label: "Added",    width: "64px" },
+const COLS: { key: SortKey; label: string; className: string; width?: string }[] = [
+  { key: "title",   label: "Title",  className: "library-reading-col-title" },
+  { key: "status",  label: "Status", className: "library-reading-col-status", width: "128px" },
+  { key: "addedAt", label: "Added",  className: "library-reading-col-added",  width: "64px" },
 ];
 
 export function LibraryReadingList({ selectedId, onSelect, onDelete }: Props) {
@@ -339,7 +354,7 @@ export function LibraryReadingList({ selectedId, onSelect, onDelete }: Props) {
               <tr>
                 {COLS.map((col) => (
                   <th key={col.key} style={col.width ? { width: col.width } : undefined}
-                    className={sortKey === col.key ? "sorted" : ""}
+                    className={`${col.className}${sortKey === col.key ? " sorted" : ""}`}
                     onClick={() => handleCol(col.key)}>
                     {col.label}
                     <span className="board-table-sort-icon">
@@ -349,9 +364,9 @@ export function LibraryReadingList({ selectedId, onSelect, onDelete }: Props) {
                     </span>
                   </th>
                 ))}
-                <th style={{ width: "80px" }}>Type</th>
-                <th style={{ width: "70px" }}>Progress</th>
-                <th style={{ width: "32px" }} />
+                <th className="library-reading-col-source" style={{ width: "92px" }}>Type</th>
+                <th className="library-reading-col-progress" style={{ width: "70px" }}>Progress</th>
+                <th className="library-reading-col-actions" style={{ width: "32px" }} />
               </tr>
             </thead>
             <tbody>
@@ -370,15 +385,15 @@ export function LibraryReadingList({ selectedId, onSelect, onDelete }: Props) {
                   )}
                   {!collapsed.has(key) && gi.map((item) => (
                     <tr key={item.id}
-                      className={item.id === selectedId ? "selected" : ""}
+                      className={`library-reading-row${item.id === selectedId ? " selected" : ""}`}
                       onClick={() => onSelect(item)}>
-                      <td>
+                      <td className="library-reading-col-title">
                         <span className="board-table-title library-reading-title">{item.title}</span>
                         {item.author && (
-                          <div className="board-table-muted" style={{ marginTop: 2 }}>{item.author}</div>
+                          <div className="board-table-muted library-reading-author">{item.author}</div>
                         )}
                       </td>
-                      <td>
+                      <td className="library-reading-col-status">
                         <select
                           className="library-status-badge library-status-select"
                           style={statusBadgeStyle(item.status)}
@@ -397,16 +412,16 @@ export function LibraryReadingList({ selectedId, onSelect, onDelete }: Props) {
                           ))}
                         </select>
                       </td>
-                      <td style={{ textAlign: "right" }}>
+                      <td className="library-reading-col-added">
                         <span className="board-table-muted">{relTime(item.addedAt)}</span>
                       </td>
-                      <td>
-                        <span className="board-table-muted library-source-type">
+                      <td className="library-reading-col-source" title={item.sourceType}>
+                        <span className="board-table-muted library-source-type" aria-label={`Type: ${item.sourceType}`}>
                           {sourceIcon(item.sourceType)}
-                          <span style={{ marginLeft: 3 }}>{item.sourceType}</span>
+                          <span className="library-source-type__label">{item.sourceType}</span>
                         </span>
                       </td>
-                      <td>
+                      <td className="library-reading-col-progress">
                         {item.status === "done" ? (
                           <span style={{ color: "var(--color-success)", display:"inline-flex", alignItems:"center" }}><Icon name="ph:check" width={13} /></span>
                         ) : item.status === "reading" && item.progress != null ? (
@@ -417,7 +432,7 @@ export function LibraryReadingList({ selectedId, onSelect, onDelete }: Props) {
                           <span className="board-table-muted">—</span>
                         )}
                       </td>
-                      <td onClick={(e) => { e.stopPropagation(); handleDelete(item); }}>
+                      <td className="library-reading-col-actions" onClick={(e) => { e.stopPropagation(); handleDelete(item); }}>
                         <span className="library-row-delete" title="Remove">
                           <Icon name="ph:x" width={11} />
                         </span>
