@@ -98,7 +98,6 @@ const CompanionRailInner = forwardRef<ChatRouterHandle, Props>(
             aria-label="Switch familiar"
           >
             <span>{familiar.display_name}</span>
-            <Icon name="ph:caret-down" width={10} />
           </button>
           <span
             className={`companion-rail__status${daemonRunning ? "" : " companion-rail__status--off"}`}
