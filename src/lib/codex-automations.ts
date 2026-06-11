@@ -183,6 +183,12 @@ function replaceTomlKey(raw: string, key: string, value: string): string {
   return next.join("\n");
 }
 
+function normalizeCodexAutomationVersion(raw: string): string {
+  return raw.replace(/^(\s*version\s*=\s*)(\d+)\s*(?:#.*)?$/m, (_match, prefix, version) => {
+    return `${prefix}${tomlString(String(version))}`;
+  });
+}
+
 export function patchTomlAutomationFields(
   raw: string,
   patch: CodexAutomationPatch,
@@ -200,7 +206,7 @@ export function patchTomlAutomationFields(
     ["skill_path", "skill_path", tomlString as (value: never) => string],
   ];
 
-  let next = raw;
+  let next = normalizeCodexAutomationVersion(raw);
   for (const [patchKey, tomlKey, formatter] of entries) {
     const value = patch[patchKey];
     if (value === undefined) continue;

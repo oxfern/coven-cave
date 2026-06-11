@@ -31,6 +31,7 @@ const patched = patchTomlAutomationFields(original, {
 });
 
 assert.match(patched, /^name = "Priority \\"Audit\\""/m);
+assert.match(patched, /^version = "1"$/m);
 assert.match(patched, /^status = "ACTIVE"/m);
 assert.match(patched, /^rrule = "RRULE:FREQ=WEEKLY;BYHOUR=6;BYMINUTE=30;BYDAY=MO,WE,FR"/m);
 assert.match(patched, /^model = "gpt-5.5"/m);
@@ -55,6 +56,7 @@ const patchedOdd = patchTomlAutomationFields(oddlyFormatted, {
 });
 
 assert.match(patchedOdd, /^  status = "ACTIVE"$/m);
+assert.match(patchedOdd, /^version = "1"$/m);
 assert.ok(patchedOdd.includes("  prompt = '''New prompt\n'''"));
 assert.ok(!patchedOdd.includes("still old"));
 assert.equal((patchedOdd.match(/^\s*status\s*=/gm) ?? []).length, 1);
