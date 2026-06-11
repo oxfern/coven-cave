@@ -1324,18 +1324,27 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
     await sendRaw(text, outgoingAttachments);
   };
 
-  // Auto-send a prompt handed off from the home composer. Ref-guarded so it
-  // fires exactly once per handoff (including strict-mode double effects).
-  // The router drops initialPrompt from its view state when the session id is
-  // promoted, which clears the prop and re-arms the guard for the next handoff.
+  // Auto-send a prompt handed off from the home composer. Deferred one
+  // macrotask so it runs after strict-mode's mount-effect replay — sending
+  // synchronously here lets the replayed history-load effect (null-session
+  // branch) setTurns([]) right after sendRaw appended the optimistic bubbles,
+  // leaving a busy composer over an empty thread. The cleanup cancels the
+  // first pass's timer, so only the final pass sends; the ref latches when
+  // the send actually fires. The router drops initialPrompt from its view
+  // state on session promotion, which clears the prop and re-arms the guard
+  // for the next handoff.
   useEffect(() => {
     if (!initialPrompt) {
       initialPromptSentRef.current = false;
       return;
     }
     if (initialPromptSentRef.current || sessionId) return;
-    initialPromptSentRef.current = true;
-    void sendRaw(initialPrompt);
+    const timer = window.setTimeout(() => {
+      if (initialPromptSentRef.current) return;
+      initialPromptSentRef.current = true;
+      void sendRaw(initialPrompt);
+    }, 0);
+    return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialPrompt, sessionId]);
 
