@@ -70,6 +70,16 @@ assert.match(
   /title=\{untracked \? `Delete \$\{file\.path\}` : `Revert \$\{file\.path\}`\}[\s\S]*?<Icon name=\{untracked \? "ph:trash" : "ph:arrow-counter-clockwise"\}/,
   "Untracked file delete action should use a trash icon before confirm, matching its label",
 );
+assert.match(
+  changesPanel,
+  /saveCheckpoint[\s\S]*?action: "checkpoint"[\s\S]*?Checkpoint/,
+  "Changes panel should expose a checkpoint action that saves a patch snapshot before risky review/revert work",
+);
+assert.match(
+  changesPanel,
+  /checkpointMessage[\s\S]*?Saved checkpoint/,
+  "Checkpoint completion should surface the saved patch path in the panel",
+);
 
 const changesRoute = await readFile(
   new URL("../app/api/changes/route.ts", import.meta.url),
@@ -135,6 +145,31 @@ assert.match(
   changesRoute,
   /\["checkout", "--", body\.path\]/,
   "Tracked revert is scoped to git checkout -- <one file>",
+);
+assert.match(
+  changesRoute,
+  /action\?: "revert" \| "checkpoint"/,
+  "Changes POST should accept an explicit checkpoint action as a non-destructive review operation",
+);
+assert.match(
+  changesRoute,
+  /async function checkpointChanges[\s\S]*?\.git[\s\S]*?coven-cave[\s\S]*?checkpoints/,
+  "Checkpoint snapshots should be stored under the repository .git directory, not in the worktree",
+);
+assert.match(
+  changesRoute,
+  /\["diff", "--binary", "HEAD", "--"\]/,
+  "Checkpoint snapshots should capture binary-safe tracked diffs versus HEAD",
+);
+assert.match(
+  changesRoute,
+  /status === "untracked"[\s\S]*?\["diff", "--no-index", "--", "\/dev\/null", abs\]/,
+  "Checkpoint snapshots should include untracked file contents as synthetic add-file diffs",
+);
+assert.match(
+  changesRoute,
+  /writeFileSync\(checkpointPath, patch/,
+  "Checkpoint snapshots should persist the generated patch without changing the working tree",
 );
 
 console.log("debug-pane.test.ts: ok");

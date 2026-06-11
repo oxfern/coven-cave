@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import fs from "node:fs";
+import fs, { writeFileSync } from "node:fs";
 import path from "node:path";
 import { resolveAllowedProjectPath } from "@/lib/server/project-paths";
 
@@ -13,6 +13,7 @@ export const dynamic = "force-dynamic";
  * GET  ?projectRoot=<abs>             → list uncommitted changes (git status)
  * GET  ?projectRoot=<abs>&path=<rel>  → unified diff for one file (capped)
  * POST { projectRoot, path, confirmUntracked? } → revert ONE file
+ * POST { projectRoot, action: "checkpoint" } → save a patch snapshot
  *
  * Security posture: every git invocation goes through execFile with an
  * argument array — no shell, so paths are never string-interpolated into a
@@ -259,25 +260,78 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// ── POST: revert one file ─────────────────────────────────────────────────────
+async function checkpointChanges(repoRoot: string): Promise<string> {
+  // Store snapshots under .git/coven-cave/checkpoints so the checkpoint never
+  // creates new worktree changes.
+  let patch = "";
+  try {
+    ({ stdout: patch } = await git(repoRoot, ["diff", "--binary", "HEAD", "--"]));
+  } catch {
+    ({ stdout: patch } = await git(repoRoot, ["diff", "--binary", "--"]));
+  }
+
+  const { stdout: statusOut } = await git(repoRoot, ["status", "--porcelain=v1", "-z", "--untracked-files=all"]);
+  for (const file of parsePorcelainZ(statusOut)) {
+    if (file.status === "untracked") {
+      const abs = resolveContainedFile(repoRoot, file.path);
+      if (!abs || !fs.existsSync(/* turbopackIgnore: true */ abs)) continue;
+      try {
+        const { stdout } = await git(repoRoot, ["diff", "--no-index", "--", "/dev/null", abs]);
+        patch += stdout;
+      } catch (err) {
+        const e = err as { code?: number; stdout?: string };
+        if (e.code === 1 && typeof e.stdout === "string") patch += e.stdout;
+        else throw err;
+      }
+    }
+  }
+
+  const { stdout: gitDirOut } = await git(repoRoot, ["rev-parse", "--git-dir"]);
+  const gitDirRaw = gitDirOut.trim();
+  const gitDir = path.isAbsolute(gitDirRaw) ? gitDirRaw : path.resolve(/* turbopackIgnore: true */ repoRoot, gitDirRaw);
+  const checkpointDir = path.join(/* turbopackIgnore: true */ gitDir, "coven-cave", "checkpoints");
+  fs.mkdirSync(/* turbopackIgnore: true */ checkpointDir, { recursive: true, mode: 0o700 });
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const checkpointPath = path.join(/* turbopackIgnore: true */ checkpointDir, `${stamp}.patch`);
+  writeFileSync(checkpointPath, patch, { mode: 0o600 });
+  return checkpointPath;
+}
+
+// ── POST: revert one file / checkpoint changes ───────────────────────────────
 
 export async function POST(req: NextRequest) {
-  let body: { projectRoot?: string; path?: string; confirmUntracked?: boolean };
+  let body: { projectRoot?: string; path?: string; confirmUntracked?: boolean; action?: "revert" | "checkpoint" };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ ok: false, error: "invalid json body" }, { status: 400 });
   }
-  if (typeof body.projectRoot !== "string" || typeof body.path !== "string") {
+  if (typeof body.projectRoot !== "string") {
     return NextResponse.json(
-      { ok: false, error: "projectRoot and path are required" },
+      { ok: false, error: "projectRoot is required" },
       { status: 400 },
     );
   }
+  const action = body.action ?? "revert";
 
   const root = await resolveRepoRoot(body.projectRoot);
   if (!root.ok) {
     return NextResponse.json({ ok: false, error: root.error }, { status: root.status });
+  }
+  if (action === "checkpoint") {
+    try {
+      const checkpointPath = await checkpointChanges(root.repoRoot);
+      return NextResponse.json({ ok: true, checkpointPath });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    }
+  }
+  if (typeof body.path !== "string") {
+    return NextResponse.json(
+      { ok: false, error: "projectRoot and path are required" },
+      { status: 400 },
+    );
   }
   const abs = resolveContainedFile(root.repoRoot, body.path);
   if (!abs) return pathNotAllowed();

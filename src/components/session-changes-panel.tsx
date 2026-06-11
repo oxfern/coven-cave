@@ -194,6 +194,8 @@ function SessionChangesInner({ projectRoot, running }: { projectRoot: string; ru
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [checkpointing, setCheckpointing] = useState(false);
+  const [checkpointMessage, setCheckpointMessage] = useState<string | null>(null);
   const [expandedPath, setExpandedPath] = useState<string | null>(null);
   const [diffs, setDiffs] = useState<Record<string, DiffState>>({});
   const [revertingPath, setRevertingPath] = useState<string | null>(null);
@@ -274,6 +276,33 @@ function SessionChangesInner({ projectRoot, running }: { projectRoot: string; ru
     [diffs, expandedPath, fetchDiff],
   );
 
+  const saveCheckpoint = useCallback(async () => {
+    setCheckpointing(true);
+    setActionError(null);
+    setCheckpointMessage(null);
+    try {
+      const res = await fetch("/api/changes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectRoot,
+          action: "checkpoint",
+        }),
+      });
+      const json = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        checkpointPath?: string;
+        error?: string;
+      };
+      if (!res.ok || !json.ok) throw new Error(json.error ?? `http ${res.status}`);
+      setCheckpointMessage(`Saved checkpoint: ${json.checkpointPath ?? "patch saved"}`);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setCheckpointing(false);
+    }
+  }, [projectRoot]);
+
   const revertFile = useCallback(
     async (file: ChangedFile) => {
       setRevertingPath(file.path);
@@ -321,17 +350,30 @@ function SessionChangesInner({ projectRoot, running }: { projectRoot: string; ru
               </span>
             ) : null}
           </span>
-          <button
-            type="button"
-            onClick={() => void load()}
-            disabled={refreshing}
-            title="Refresh"
-            aria-label="Refresh working tree changes"
-            className="focus-ring inline-flex shrink-0 items-center gap-1 rounded px-1 py-0.5 text-[10px] text-[var(--text-muted)] transition-colors hover:text-[var(--text-primary)] disabled:opacity-40"
-          >
-            <Icon name="ph:arrows-clockwise" width={11} aria-hidden className={refreshing ? "animate-spin" : undefined} />
-            Refresh
-          </button>
+          <span className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              onClick={() => void saveCheckpoint()}
+              disabled={checkpointing || notARepo || !!error}
+              title="Save patch checkpoint"
+              aria-label="Save patch checkpoint"
+              className="focus-ring inline-flex shrink-0 items-center gap-1 rounded px-1 py-0.5 text-[10px] text-[var(--text-muted)] transition-colors hover:text-[var(--text-primary)] disabled:opacity-40"
+            >
+              <Icon name="ph:archive" width={11} aria-hidden />
+              {checkpointing ? "Saving" : "Checkpoint"}
+            </button>
+            <button
+              type="button"
+              onClick={() => void load()}
+              disabled={refreshing}
+              title="Refresh"
+              aria-label="Refresh working tree changes"
+              className="focus-ring inline-flex shrink-0 items-center gap-1 rounded px-1 py-0.5 text-[10px] text-[var(--text-muted)] transition-colors hover:text-[var(--text-primary)] disabled:opacity-40"
+            >
+              <Icon name="ph:arrows-clockwise" width={11} aria-hidden className={refreshing ? "animate-spin" : undefined} />
+              Refresh
+            </button>
+          </span>
         </div>
         <p className="mt-0.5 truncate text-[10px] text-[var(--text-muted)]" title={repoRoot ?? projectRoot}>
           {notARepo
@@ -364,6 +406,20 @@ function SessionChangesInner({ projectRoot, running }: { projectRoot: string; ru
         )}
 
         {/* Transient action failures are dismissable */}
+        {checkpointMessage && (
+          <div className="mb-2 flex items-center justify-between gap-2 rounded-md border border-[color-mix(in_oklch,var(--accent-presence)_35%,transparent)] bg-[color-mix(in_oklch,var(--accent-presence)_10%,transparent)] px-2 py-1.5 text-[11px] text-[var(--accent-presence)]">
+            <span className="min-w-0 truncate" title={checkpointMessage}>{checkpointMessage}</span>
+            <button
+              type="button"
+              className="focus-ring shrink-0"
+              aria-label="Dismiss checkpoint message"
+              onClick={() => setCheckpointMessage(null)}
+            >
+              <Icon name="ph:x-bold" width={10} aria-hidden />
+            </button>
+          </div>
+        )}
+
         {actionError && (
           <div
             role="alert"
