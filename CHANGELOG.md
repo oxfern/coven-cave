@@ -7,6 +7,14 @@ breaking config changes; patch releases stay additive.
 
 ## [Unreleased]
 
+## [0.0.66] — 2026-06-10
+
+### Added
+- **Runtime demo mode** — demo data for screenshots and simple testing can now be activated with `?demo=1`, from onboarding, or from Settings → General → Startup without editing environment files.
+
+### Changed
+- **Demo reset** — clearing demo mode removes the local toggle and strips the launch URL flag so testers can return to a normal Cave session quickly.
+
 ## [0.0.65] — 2026-06-10
 
 ### Added
