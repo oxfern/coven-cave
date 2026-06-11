@@ -1078,10 +1078,33 @@ export function Workspace() {
 
   const list = undefined;
 
+  const terminalDetail = (
+    <div
+      className={[
+        "h-full min-h-0 flex flex-col",
+        mode === "terminal"
+          ? "relative"
+          : "pointer-events-none absolute inset-0 opacity-0",
+      ].join(" ")}
+      aria-hidden={mode !== "terminal"}
+    >
+      <ComuxView
+        view="terminal"
+        active={mode === "terminal"}
+        sessions={sessions}
+        onOpenSession={(sessionId, familiarId) => {
+          openAgentSession(sessionId, familiarId);
+        }}
+        onNewChat={openProjectChat}
+      />
+    </div>
+  );
+
   const detail = (
-    <div key={mode} className="cave-mode-fade h-full flex flex-col">
+    <div className="cave-mode-fade relative h-full min-h-0 flex flex-col overflow-hidden">
       <h1 className="sr-only">{WORKSPACE_MODE_TITLES[mode] ?? "Coven Cave"}</h1>
-      {mode === "agents" ? (
+      {terminalDetail}
+      {mode === "terminal" ? null : mode === "agents" ? (
       <AgentsView
         familiars={familiars}
         sessions={sessions}
@@ -1166,15 +1189,6 @@ export function Workspace() {
       />
     ) : mode === "browser" ? (
       <BrowserPane ref={browserPaneRef} label="main" activeFamiliarId={active?.id ?? null} />
-    ) : mode === "terminal" ? (
-      <ComuxView
-        view="terminal"
-        sessions={sessions}
-        onOpenSession={(sessionId, familiarId) => {
-          openAgentSession(sessionId, familiarId);
-        }}
-        onNewChat={openProjectChat}
-      />
     ) : mode === "github" ? (
       <GitHubView
         onJumpToSession={openAgentSession}

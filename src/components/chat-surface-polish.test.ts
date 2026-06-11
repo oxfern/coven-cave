@@ -42,6 +42,35 @@ test("chat-view empty state hint is tagged for touch-device hiding", () => {
   assert.match(src, /cave-chat-empty-hint/, "hint class applied to {modKey}↵ paragraph");
 });
 
+test("chat-view new-chat start screen uses a polished launch layout", () => {
+  const src = read("./chat-view.tsx");
+  assert.match(src, /className="cave-chat-empty-shell"/, "empty state has a constrained launch shell");
+  assert.match(src, /className="cave-chat-empty-agent"/, "agent identity is grouped in a dedicated row");
+  assert.match(src, /className="cave-chat-empty-project"/, "project picker uses the launch-screen project treatment");
+  assert.match(src, /className="cave-chat-empty-prompts"/, "starter prompts render in a targetable responsive grid");
+  assert.match(src, /className="cave-chat-empty-prompt"/, "starter prompts use the polished prompt button class");
+  assert.doesNotMatch(src, /Runs on|type\s*\{" "\}|to reference files/, "empty state should not show verbose feature-instruction copy");
+});
+
+test("cave-chat.css modernizes the new-chat launch surface responsively", () => {
+  const src = read("../styles/cave-chat.css");
+  assert.match(
+    src,
+    /\.cave-chat-empty-shell\s*\{[\s\S]*?width:\s*min\(760px,\s*100%\);[\s\S]*?display:\s*grid;/,
+    "launch shell is constrained and grid-based",
+  );
+  assert.match(
+    src,
+    /\.cave-chat-empty-prompts\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/,
+    "starter prompts use a balanced two-column grid on desktop",
+  );
+  assert.match(
+    src,
+    /@media\s*\(max-width:\s*640px\)\s*\{[\s\S]*?\.cave-chat-empty-prompts\s*\{[\s\S]*?grid-template-columns:\s*1fr;/,
+    "starter prompts collapse to one column on narrow screens",
+  );
+});
+
 test("cave-chat.css hides the kb hint on coarse pointers", () => {
   const src = read("../styles/cave-chat.css");
   assert.match(

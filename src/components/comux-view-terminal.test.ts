@@ -6,11 +6,15 @@ const source = readFileSync(
   new URL("./comux-view.tsx", import.meta.url),
   "utf8",
 );
+const workspace = readFileSync(
+  new URL("./workspace.tsx", import.meta.url),
+  "utf8",
+);
 
 // Keyboard hint footer (matches the inbox/calendar/library/home/browser pattern).
 assert.match(
   source,
-  /⌘N new · ⌘W close · double-click tab name to rename/,
+  /⌘N new · ⌘W close · drag tabs onto pane edges to split · drag dividers to resize/,
   "renders the keyboard hint footer below the terminal area",
 );
 
@@ -63,6 +67,79 @@ assert.match(
   source,
   /e\.key === "w"[\s\S]{0,120}removeSession\(currentIdx\)/,
   "⌘W triggers removeSession of the current index",
+);
+
+// Terminal persistence: switching workspace surfaces must hide, not unmount,
+// the Comux terminal. Otherwise the PTY bridge disconnects and desktop Tauri
+// cleanup stops the process.
+assert.match(
+  workspace,
+  /const terminalDetail = \([\s\S]*?<ComuxView[\s\S]{0,120}view="terminal"[\s\S]{0,120}active=\{mode === "terminal"\}/,
+  "Workspace should create one persistent terminal detail subtree",
+);
+assert.match(
+  workspace,
+  /\{terminalDetail\}[\s\S]{0,80}\{mode === "terminal" \? null :/,
+  "Workspace should always render the terminal subtree and hide other detail surfaces while Terminal is active",
+);
+assert.doesNotMatch(
+  workspace,
+  /<div key=\{mode\} className="cave-mode-fade/,
+  "Workspace detail must not force a full remount on every surface switch",
+);
+assert.match(
+  source,
+  /active = true[\s\S]*?if \(view !== "terminal" \|\| !active\) return;/,
+  "Hidden terminal views should not keep global terminal shortcuts active",
+);
+assert.match(
+  source,
+  /active=\{active && sessionIdx === currentIdx\}/,
+  "Hidden terminal views should keep PTYs mounted without stealing focus",
+);
+
+// Split panes: terminal tabs can be dragged into pane drop zones, and the
+// visible terminal layout uses react-resizable-panels so xterm's ResizeObserver
+// can propagate pty_resize after handle drags.
+assert.match(
+  source,
+  /import \{ Group, Panel, Separator \} from "react-resizable-panels";/,
+  "terminal view imports resizable panel primitives",
+);
+assert.match(
+  source,
+  /import \{ SeparatorHandle \} from "@\/components\/ui\/separator-handle";/,
+  "terminal view uses the shared resize handle affordance",
+);
+assert.match(
+  source,
+  /const TERMINAL_SESSION_DRAG_TYPE = "application\/x-cave-terminal-session";/,
+  "terminal tabs use a custom drag payload type",
+);
+assert.match(
+  source,
+  /draggable[\s\S]*?dataTransfer\.setData\(TERMINAL_SESSION_DRAG_TYPE,\s*s\.id\)/,
+  "terminal tabs are draggable and store the session id",
+);
+assert.match(
+  source,
+  /function TerminalDropZone\([\s\S]*?onDrop=\{\(e\) => \{[\s\S]*?onSplit\(dragged,\s*side\);/,
+  "terminal panes expose edge drop zones that split with the dragged session",
+);
+assert.match(
+  source,
+  /<Group[\s\S]{0,220}orientation=\{splitDirection\}[\s\S]*?<Panel[\s\S]*?<Separator[\s\S]*?<SeparatorHandle/,
+  "visible terminal panes render inside a resizable panel group",
+);
+assert.match(
+  source,
+  /onSplitTerminal\("horizontal"\)[\s\S]*?Split right/,
+  "toolbar exposes a split-right command",
+);
+assert.match(
+  source,
+  /onSplitTerminal\("vertical"\)[\s\S]*?Split down/,
+  "toolbar exposes a split-down command",
 );
 
 console.log("comux-view-terminal.test.ts OK");

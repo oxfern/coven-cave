@@ -87,3 +87,5 @@ package-lock.json
 /docs/superpowers
 /.playwright-cli
 /.understand-anything
+/graphify-out
+/.playwright-mcp

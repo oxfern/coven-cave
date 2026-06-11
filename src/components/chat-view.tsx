@@ -428,46 +428,35 @@ function ChatEmptyState({
   /** True when the chat knows a project root, so `@` opens the file picker (CHAT-D1-04). */
   fileMentions?: boolean;
 }) {
+  const project = chatProjectById(projectId) ?? DEFAULT_CHAT_PROJECT;
 
   return (
     <div className="cave-chat-empty select-none">
-      <div className="cave-chat-empty-mark">
-        <Icon name="ph:sparkle-bold" width={18} aria-hidden />
-      </div>
-      <h2 className="mb-1 text-base font-semibold text-[var(--text-primary)]">
-        {familiar.display_name}
-      </h2>
-      <p className="mb-4 text-[13px] text-[var(--text-muted)]">
-        Runs on{" "}
-        <code className="rounded px-1 py-0.5 font-mono text-[11px] bg-[var(--bg-raised)] text-[var(--text-secondary)]">
-          {familiar.harness}
-        </code>
-        {" "}· type{" "}
-        <kbd className="rounded px-1 py-0.5 font-mono text-[11px] bg-[var(--bg-raised)] text-[var(--text-secondary)]">
-          /
-        </kbd>
-        {" "}for commands
-        {fileMentions ? (
-          <>
-            {" "}·{" "}
-            <kbd className="rounded px-1 py-0.5 font-mono text-[11px] bg-[var(--bg-raised)] text-[var(--text-secondary)]">
-              @
-            </kbd>
-            {" "}to reference files
-          </>
-        ) : null}
-      </p>
+      <div className="cave-chat-empty-shell">
+        <div className="cave-chat-empty-agent">
+          <div className="cave-chat-empty-mark">
+            <Icon name="ph:sparkle-bold" width={17} aria-hidden />
+          </div>
+          <div className="cave-chat-empty-agent-copy">
+            <h2 className="cave-chat-empty-title">
+              {familiar.display_name}
+            </h2>
+            <p className="cave-chat-empty-meta">
+              <span>{familiar.harness}</span>
+              {fileMentions ? <span>project files ready</span> : null}
+            </p>
+          </div>
+        </div>
 
-      {onProjectChange && (
-        <div className="mb-6 flex max-w-[min(42rem,100%)] flex-col gap-1.5">
-          <label className="flex items-center gap-1.5 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/40 px-2 py-1 focus-within:border-[var(--border-strong)]">
-            <Icon name="ph:folder-open" width={12} className="shrink-0 text-[var(--text-muted)]" aria-hidden />
-            <span className="w-12 shrink-0 font-mono text-[10px] font-semibold text-[var(--text-muted)]">Project</span>
+        {onProjectChange && (
+          <label className="cave-chat-empty-project">
+            <Icon name="ph:folder-open" width={14} aria-hidden />
+            <span className="cave-chat-empty-project-label">Project</span>
             <select
-              value={projectId ?? DEFAULT_CHAT_PROJECT_ID}
+              value={project.id}
               onChange={(e) => onProjectChange(e.target.value)}
               aria-label="Project for this chat"
-              className="min-w-0 flex-1 bg-transparent font-mono text-[11px] text-[var(--text-secondary)] outline-none"
+              className="cave-chat-empty-project-select"
             >
               {CHAT_PROJECTS.map((project) => (
                 <option key={project.id} value={project.id}>
@@ -475,34 +464,32 @@ function ChatEmptyState({
                 </option>
               ))}
             </select>
-            <span className="hidden min-w-0 flex-1 truncate text-right font-mono text-[10px] text-[var(--text-muted)] sm:block">
-              {chatProjectById(projectId)?.root ?? DEFAULT_CHAT_PROJECT.root}
+            <span className="cave-chat-empty-project-root">
+              {project.root}
             </span>
           </label>
-        </div>
-      )}
+        )}
 
-      {onPrompt && (
-        <div className="flex flex-wrap justify-center gap-2">
-          {STARTER_PROMPTS.map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => onPrompt(p)}
-              className="rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/55 px-3 py-1.5 text-[12px] text-[var(--text-secondary)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
-            >
-              {p}
-            </button>
-          ))}
-        </div>
-      )}
+        {onPrompt && (
+          <div className="cave-chat-empty-prompts" aria-label="Starter prompts">
+            {STARTER_PROMPTS.map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => onPrompt(p)}
+                className="cave-chat-empty-prompt"
+              >
+                <span>{p}</span>
+                <Icon name="ph:arrow-right-bold" width={13} aria-hidden />
+              </button>
+            ))}
+          </div>
+        )}
 
-      {/* Keyboard-shortcut hint is desktop-only; on-screen keyboards send
-       * via the composer button. Plain Enter sends (see onComposerKey) —
-       * no modifier, matching the composer placeholder. */}
-      <p className="cave-chat-empty-hint mt-8 text-[11px] text-[var(--text-muted)]">
-        ↵ to send · shift↵ for newline
-      </p>
+        <p className="cave-chat-empty-hint">
+          Ready for the next thread.
+        </p>
+      </div>
     </div>
   );
 }

@@ -1976,6 +1976,98 @@ select {
   background: color-mix(in oklch, var(--accent-presence) 65%, transparent);
 }
 
+/* ---- Comux terminal split panes ------------------------------- */
+.comux-terminal-pane {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  flex-direction: column;
+  overflow: hidden;
+  background: oklch(0.11 0.022 293);
+}
+
+.comux-terminal-pane[data-active="true"] {
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--accent-presence) 38%, transparent);
+}
+
+.comux-terminal-pane-bar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 26px;
+  border-bottom: 1px solid color-mix(in oklch, var(--border-hairline) 75%, transparent);
+  background: color-mix(in oklch, var(--bg-raised) 50%, transparent);
+  padding: 0 8px;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.comux-terminal-pane-action {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  color: var(--text-muted);
+}
+
+.comux-terminal-pane-action:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.comux-terminal-pane-body {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+}
+
+.comux-terminal-drop-zone {
+  position: absolute;
+  z-index: 3;
+  opacity: 0;
+  transition:
+    opacity var(--duration-fast) var(--ease-standard),
+    background-color var(--duration-fast) var(--ease-standard);
+}
+
+.comux-terminal-drop-zone--left,
+.comux-terminal-drop-zone--right {
+  top: 0;
+  bottom: 0;
+  width: 22%;
+}
+
+.comux-terminal-drop-zone--left { left: 0; }
+.comux-terminal-drop-zone--right { right: 0; }
+
+.comux-terminal-drop-zone--top,
+.comux-terminal-drop-zone--bottom {
+  left: 0;
+  right: 0;
+  height: 22%;
+}
+
+.comux-terminal-drop-zone--top { top: 0; }
+.comux-terminal-drop-zone--bottom { bottom: 0; }
+
+.comux-terminal-drop-zone--over {
+  opacity: 1;
+  background: color-mix(in oklch, var(--accent-presence) 22%, transparent);
+  outline: 1px solid color-mix(in oklch, var(--accent-presence) 58%, transparent);
+  outline-offset: -1px;
+}
+
+.comux-terminal-keepalive {
+  position: absolute;
+  inset: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
 /* ---- ThinkingIndicator ------------------------------------- */
 .ui-thinking {
   display: inline-flex;

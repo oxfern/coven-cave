@@ -1,10 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
+import { Group, Panel, Separator } from "react-resizable-panels";
 import { BottomTerminal } from "@/components/bottom-terminal";
 import { Icon } from "@/lib/icon";
 import { ProjectTree, type ProjectTreeHandle } from "@/components/project-tree";
 import { SyntaxBlock } from "@/components/message-bubble";
+import { SeparatorHandle } from "@/components/ui/separator-handle";
 import {
   deriveComuxProjects,
   projectName,
@@ -20,14 +22,95 @@ type TerminalSession = {
   projectRoot?: string;
 };
 
+type SplitDirection = "horizontal" | "vertical";
+type SplitSide = "left" | "right" | "top" | "bottom";
+type SessionPlacement = "replace" | "split";
+
 type Props = {
   view: ComuxViewMode;
   sessions: SessionRow[];
   onOpenSession: (sessionId: string, familiarId?: string | null) => void;
   onNewChat: (projectRoot: string) => void;
+  active?: boolean;
 };
 
 const STORAGE_SESSIONS = "cave:comux:sessions";
+const TERMINAL_SESSION_DRAG_TYPE = "application/x-cave-terminal-session";
+
+function uniqueSessionIds(ids: string[]): string[] {
+  const seen = new Set<string>();
+  const next: string[] = [];
+  for (const id of ids) {
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    next.push(id);
+  }
+  return next;
+}
+
+function directionForSplitSide(side: SplitSide): SplitDirection {
+  return side === "left" || side === "right" ? "horizontal" : "vertical";
+}
+
+function insertPaneSession(
+  paneIds: string[],
+  sourceSessionId: string,
+  targetSessionId: string | undefined,
+  side: SplitSide,
+): string[] {
+  if (!targetSessionId || sourceSessionId === targetSessionId) {
+    return uniqueSessionIds(paneIds.length ? paneIds : [sourceSessionId]);
+  }
+  const base = uniqueSessionIds(paneIds).filter((id) => id !== sourceSessionId);
+  const targetIdx = base.indexOf(targetSessionId);
+  if (targetIdx === -1) return uniqueSessionIds([...base, sourceSessionId]);
+  const insertIdx = side === "left" || side === "top" ? targetIdx : targetIdx + 1;
+  return [
+    ...base.slice(0, insertIdx),
+    sourceSessionId,
+    ...base.slice(insertIdx),
+  ];
+}
+
+function TerminalDropZone({
+  side,
+  onSplit,
+}: {
+  side: SplitSide;
+  onSplit: (sessionId: string, side: SplitSide) => void;
+}) {
+  const [over, setOver] = useState(false);
+
+  const acceptsTerminalSession = (event: DragEvent<HTMLDivElement>) =>
+    Array.from(event.dataTransfer.types).includes(TERMINAL_SESSION_DRAG_TYPE);
+
+  return (
+    <div
+      className={`comux-terminal-drop-zone comux-terminal-drop-zone--${side}${over ? " comux-terminal-drop-zone--over" : ""}`}
+      aria-hidden="true"
+      onDragEnter={(e) => {
+        if (!acceptsTerminalSession(e)) return;
+        e.preventDefault();
+        setOver(true);
+      }}
+      onDragOver={(e) => {
+        if (!acceptsTerminalSession(e)) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        setOver(true);
+      }}
+      onDragLeave={() => setOver(false)}
+      onDrop={(e) => {
+        if (!acceptsTerminalSession(e)) return;
+        e.preventDefault();
+        setOver(false);
+        const dragged = e.dataTransfer.getData(TERMINAL_SESSION_DRAG_TYPE);
+        if (!dragged) return;
+        onSplit(dragged, side);
+      }}
+    />
+  );
+}
 
 function readSessions(): TerminalSession[] {
   if (typeof window === "undefined") return [];
@@ -74,9 +157,11 @@ function shortProjectTime(iso: string | null): string {
   }
 }
 
-export function ComuxView({ view, sessions: daemonSessions, onOpenSession, onNewChat }: Props) {
+export function ComuxView({ view, sessions: daemonSessions, onOpenSession, onNewChat, active = true }: Props) {
   const [sessions, setSessions] = useState<TerminalSession[]>(readSessions);
   const [currentIdx, setCurrentIdx] = useState(0);
+  const [paneSessionIds, setPaneSessionIds] = useState<string[]>([]);
+  const [splitDirection, setSplitDirection] = useState<SplitDirection>("horizontal");
 
   // Project tab state
   const [previewPath, setPreviewPath] = useState<string | null>(null);
@@ -113,6 +198,16 @@ export function ComuxView({ view, sessions: daemonSessions, onOpenSession, onNew
     window.localStorage.setItem(STORAGE_SESSIONS, JSON.stringify(sessions));
   }, [sessions]);
 
+  useEffect(() => {
+    setPaneSessionIds((prev) => {
+      if (sessions.length === 0) return [];
+      const validIds = new Set(sessions.map((session) => session.id));
+      const filtered = uniqueSessionIds(prev.filter((id) => validIds.has(id)));
+      if (filtered.length > 0) return filtered;
+      return [sessions[Math.min(currentIdx, sessions.length - 1)]?.id ?? sessions[0].id];
+    });
+  }, [currentIdx, sessions]);
+
   const projects = useMemo(
     () => deriveComuxProjects(daemonSessions, daemonProjectRoot),
     [daemonSessions, daemonProjectRoot],
@@ -135,9 +230,10 @@ export function ComuxView({ view, sessions: daemonSessions, onOpenSession, onNew
     );
   }, [projects]);
 
-  const addSession = useCallback((rootOverride?: string) => {
+  const addSession = useCallback((rootOverride?: string, placement: SessionPlacement = "replace") => {
     const id = uid();
     const root = rootOverride ?? selectedProjectRoot ?? daemonProjectRoot;
+    const activeSessionId = sessions[currentIdx]?.id;
     setSessions((prev) => {
       const next = [
         ...prev,
@@ -150,12 +246,25 @@ export function ComuxView({ view, sessions: daemonSessions, onOpenSession, onNew
       setCurrentIdx(next.length - 1);
       return next;
     });
-  }, [daemonProjectRoot, selectedProjectRoot]);
+    setPaneSessionIds((prev) => {
+      if (placement === "split") return uniqueSessionIds([...prev, id]);
+      if (prev.length === 0) return [id];
+      const target = activeSessionId && prev.includes(activeSessionId)
+        ? activeSessionId
+        : prev[0];
+      return prev.map((paneId) => (paneId === target ? id : paneId));
+    });
+    return id;
+  }, [currentIdx, daemonProjectRoot, selectedProjectRoot, sessions]);
 
   const removeSession = useCallback(
     (idx: number) => {
       setSessions((prev) => {
+        const removedId = prev[idx]?.id;
         const next = prev.filter((_, i) => i !== idx);
+        if (removedId) {
+          setPaneSessionIds((panes) => panes.filter((id) => id !== removedId));
+        }
         setCurrentIdx((ci) => {
           if (next.length === 0) return 0;
           if (ci >= next.length) return next.length - 1;
@@ -174,8 +283,73 @@ export function ComuxView({ view, sessions: daemonSessions, onOpenSession, onNew
     );
   }, []);
 
+  const visiblePaneSessionIds = useMemo(() => {
+    const validIds = new Set(sessions.map((session) => session.id));
+    return uniqueSessionIds(paneSessionIds.filter((id) => validIds.has(id)));
+  }, [paneSessionIds, sessions]);
+
+  const visiblePaneSessions = useMemo(
+    () =>
+      visiblePaneSessionIds
+        .map((id) => sessions.find((session) => session.id === id))
+        .filter((session): session is TerminalSession => Boolean(session)),
+    [sessions, visiblePaneSessionIds],
+  );
+
+  const hiddenPaneSessions = useMemo(() => {
+    const visibleIds = new Set(visiblePaneSessionIds);
+    return sessions.filter((session) => !visibleIds.has(session.id));
+  }, [sessions, visiblePaneSessionIds]);
+
+  const focusSessionById = useCallback((sessionId: string) => {
+    const idx = sessions.findIndex((session) => session.id === sessionId);
+    if (idx >= 0) setCurrentIdx(idx);
+  }, [sessions]);
+
+  const selectSession = useCallback((idx: number) => {
+    const session = sessions[idx];
+    if (!session) return;
+    setCurrentIdx(idx);
+    setPaneSessionIds((prev) => {
+      if (prev.includes(session.id)) return prev;
+      if (prev.length === 0) return [session.id];
+      return prev.map((paneId, paneIdx) => (paneIdx === 0 ? session.id : paneId));
+    });
+  }, [sessions]);
+
+  const splitSessionIntoPane = useCallback(
+    (sessionId: string, targetSessionId: string, side: SplitSide) => {
+      if (!sessions.some((session) => session.id === sessionId)) return;
+      if (sessionId === targetSessionId) return;
+      setSplitDirection(directionForSplitSide(side));
+      setPaneSessionIds((prev) =>
+        insertPaneSession(prev.length ? prev : [targetSessionId], sessionId, targetSessionId, side),
+      );
+      focusSessionById(sessionId);
+    },
+    [focusSessionById, sessions],
+  );
+
+  const onSplitTerminal = useCallback(
+    (direction: SplitDirection) => {
+      const side: SplitSide = direction === "horizontal" ? "right" : "bottom";
+      const activeSessionId = sessions[currentIdx]?.id;
+      const nextId = addSession(undefined, "split");
+      setSplitDirection(direction);
+      setPaneSessionIds((prev) =>
+        insertPaneSession(
+          prev.filter((paneId) => paneId !== nextId),
+          nextId,
+          activeSessionId ?? prev[prev.length - 1],
+          side,
+        ),
+      );
+    },
+    [addSession, currentIdx, sessions],
+  );
+
   useEffect(() => {
-    if (view !== "terminal") return;
+    if (view !== "terminal" || !active) return;
     const onKey = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
       if (!mod) return;
@@ -192,7 +366,7 @@ export function ComuxView({ view, sessions: daemonSessions, onOpenSession, onNew
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [view, addSession, removeSession, currentIdx, sessions.length]);
+  }, [view, active, addSession, removeSession, currentIdx, sessions.length]);
 
   const openFilePreview = useCallback(async (path: string) => {
     setPreviewPath(path);
@@ -249,54 +423,85 @@ export function ComuxView({ view, sessions: daemonSessions, onOpenSession, onNew
       {view === "terminal" ? (
         <div className="flex flex-1 flex-col min-h-0">
           {/* Session tab strip */}
-          <div className="flex items-center gap-0.5 border-b border-[var(--border-hairline)] bg-[var(--bg-raised)]/20 px-2 py-1 text-[11px]">
-            {sessions.map((s, i) => (
-              <div
-                key={s.id}
-                className={`group flex items-center gap-1 rounded px-2 py-0.5 cursor-pointer transition-colors ${
-                  i === currentIdx
-                    ? "bg-[var(--bg-base)] text-[var(--text-primary)]"
-                    : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
-                }`}
-                onClick={() => setCurrentIdx(i)}
-              >
-                <span
-                  contentEditable
-                  suppressContentEditableWarning
-                  onBlur={(e) =>
-                    renameSession(i, e.currentTarget.textContent ?? s.label)
-                  }
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      (e.target as HTMLElement).blur();
+          <div className="flex items-center gap-2 border-b border-[var(--border-hairline)] bg-[var(--bg-raised)]/20 px-2 py-1 text-[11px]">
+            <div className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto">
+              {sessions.map((s, i) => (
+                <div
+                  key={s.id}
+                  draggable
+                  className={`group flex cursor-pointer items-center gap-1 rounded px-2 py-0.5 transition-colors ${
+                    i === currentIdx
+                      ? "bg-[var(--bg-base)] text-[var(--text-primary)]"
+                      : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
+                  }`}
+                  onClick={() => selectSession(i)}
+                  onDragStart={(e) => {
+                    e.dataTransfer.effectAllowed = "move";
+                    e.dataTransfer.setData(TERMINAL_SESSION_DRAG_TYPE, s.id);
+                  }}
+                  title="Drag onto a pane edge to split"
+                >
+                  <span
+                    contentEditable
+                    suppressContentEditableWarning
+                    onBlur={(e) =>
+                      renameSession(i, e.currentTarget.textContent ?? s.label)
                     }
-                  }}
-                  className="outline-none max-w-[120px] truncate"
-                >
-                  {s.label}
-                </span>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeSession(i);
-                  }}
-                  className="hidden group-hover:inline-flex items-center text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                >
-                  <Icon name="ph:x-bold" width={10} />
-                </button>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={() => addSession()}
-              aria-label="New terminal"
-              title="New terminal (⌘N)"
-              className="rounded px-1.5 py-0.5 text-[var(--text-muted)] hover:bg-[var(--bg-raised)] hover:text-[var(--text-secondary)]"
-            >
-              +
-            </button>
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        (e.target as HTMLElement).blur();
+                      }
+                    }}
+                    className="max-w-[120px] truncate outline-none"
+                  >
+                    {s.label}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeSession(i);
+                    }}
+                    className="hidden items-center text-[var(--text-muted)] hover:text-[var(--text-primary)] group-hover:inline-flex"
+                    aria-label={`Close ${s.label}`}
+                  >
+                    <Icon name="ph:x-bold" width={10} />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              <button
+                type="button"
+                onClick={() => onSplitTerminal("horizontal")}
+                disabled={sessions.length === 0}
+                className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[var(--text-muted)] hover:bg-[var(--bg-raised)] hover:text-[var(--text-secondary)] disabled:opacity-40"
+                title="Split right"
+              >
+                <Icon name="ph:columns" width={12} aria-hidden />
+                <span>Split right</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onSplitTerminal("vertical")}
+                disabled={sessions.length === 0}
+                className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[var(--text-muted)] hover:bg-[var(--bg-raised)] hover:text-[var(--text-secondary)] disabled:opacity-40"
+                title="Split down"
+              >
+                <Icon name="ph:rows" width={12} aria-hidden />
+                <span>Split down</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => addSession()}
+                aria-label="New terminal"
+                title="New terminal (⌘N)"
+                className="rounded px-1.5 py-0.5 text-[var(--text-muted)] hover:bg-[var(--bg-raised)] hover:text-[var(--text-secondary)]"
+              >
+                +
+              </button>
+            </div>
           </div>
 
           {/* Terminal area */}
@@ -323,28 +528,81 @@ export function ComuxView({ view, sessions: daemonSessions, onOpenSession, onNew
                 </div>
               </div>
             ) : (
-              sessions.map((s, i) => (
-                <div
-                  key={s.id}
-                  className="h-full w-full"
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    visibility: i === currentIdx ? "visible" : "hidden",
-                    pointerEvents: i === currentIdx ? "auto" : "none",
-                  }}
+              <>
+                <Group
+                  className="h-full min-h-0 w-full"
+                  orientation={splitDirection}
                 >
-                  <BottomTerminal
-                    threadId={`cave.comux.${s.id}`}
-                    active={i === currentIdx}
-                    projectRoot={s.projectRoot ?? selectedProjectRoot ?? daemonProjectRoot}
-                  />
+                  {visiblePaneSessions.map((s, paneIdx) => {
+                    const sessionIdx = sessions.findIndex((session) => session.id === s.id);
+                    return (
+                      <Fragment key={s.id}>
+                        <Panel
+                          id={`terminal-pane-${s.id}`}
+                          minSize={18}
+                          defaultSize={100 / Math.max(visiblePaneSessions.length, 1)}
+                          className="min-h-0 min-w-0"
+                        >
+                          <div
+                            className="comux-terminal-pane"
+                            data-active={sessionIdx === currentIdx ? "true" : undefined}
+                            onClick={() => focusSessionById(s.id)}
+                          >
+                            <div className="comux-terminal-pane-bar">
+                              <Icon name="ph:terminal-window" width={12} aria-hidden />
+                              <span className="min-w-0 flex-1 truncate">{s.label}</span>
+                              {visiblePaneSessions.length > 1 ? (
+                                <button
+                                  type="button"
+                                  className="comux-terminal-pane-action"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setPaneSessionIds((prev) => prev.filter((id) => id !== s.id));
+                                  }}
+                                  aria-label={`Remove ${s.label} from split`}
+                                  title="Remove split"
+                                >
+                                  <Icon name="ph:x-bold" width={10} aria-hidden />
+                                </button>
+                              ) : null}
+                            </div>
+                            <div className="comux-terminal-pane-body">
+                              <TerminalDropZone side="left" onSplit={(dragged, side) => splitSessionIntoPane(dragged, s.id, side)} />
+                              <TerminalDropZone side="right" onSplit={(dragged, side) => splitSessionIntoPane(dragged, s.id, side)} />
+                              <TerminalDropZone side="top" onSplit={(dragged, side) => splitSessionIntoPane(dragged, s.id, side)} />
+                              <TerminalDropZone side="bottom" onSplit={(dragged, side) => splitSessionIntoPane(dragged, s.id, side)} />
+                              <BottomTerminal
+                                threadId={`cave.comux.${s.id}`}
+                                active={active && sessionIdx === currentIdx}
+                                projectRoot={s.projectRoot ?? selectedProjectRoot ?? daemonProjectRoot}
+                              />
+                            </div>
+                          </div>
+                        </Panel>
+                        {paneIdx < visiblePaneSessions.length - 1 ? (
+                          <Separator className="shrink-0">
+                            <SeparatorHandle orientation={splitDirection === "horizontal" ? "col" : "row"} />
+                          </Separator>
+                        ) : null}
+                      </Fragment>
+                    );
+                  })}
+                </Group>
+                <div className="comux-terminal-keepalive" aria-hidden="true">
+                  {hiddenPaneSessions.map((s) => (
+                    <BottomTerminal
+                      key={s.id}
+                      threadId={`cave.comux.${s.id}`}
+                      active={false}
+                      projectRoot={s.projectRoot ?? selectedProjectRoot ?? daemonProjectRoot}
+                    />
+                  ))}
                 </div>
-              ))
+              </>
             )}
           </div>
           <footer className="shrink-0 border-t border-[var(--border-hairline)] px-3 py-1.5 text-center text-[10px] text-[var(--text-muted)]">
-            ⌘N new · ⌘W close · double-click tab name to rename
+            ⌘N new · ⌘W close · drag tabs onto pane edges to split · drag dividers to resize
           </footer>
         </div>
       ) : (
