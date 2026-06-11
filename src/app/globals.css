@@ -1580,12 +1580,15 @@ select {
 .ui-view-header {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-5);
   border-bottom: 1px solid var(--border-hairline);
   background: var(--bg-base);
   flex-shrink: 0;
   min-height: 48px;
+  min-width: 0;
+  container: view-header / inline-size;
 }
 .ui-view-header-title {
   display: inline-flex;
@@ -1611,7 +1614,7 @@ select {
 }
 .ui-view-header-search {
   flex: 1;
-  min-width: 0;
+  min-width: min(100%, 180px);
   max-width: 420px;
   display: flex;
   justify-content: center;
@@ -1620,7 +1623,11 @@ select {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
+  min-width: 0;
   flex-shrink: 0;
+}
+.ui-view-header-filter > * {
+  min-width: 0;
 }
 .ui-view-header-actions {
   display: inline-flex;
@@ -1633,6 +1640,30 @@ select {
   display: flex;
   flex-direction: column;
   min-width: 0;
+}
+
+@container view-header (max-width: 420px) {
+  .ui-view-header {
+    align-items: stretch;
+    padding: var(--space-3);
+  }
+  .ui-view-header-meta,
+  .ui-view-header-search,
+  .ui-view-header-filter,
+  .ui-view-header-actions {
+    flex: 1 1 100%;
+    max-width: none;
+    width: 100%;
+  }
+  .ui-view-header-filter {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ui-view-header-filter > *,
+  .ui-view-header-actions > * {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 /* ---- SearchInput -------------------------------------------- */
@@ -2284,6 +2315,7 @@ select {
   gap: 0;
   height: 38px;
   flex-shrink: 0;
+  min-width: 0;
   border-bottom: 1px solid var(--border-hairline);
   background: var(--bg-raised);
   padding: 0 4px;
@@ -2295,6 +2327,7 @@ select {
   gap: 5px;
   padding: 0 10px;
   height: 100%;
+  min-width: 0;
   font-size: 11px;
   font-weight: 500;
   border: none;
@@ -2305,6 +2338,8 @@ select {
   border-bottom: 2px solid transparent;
   transition: color 0.12s, border-color 0.12s;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .right-panel-tab:hover { color: var(--text-secondary); }
 .right-panel-tab--active {

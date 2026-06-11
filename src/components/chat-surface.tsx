@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { Group, Panel, Separator } from "react-resizable-panels";
 import { ChatRouter, type ChatRouterHandle } from "@/components/chat-router";
 import { AgentsMemoryView } from "@/components/agents-memory-view";
 import { InspectorPane } from "@/components/inspector-pane";
@@ -79,7 +80,7 @@ function RightPanel({
   onInboxItemChanged: () => void | Promise<void>;
 }) {
   return (
-    <aside className="relative hidden h-full min-h-0 w-[320px] shrink-0 border-l border-[var(--border-hairline)] lg:flex lg:flex-col">
+    <aside className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col border-l border-[var(--border-hairline)]">
       <div className="right-panel-tabs">
         <button
           type="button"
@@ -324,41 +325,56 @@ export function ChatSurface({
             }}
           />
         ) : (
-          <div className="flex min-h-0 min-w-0 flex-1">
-            <div className="min-h-0 min-w-0 flex-1">
-              <ChatRouter
-                ref={routerRef}
-                familiar={activeFamiliar}
-                familiars={familiars}
-                sessions={sessions}
-                daemonRunning={daemonRunning}
-                onSetActiveFamiliar={onSetActiveFamiliar}
-                onSessionStarted={onSessionStarted}
-                onSessionsChanged={onSessionsChanged}
-                onSlashFromChat={onSlashFromChat}
-                onOpenOnboarding={onOpenOnboarding}
-                pendingProjectRoot={pendingProjectRoot}
-                onOpenTask={onOpenTask}
-              />
-            </div>
+          <Group className="flex min-h-0 min-w-0 flex-1" orientation="horizontal">
+            <Panel id="chat-main" className="flex min-h-0 min-w-0" minSize="45%">
+              <div className="min-h-0 min-w-0 flex-1">
+                <ChatRouter
+                  ref={routerRef}
+                  familiar={activeFamiliar}
+                  familiars={familiars}
+                  sessions={sessions}
+                  daemonRunning={daemonRunning}
+                  onSetActiveFamiliar={onSetActiveFamiliar}
+                  onSessionStarted={onSessionStarted}
+                  onSessionsChanged={onSessionsChanged}
+                  onSlashFromChat={onSlashFromChat}
+                  onOpenOnboarding={onOpenOnboarding}
+                  pendingProjectRoot={pendingProjectRoot}
+                  onOpenTask={onOpenTask}
+                />
+              </div>
+            </Panel>
             {rightPanel !== null && (
-              <RightPanel
-                panel={rightPanel}
-                activeFamiliar={activeFamiliar}
-                sessions={sessions}
-                daemonRunning={daemonRunning}
-                inboxItems={inboxItems}
-                onSetPanel={setRightPanel}
-                onSessionStarted={onSessionStarted}
-                onSlashFromChat={onSlashFromChat}
-                onOpenOnboarding={onOpenOnboarding}
-                onOpenInbox={onOpenInbox}
-                onCreateReminder={onCreateReminder}
-                onOpenInboxItem={onOpenInboxItem}
-                onInboxItemChanged={onInboxItemChanged}
-              />
+              <>
+                <Separator className="shell-separator hidden lg:block" />
+                <Panel
+                  id="right-sidebar"
+                  className="hidden min-h-0 min-w-0 lg:flex"
+                  defaultSize="32%"
+                  minSize="24%"
+                  maxSize="46%"
+                  collapsible
+                  collapsedSize={0}
+                >
+                  <RightPanel
+                    panel={rightPanel}
+                    activeFamiliar={activeFamiliar}
+                    sessions={sessions}
+                    daemonRunning={daemonRunning}
+                    inboxItems={inboxItems}
+                    onSetPanel={setRightPanel}
+                    onSessionStarted={onSessionStarted}
+                    onSlashFromChat={onSlashFromChat}
+                    onOpenOnboarding={onOpenOnboarding}
+                    onOpenInbox={onOpenInbox}
+                    onCreateReminder={onCreateReminder}
+                    onOpenInboxItem={onOpenInboxItem}
+                    onInboxItemChanged={onInboxItemChanged}
+                  />
+                </Panel>
+              </>
             )}
-          </div>
+          </Group>
         )}
       </div>
     </section>
