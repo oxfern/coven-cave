@@ -281,8 +281,11 @@
 
 /* CWD path field */
 .board-drawer-path-shell { position:relative; display:block; width:100%; }
-.board-drawer-path-icon { position:absolute; left:11px; top:50%; transform:translateY(-50%); color:var(--text-muted); pointer-events:none; }
+.board-drawer-path-open { position:absolute; left:6px; top:50%; transform:translateY(-50%); display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:6px; border:0; background:transparent; color:var(--text-muted); cursor:pointer; transition:background .12s,color .12s; z-index:1; }
+.board-drawer-path-open:hover { background:var(--bg-hover); color:var(--text-primary); }
+.board-drawer-path-open:focus-visible { outline:2px solid color-mix(in oklch,var(--accent-presence) 65%,transparent); outline-offset:1px; }
 .board-drawer-path-input { padding-left:32px; font-family:var(--font-mono,ui-monospace,SFMono-Regular,Menlo,monospace); font-size:12px; letter-spacing:-.01em; }
+.board-drawer-field-error { margin:6px 0 0; color:var(--color-danger); font-size:10.5px; line-height:1.35; }
 
 /* Lifecycle card */
 .board-drawer-lifecycle-card { display:flex; flex-direction:column; gap:10px; padding:11px 12px; border-radius:10px; border:1px solid var(--border-hairline); background:var(--bg-base); }

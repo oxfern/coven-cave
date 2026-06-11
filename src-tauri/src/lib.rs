@@ -473,6 +473,45 @@ fn validate_shell_open_url(url: &str) -> Result<(), String> {
 }
 
 #[cfg(desktop)]
+fn validate_shell_open_path(path: &str) -> Result<PathBuf, String> {
+    let path = path.trim();
+    if path.is_empty() {
+        return Err("shell_open_path requires a path".to_string());
+    }
+
+    let path = PathBuf::from(path);
+    if !path.is_absolute() {
+        return Err("shell_open_path requires an absolute path".to_string());
+    }
+
+    let metadata = std::fs::metadata(&path)
+        .map_err(|_| "shell_open_path path does not exist".to_string())?;
+    if !metadata.is_dir() {
+        return Err("shell_open_path only opens directories".to_string());
+    }
+
+    Ok(path)
+}
+
+#[cfg(desktop)]
+fn normalize_picked_directory(path: &str) -> Result<Option<String>, String> {
+    let path = path.trim();
+    if path.is_empty() {
+        return Ok(None);
+    }
+
+    let path_buf = PathBuf::from(path);
+    if !path_buf.is_absolute() {
+        return Err("folder picker returned a relative path".to_string());
+    }
+    if !path_buf.is_dir() {
+        return Err("folder picker returned a non-directory path".to_string());
+    }
+
+    Ok(Some(path_buf.to_string_lossy().to_string()))
+}
+
+#[cfg(desktop)]
 #[cfg_attr(not(any(target_os = "windows", test)), allow(dead_code))]
 fn windows_system32_binary(binary: &str) -> std::path::PathBuf {
     let system_root = std::env::var_os("SystemRoot")
@@ -515,6 +554,97 @@ fn shell_open(url: String) -> Result<(), String> {
     Ok(())
 }
 
+/// Open an absolute local directory in the system file explorer.
+#[cfg(desktop)]
+#[tauri::command]
+fn shell_open_path(path: String) -> Result<(), String> {
+    let path = validate_shell_open_path(&path)?;
+
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new(windows_system32_binary("explorer.exe"))
+            .arg(&path)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+/// Ask the OS for a local directory and return its absolute path.
+#[cfg(desktop)]
+#[tauri::command]
+fn shell_pick_directory() -> Result<Option<String>, String> {
+    #[cfg(target_os = "macos")]
+    {
+        let output = std::process::Command::new("osascript")
+            .args([
+                "-e",
+                "POSIX path of (choose folder with prompt \"Choose a folder for Graphify\")",
+            ])
+            .output()
+            .map_err(|e| e.to_string())?;
+        if output.status.success() {
+            return normalize_picked_directory(&String::from_utf8_lossy(&output.stdout));
+        }
+
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        if stderr.contains("-128") || stderr.to_lowercase().contains("user canceled") {
+            return Ok(None);
+        }
+        return Err(stderr.trim().to_string());
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let script = r#"Add-Type -AssemblyName System.Windows.Forms; $d = New-Object System.Windows.Forms.FolderBrowserDialog; $d.Description = 'Choose a folder for Graphify'; if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { [Console]::Write($d.SelectedPath) }"#;
+        let output = std::process::Command::new("powershell.exe")
+            .args(["-NoProfile", "-Sta", "-Command", script])
+            .output()
+            .map_err(|e| e.to_string())?;
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            return Err(if stderr.is_empty() { "folder picker failed".to_string() } else { stderr });
+        }
+        return normalize_picked_directory(&String::from_utf8_lossy(&output.stdout));
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        let zenity = std::process::Command::new("zenity")
+            .args(["--file-selection", "--directory", "--title", "Choose a folder for Graphify"])
+            .output();
+        if let Ok(output) = zenity {
+            if output.status.success() {
+                return normalize_picked_directory(&String::from_utf8_lossy(&output.stdout));
+            }
+            return Ok(None);
+        }
+
+        let kdialog = std::process::Command::new("kdialog")
+            .args(["--getexistingdirectory"])
+            .output()
+            .map_err(|_| "No folder picker is available; install zenity or kdialog.".to_string())?;
+        if kdialog.status.success() {
+            return normalize_picked_directory(&String::from_utf8_lossy(&kdialog.stdout));
+        }
+        Ok(None)
+    }
+}
+
 #[cfg(all(test, desktop))]
 mod shell_open_tests {
     use super::validate_shell_open_url;
@@ -543,6 +673,23 @@ mod shell_open_tests {
         let path = path.to_string_lossy();
         assert!(path.starts_with(r"C:\") || path.contains(r":\"));
         assert!(path.ends_with(r"System32\rundll32.exe") || path.ends_with("System32/rundll32.exe"));
+    }
+
+    #[test]
+    fn validates_absolute_existing_directories_for_path_open() {
+        let current = std::env::current_dir().expect("current dir");
+        assert!(super::validate_shell_open_path(&current.to_string_lossy()).is_ok());
+        assert!(super::validate_shell_open_path("relative/path").is_err());
+        assert!(super::validate_shell_open_path(&file!()).is_err());
+    }
+
+    #[test]
+    fn normalizes_only_absolute_existing_picked_directories() {
+        let current = std::env::current_dir().expect("current dir");
+        assert!(super::normalize_picked_directory(&current.to_string_lossy()).unwrap().is_some());
+        assert_eq!(super::normalize_picked_directory("").unwrap(), None);
+        assert!(super::normalize_picked_directory("relative/path").is_err());
+        assert!(super::normalize_picked_directory(&file!()).is_err());
     }
 }
 
@@ -624,7 +771,10 @@ pub fn run() {
             browser::browser_close,
             browser::browser_reload,
             browser::browser_report_title,
+            browser::browser_report_scroll,
             shell_open,
+            shell_open_path,
+            shell_pick_directory,
         ])
         .manage(SidecarState(Mutex::new(None)))
         .setup(|app| {

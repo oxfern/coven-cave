@@ -63,6 +63,22 @@ function TimeoutBadge({ runningSince, timeoutMs }: { runningSince?: string; time
   );
 }
 
+async function openCwdInExplorer(rawCwd: string): Promise<string | null> {
+  const cwd = rawCwd.trim();
+  if (!cwd) return "Enter a CWD first.";
+  if (typeof window === "undefined" || !("__TAURI_INTERNALS__" in window)) {
+    return "Open CWD is available in the desktop app.";
+  }
+
+  try {
+    const { invoke } = await import("@tauri-apps/api/core");
+    await invoke("shell_open_path", { path: cwd });
+    return null;
+  } catch (err) {
+    return err instanceof Error ? err.message : String(err);
+  }
+}
+
 // ── Inline PAT Setup ─────────────────────────────────────────────────────────
 function InlinePATSetup({ onSaved }: { onSaved: () => void }) {
   const [pat, setPat] = useState("");
@@ -780,6 +796,7 @@ export function BoardInspector({ card, familiars, sessions, onClose, onPatch, on
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [lifecycleBusy, setLifecycleBusy] = useState<CardLifecycle | null>(null);
   const [lifecycleErr, setLifecycleErr] = useState<string | null>(null);
+  const [cwdOpenErr, setCwdOpenErr] = useState<string | null>(null);
   const [newLabel, setNewLabel] = useState("");
 
   const session = sessions.find((s) => s.id === card.sessionId) ?? null;
@@ -791,6 +808,7 @@ export function BoardInspector({ card, familiars, sessions, onClose, onPatch, on
   const close = () => { setClosing(true); setTimeout(onClose, 180); };
 
   const dialogRef = useRef<HTMLDivElement | null>(null);
+  const cwdInputRef = useRef<HTMLInputElement | null>(null);
   useFocusTrap(!closing, dialogRef, { onEscape: close });
 
   useEffect(() => {
@@ -951,8 +969,20 @@ export function BoardInspector({ card, familiars, sessions, onClose, onPatch, on
           <div className="board-drawer-field">
             <div className="board-drawer-field-label"><Icon name="ph:folder" width={11} /> CWD</div>
             <div className="board-drawer-path-shell">
-              <Icon name="ph:folder" width={12} className="board-drawer-path-icon" />
+              <button
+                type="button"
+                className="board-drawer-path-open"
+                aria-label="Open CWD in directory explorer"
+                title="Open CWD in directory explorer"
+                onClick={async () => {
+                  const err = await openCwdInExplorer(cwdInputRef.current?.value ?? card.cwd ?? "");
+                  setCwdOpenErr(err);
+                }}
+              >
+                <Icon name="ph:folder" width={12} />
+              </button>
               <input
+                ref={cwdInputRef}
                 className="board-drawer-field-input board-drawer-path-input"
                 defaultValue={card.cwd ?? ""}
                 placeholder="/path/to/working/directory"
@@ -960,9 +990,11 @@ export function BoardInspector({ card, familiars, sessions, onClose, onPatch, on
                 onBlur={(e) => {
                   const next = e.target.value.trim() || null;
                   if (next !== card.cwd) onPatch(card.id, { cwd: next });
+                  setCwdOpenErr(null);
                 }}
               />
             </div>
+            {cwdOpenErr ? <p className="board-drawer-field-error">{cwdOpenErr}</p> : null}
           </div>
 
           <StepsSection card={card} onPatch={onPatch} />

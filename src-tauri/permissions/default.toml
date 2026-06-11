@@ -14,5 +14,6 @@ permissions = [
   "allow-browser-close",
   "allow-browser-reload",
   "allow-browser-report-title",
+  "allow-browser-report-scroll",
   "allow-shell-open",
 ]

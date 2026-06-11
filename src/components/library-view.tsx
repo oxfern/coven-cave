@@ -32,7 +32,7 @@ type LibraryViewProps = {
   onNewProjectChat?: (projectRoot: string) => void;
 };
 
-export function LibraryView({ onOpenUrl, sessions, onOpenSession, onNewProjectChat }: LibraryViewProps = {}) {
+export function LibraryView({ sessions, onOpenSession, onNewProjectChat }: LibraryViewProps = {}) {
   const [activeSection, setActiveSection] = useState<LibrarySectionKind>("all");
   const [activeCollection, setActiveCollection] = useState("all");
   const [collections, setCollections] = useState<LibraryCollection[]>([]);
@@ -216,7 +216,6 @@ export function LibraryView({ onOpenUrl, sessions, onOpenSession, onNewProjectCh
             <LibraryBookmarksList
               selectedId={selectedBmId}
               onSelect={(item: LibraryBookmark) => {
-                if (onOpenUrl && item.url) { onOpenUrl(item.url); return; }
                 setSelectedItem({ kind: "bookmark", item });
               }}
               onDelete={(id) => { if (selectedBmId === id) setSelectedItem(null); }}
@@ -227,7 +226,6 @@ export function LibraryView({ onOpenUrl, sessions, onOpenSession, onNewProjectCh
             <LibraryReadingList
               selectedId={selectedReadId}
               onSelect={(item: LibraryReadingItem) => {
-                if (onOpenUrl && item.url) { onOpenUrl(item.url); return; }
                 setSelectedItem({ kind: "reading", item });
               }}
               onDelete={(id) => { if (selectedReadId === id) setSelectedItem(null); }}
@@ -237,7 +235,6 @@ export function LibraryView({ onOpenUrl, sessions, onOpenSession, onNewProjectCh
             <LibraryGitHubList
               selectedId={selectedGhId}
               onSelect={(item: LibraryGitHubItem) => {
-                if (onOpenUrl && item.url) { onOpenUrl(item.url); return; }
                 setSelectedItem({ kind: "github", item });
               }}
               onDelete={(id) => { if (selectedGhId === id) setSelectedItem(null); }}

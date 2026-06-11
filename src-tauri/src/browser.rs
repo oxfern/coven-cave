@@ -19,6 +19,10 @@
 //   browser:page-load { label, url, phase: "started" | "finished" }
 
 use serde::Serialize;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 use tauri::webview::{PageLoadEvent, WebviewBuilder};
 use tauri::{AppHandle, Emitter, LogicalPosition, LogicalSize, Manager, Url, WebviewUrl};
 
@@ -40,6 +44,12 @@ fn safe_browser_label(label: Option<String>) -> String {
     )
 }
 
+fn url_without_fragment(url: &Url) -> String {
+    let mut normalized = url.clone();
+    normalized.set_fragment(None);
+    normalized.to_string()
+}
+
 #[derive(Debug, Serialize, Clone)]
 struct BrowserTitleEvent {
     label: String,
@@ -54,6 +64,13 @@ struct BrowserPageLoadEvent {
     phase: String,
 }
 
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct BrowserScrollEvent {
+    label: String,
+    scroll_y: f64,
+}
+
 fn ensure_browser(
     app: &AppHandle,
     label: &str,
@@ -62,6 +79,7 @@ fn ensure_browser(
     w: f64,
     h: f64,
     url: &str,
+    read_only_url: Option<&str>,
 ) -> Result<bool, String> {
     if app.webviews().keys().any(|existing| existing == label) {
         return Ok(false);
@@ -72,8 +90,11 @@ fn ensure_browser(
         .ok_or_else(|| "main window missing".to_string())?;
 
     let parsed_url = Url::parse(url).map_err(|e| e.to_string())?;
+    let read_only_target = read_only_url.and_then(|raw| Url::parse(raw).ok());
+    let initial_load_finished = Arc::new(AtomicBool::new(false));
     let browser_label = label.to_string();
     let app_for_load = app.clone();
+    let load_finished_for_event = Arc::clone(&initial_load_finished);
     let builder = WebviewBuilder::new(label, WebviewUrl::External(parsed_url))
         .background_color(tauri::webview::Color(12, 12, 14, 255)) // dark bg — no white flash
         .on_page_load(
@@ -91,6 +112,7 @@ fn ensure_browser(
                 },
             );
             if matches!(payload.event(), PageLoadEvent::Finished) {
+                load_finished_for_event.store(true, Ordering::SeqCst);
                 // Emit title event from Rust so it reaches the main window's
                 // event bus. Child webview JS → main window event propagation
                 // is unreliable in Tauri v2; Rust-side emit is the safe path.
@@ -105,11 +127,33 @@ fn ensure_browser(
                 let script = format!(
                     r#"(function(browserLabel) {{
                       try {{
-                        if (!window.__CAVE_BROWSER_INSTALLED__) {{
-                          window.__CAVE_BROWSER_INSTALLED__ = true;
-                          window.addEventListener("keydown", function(event) {{
-                            try {{
-                              if ((event.metaKey || event.ctrlKey) && event.key && event.key.toLowerCase() === "t") {{
+	                        if (!window.__CAVE_BROWSER_INSTALLED__) {{
+	                          window.__CAVE_BROWSER_INSTALLED__ = true;
+	                          var lastScrollY = -1;
+	                          var scrollRaf = 0;
+	                          var reportScroll = function() {{
+	                            try {{
+	                              scrollRaf = 0;
+	                              var scrollY = Math.max(
+	                                window.scrollY || 0,
+	                                document.documentElement ? document.documentElement.scrollTop || 0 : 0,
+	                                document.body ? document.body.scrollTop || 0 : 0
+	                              );
+	                              if (Math.abs(scrollY - lastScrollY) < 8) return;
+	                              lastScrollY = scrollY;
+	                              if (window.__TAURI_INTERNALS__) {{
+	                                window.__TAURI_INTERNALS__.invoke("browser_report_scroll", {{
+	                                  label: browserLabel, scrollY: scrollY
+	                                }}).catch(function(){{}});
+	                              }}
+	                            }} catch (_) {{}}
+	                          }};
+	                          window.addEventListener("scroll", function() {{
+	                            if (!scrollRaf) scrollRaf = window.requestAnimationFrame(reportScroll);
+	                          }}, {{ passive: true }});
+	                          window.addEventListener("keydown", function(event) {{
+	                            try {{
+	                              if ((event.metaKey || event.ctrlKey) && event.key && event.key.toLowerCase() === "t") {{
                                 event.preventDefault();
                                 event.stopPropagation();
                                 if (window.__TAURI_INTERNALS__) {{
@@ -118,10 +162,11 @@ fn ensure_browser(
                                   }}).catch(function(){{}});
                                 }}
                               }}
-                            }} catch (_) {{}}
-                          }}, true);
-                        }}
-                        // Report title immediately on load
+	                            }} catch (_) {{}}
+	                          }}, true);
+	                        }}
+	                        try {{ reportScroll(); }} catch (_) {{}}
+	                        // Report title immediately on load
                         if (window.__TAURI_INTERNALS__) {{
                           var pageTitle = document.title || location.hostname || location.href;
                           window.__TAURI_INTERNALS__.invoke("browser_report_title", {{
@@ -153,6 +198,19 @@ fn ensure_browser(
         },
     );
 
+    let builder = if let Some(target_url) = read_only_target {
+        let target_without_fragment = url_without_fragment(&target_url);
+        let load_finished_for_navigation = Arc::clone(&initial_load_finished);
+        builder.on_navigation(move |next_url| {
+            if !load_finished_for_navigation.load(Ordering::SeqCst) {
+                return true;
+            }
+            url_without_fragment(next_url) == target_without_fragment
+        })
+    } else {
+        builder
+    };
+
     main.add_child(
         builder,
         LogicalPosition::new(x, y),
@@ -182,9 +240,10 @@ pub fn browser_navigate(
     y: f64,
     w: f64,
     h: f64,
+    read_only_url: Option<String>,
 ) -> Result<(), String> {
     let label = safe_browser_label(label);
-    let created = ensure_browser(&app, &label, x, y, w, h, &url)?;
+    let created = ensure_browser(&app, &label, x, y, w, h, &url, read_only_url.as_deref())?;
     if !created {
         let webview = app
             .get_webview(&label)
@@ -289,6 +348,22 @@ pub fn browser_report_title(
             label,
             title,
             url,
+        },
+    );
+    Ok(())
+}
+
+#[tauri::command]
+pub fn browser_report_scroll(
+    app: AppHandle,
+    label: String,
+    scroll_y: f64,
+) -> Result<(), String> {
+    let _ = app.emit(
+        "browser:scroll",
+        BrowserScrollEvent {
+            label,
+            scroll_y,
         },
     );
     Ok(())

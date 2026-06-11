@@ -82,3 +82,6 @@ assert.match(newCardModal, /label="Session \(optional\)"/, "New task modal shoul
 const boardInspector = await readFile(new URL("../components/board-inspector.tsx", import.meta.url), "utf8");
 assert.match(boardInspector, /link-item-anchor/, "Task inspector should render task links");
 assert.match(boardInspector, /card\.sessionId/, "Task inspector should render task session context");
+assert.match(boardInspector, /function openCwdInExplorer/, "Task inspector should expose a native CWD open action");
+assert.match(boardInspector, /invoke\("shell_open_path"[\s\S]*path:\s*cwd/, "Task inspector should ask Tauri to open the CWD path");
+assert.match(boardInspector, /aria-label="Open CWD in directory explorer"/, "CWD action should be labelled for assistive tech");

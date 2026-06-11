@@ -25,6 +25,7 @@
     "allow-browser-hide-all-except",
     "allow-browser-close",
     "allow-browser-reload",
-    "allow-browser-report-title"
+    "allow-browser-report-title",
+    "allow-browser-report-scroll"
   ]
 }

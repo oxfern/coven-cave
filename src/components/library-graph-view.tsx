@@ -444,6 +444,20 @@ function NodeDetailPanel({
 
 // ── RunGraphifyModal ─────────────────────────────────────────────
 
+async function pickGraphifyDirectory(): Promise<{ path: string | null; error: string | null }> {
+  if (typeof window === "undefined" || !("__TAURI_INTERNALS__" in window)) {
+    return { path: null, error: "Folder picker is available in the desktop app." };
+  }
+
+  try {
+    const { invoke } = await import("@tauri-apps/api/core");
+    const path = await invoke("shell_pick_directory") as string | null;
+    return { path, error: null };
+  } catch (err) {
+    return { path: null, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 function RunGraphifyModal({
   open,
   onClose,
@@ -457,6 +471,14 @@ function RunGraphifyModal({
   const [label, setLabel] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const chooseDirectory = async () => {
+    if (loading) return;
+    setError(null);
+    const picked = await pickGraphifyDirectory();
+    if (picked.path) setTargetPath(picked.path);
+    if (picked.error) setError(picked.error);
+  };
 
   const run = async () => {
     if (!targetPath.trim() || loading) return;
@@ -513,13 +535,26 @@ function RunGraphifyModal({
         <label className="mb-1.5 block text-[10px] uppercase tracking-widest text-[var(--text-muted)]">
           Target folder path
         </label>
-        <input
-          value={targetPath}
-          onChange={(e) => setTargetPath(e.target.value)}
-          placeholder="/Users/buns/Documents/GitHub/my-project"
-          autoFocus
-          className="w-full rounded-md border border-[var(--border-hairline)] bg-[var(--bg-base)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--border-strong)]"
-        />
+        <div className="flex gap-2">
+          <input
+            value={targetPath}
+            onChange={(e) => setTargetPath(e.target.value)}
+            placeholder="/Users/buns/Documents/GitHub/my-project"
+            autoFocus
+            className="min-w-0 flex-1 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-base)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--border-strong)]"
+          />
+          <button
+            type="button"
+            aria-label="Choose Graphify target folder"
+            title="Choose Graphify target folder"
+            onClick={() => void chooseDirectory()}
+            disabled={loading}
+            className="flex shrink-0 items-center gap-1.5 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)] px-3 py-2 text-sm text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-card)] disabled:opacity-50"
+          >
+            <Icon name="ph:folder-open" width={14} />
+            Choose
+          </button>
+        </div>
       </div>
       <div className="mb-4">
         <label className="mb-1.5 block text-[10px] uppercase tracking-widest text-[var(--text-muted)]">

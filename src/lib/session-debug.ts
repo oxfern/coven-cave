@@ -1,4 +1,5 @@
 import type { SessionRow } from "./types.ts";
+import { stripAnsi } from "./ansi.ts";
 
 /** Raw daemon event as returned by GET /api/sessions/[id]/events.
  *  Mirrors the shape in src/app/api/sessions/[id]/events/route.ts. */
@@ -71,7 +72,24 @@ export function shouldPollEvents(args: { status: string | null; visible: boolean
 
 export function formatEventPayload(payloadJson: string): string {
   try {
-    return JSON.stringify(JSON.parse(payloadJson), null, 2);
+    const parsed = JSON.parse(payloadJson);
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      !Array.isArray(parsed) &&
+      typeof parsed.data === "string"
+    ) {
+      const data = stripAnsi(parsed.data)
+        .replace(/\r\n/g, "\n")
+        .replace(/\r/g, "\n")
+        .trimEnd();
+      const rest = { ...parsed } as Record<string, unknown>;
+      delete rest.data;
+      const metadata = Object.keys(rest).length > 0 ? JSON.stringify(rest, null, 2) : "";
+      if (data && metadata) return `${data}\n\n${metadata}`;
+      return data || metadata;
+    }
+    return JSON.stringify(parsed, null, 2);
   } catch {
     return payloadJson;
   }

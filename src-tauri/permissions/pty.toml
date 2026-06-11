@@ -67,3 +67,8 @@ commands.allow = ["shell_open"]
 identifier = "allow-browser-report-title"
 description = "Allows child browser webviews to report their document title via Rust."
 commands.allow = ["browser_report_title"]
+
+[[permission]]
+identifier = "allow-browser-report-scroll"
+description = "Allows child browser webviews to report scroll position via Rust."
+commands.allow = ["browser_report_scroll"]

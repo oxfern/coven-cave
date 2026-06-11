@@ -47,6 +47,15 @@ assert.equal(shouldPollEvents({ status: null, visible: true }), false);
 // formatEventPayload: pretty-prints JSON, passes through non-JSON untouched
 assert.equal(formatEventPayload('{"a":1}'), '{\n  "a": 1\n}');
 assert.equal(formatEventPayload("not json"), "not json");
+assert.equal(
+  formatEventPayload('{"data":"\\u001b[31mError\\u001b[39m\\r\\nWorkspace: /tmp/project\\r\\n"}'),
+  "Error\nWorkspace: /tmp/project",
+  "output event data should be decoded, ANSI-stripped, and line-normalized",
+);
+assert.ok(
+  !formatEventPayload('{"data":"\\u001b[31mError\\u001b[39m"}').includes("\\u001b"),
+  "output event display should not expose JSON-escaped ANSI sequences",
+);
 
 // buildDebugBundle: shape + familiar narrowed to {id, harness, model}
 const bundle = buildDebugBundle({

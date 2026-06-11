@@ -112,7 +112,7 @@ function KVRow({ k, title, children }: { k: string; title?: string; children: Re
 
 function JsonBlock({ text }: { text: string }) {
   return (
-    <pre className="max-h-72 overflow-auto whitespace-pre-wrap break-all rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/40 p-2 font-mono text-[10px] leading-relaxed text-[var(--text-secondary)]">
+    <pre className="max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/40 p-2 font-mono text-[10px] leading-relaxed text-[var(--text-secondary)]">
       {text}
     </pre>
   );

@@ -96,6 +96,160 @@ function OpenBtn({ url, label, kind = "web" }: { url: string; label?: string; ki
   );
 }
 
+type TauriInvokeBridge = {
+  invoke: <T = unknown>(cmd: string, args?: Record<string, unknown>) => Promise<T>;
+  listen: <T = unknown>(event: string, cb: (e: { payload: T }) => void) => Promise<() => void>;
+};
+
+async function loadTauriInvoke(): Promise<TauriInvokeBridge | null> {
+  if (typeof window === "undefined") return null;
+  if (!("__TAURI_INTERNALS__" in window)) return null;
+  const { invoke } = await import("@tauri-apps/api/core");
+  const { listen } = await import("@tauri-apps/api/event");
+  return { invoke, listen };
+}
+
+function safeViewerLabel(id: string, url: string): string {
+  const seed = `${id}-${url}`;
+  const safe = seed.toLowerCase().replace(/[^a-z0-9_-]+/g, "-").replace(/^-|-$/g, "").slice(0, 48);
+  return `library-link-${safe || "viewer"}`;
+}
+
+function hostnameLabel(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}
+
+function LibraryLinkViewer({
+  id,
+  title,
+  url,
+  meta,
+  openKind = "web",
+}: {
+  id: string;
+  title: string;
+  url: string;
+  meta: React.ReactNode;
+  openKind?: UrlOpenKind;
+}) {
+  const surfaceRef = useRef<HTMLDivElement | null>(null);
+  const [bridge, setBridge] = useState<TauriInvokeBridge | null>(null);
+  const [unavailable, setUnavailable] = useState(false);
+  const [headerCollapsed, setHeaderCollapsed] = useState(false);
+  const safe = canOpenUrl(url, openKind);
+  const label = safeViewerLabel(id, url);
+  const nativeLabel = `cave-browser-${label}`;
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const nextBridge = await loadTauriInvoke();
+      if (cancelled) return;
+      if (nextBridge) setBridge(nextBridge);
+      else setUnavailable(true);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!bridge || !safe) return;
+    const surface = surfaceRef.current;
+    if (!surface) return;
+
+    let raf = 0;
+    let created = false;
+
+    const place = (navigate: boolean) => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const rect = surface.getBoundingClientRect();
+        if (rect.width <= 1 || rect.height <= 1) {
+          void bridge.invoke("browser_hide", { label });
+          return;
+        }
+        const bounds = { label, x: rect.left, y: rect.top, w: rect.width, h: rect.height };
+        if (navigate || !created) {
+          created = true;
+          void bridge.invoke("browser_navigate", {
+            ...bounds,
+            url,
+            readOnlyUrl: url,
+          });
+          return;
+        }
+        void bridge.invoke("browser_set_bounds", bounds);
+      });
+    };
+
+    const handleViewportChange = () => place(false);
+    const timer = window.setTimeout(() => place(true), 80);
+    const ro = new ResizeObserver(() => place(false));
+    ro.observe(surface);
+    window.addEventListener("resize", handleViewportChange);
+    window.addEventListener("scroll", handleViewportChange, true);
+
+    return () => {
+      window.clearTimeout(timer);
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+      window.removeEventListener("resize", handleViewportChange);
+      window.removeEventListener("scroll", handleViewportChange, true);
+      void bridge.invoke("browser_close", { label });
+    };
+  }, [bridge, label, safe, url]);
+
+  useEffect(() => {
+    if (!bridge || !safe) return;
+    let unlisten: (() => void) | null = null;
+    void bridge.listen<{ label: string; scrollY: number }>("browser:scroll", (event) => {
+      const { label: eventLabel, scrollY } = event.payload;
+      if (eventLabel !== nativeLabel) return;
+      setHeaderCollapsed(scrollY > 24);
+    }).then((cleanup) => { unlisten = cleanup; });
+    return () => { unlisten?.(); };
+  }, [bridge, nativeLabel, safe]);
+
+  return (
+    <div className={`library-preview library-link-viewer${headerCollapsed ? " library-link-viewer--header-collapsed" : ""}`}>
+      <div className="library-preview-header library-link-viewer-header">
+        <div className="library-preview-title">{title || hostnameLabel(url)}</div>
+        <div className="library-preview-meta">
+          {meta}
+          <span className="library-preview-sep">·</span>
+          <span className="library-preview-date">{hostnameLabel(url)}</span>
+          <span className="library-preview-sep">·</span>
+          <span className="library-link-viewer-mode">viewer</span>
+        </div>
+        <div className="library-preview-actions">
+          <OpenBtn url={url} label={openKind === "github" ? "Open on GitHub" : "Open external"} kind={openKind} />
+          <CopyButton text={url} label="Copy URL" />
+        </div>
+      </div>
+      <div className="library-link-viewer-viewport">
+        {!safe ? (
+          <div className="library-preview library-preview--empty">
+            <Icon name="ph:warning" width={32} className="library-preview-empty-icon" />
+            <span className="library-preview-empty-text">Unsafe URL blocked.</span>
+          </div>
+        ) : unavailable ? (
+          <iframe
+            src={url}
+            title={title || hostnameLabel(url)}
+            className="library-link-viewer-frame"
+            sandbox="allow-same-origin allow-scripts allow-forms"
+          />
+        ) : (
+          <div ref={surfaceRef} className="library-link-viewer-surface" aria-label={title || url} />
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Markdown rendering (lazy, same as MarkdownBlock) ──────────────
 type MdFn = (md: string) => Promise<string>;
 let mdFnCached: MdFn | null = null;
@@ -201,38 +355,12 @@ function FieldRow({ label, children }: { label: string; children: React.ReactNod
 
 function BookmarkDetail({ item }: { item: LibraryBookmark }) {
   return (
-    <div className="library-preview">
-      <div className="library-preview-header">
-        <div className="library-preview-title">{item.title}</div>
-        <div className="library-preview-meta">
-          <span className="library-doclist-tag">{item.domain}</span>
-          <span className="library-preview-sep">·</span>
-          <span className="library-preview-date">{fmtDate(item.savedAt)}</span>
-        </div>
-        {item.tags.length > 0 && (
-          <div className="library-preview-tags">
-            {item.tags.map((t: string) => <span key={t} className="library-doclist-tag">{t}</span>)}
-          </div>
-        )}
-        <div className="library-preview-actions">
-          <OpenBtn url={item.url} />
-          <CopyButton text={item.url} label="Copy URL" />
-        </div>
-      </div>
-      <div className="library-preview-body">
-        {item.notes ? (
-          <FieldRow label="Notes">
-            <div style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6 }}>{item.notes}</div>
-          </FieldRow>
-        ) : (
-          <div style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>No notes saved.</div>
-        )}
-        <FieldRow label="URL">
-          <a href={isSafeHttpUrl(item.url) ? item.url : undefined} target="_blank" rel="noopener noreferrer" className="library-preview-link"
-            onClick={(e) => { e.preventDefault(); void openUrl(item.url); }}>{item.url}</a>
-        </FieldRow>
-      </div>
-    </div>
+    <LibraryLinkViewer
+      id={item.id}
+      title={item.title}
+      url={item.url}
+      meta={<><span className="library-doclist-tag">{item.domain}</span><span className="library-preview-sep">·</span><span className="library-preview-date">{fmtDate(item.savedAt)}</span></>}
+    />
   );
 }
 
@@ -250,6 +378,16 @@ function ReadingDetail({ item }: { item: LibraryReadingItem }) {
   // If we have a local PDF, render the embedded viewer
   if (item.localPath && item.localPath.toLowerCase().endsWith(".pdf")) {
     return <PdfViewer localPath={item.localPath} title={item.title} />;
+  }
+  if (item.url) {
+    return (
+      <LibraryLinkViewer
+        id={item.id}
+        title={item.title}
+        url={item.url}
+        meta={<><span className="library-status-badge" style={statusStyle(item.status)}>{item.status.replace(/-/g, " ")}</span><span className="library-preview-sep">·</span><span className="library-doclist-tag">{item.sourceType}</span></>}
+      />
+    );
   }
   return (
     <div className="library-preview">
@@ -304,37 +442,13 @@ function ReadingDetail({ item }: { item: LibraryReadingItem }) {
 function GitHubDetail({ item }: { item: LibraryGitHubItem }) {
   const stateColor = item.state === "open" ? "var(--color-success)" : item.state === "merged" ? "var(--accent-presence)" : item.state === "closed" ? "var(--color-danger)" : "var(--text-muted)";
   return (
-    <div className="library-preview">
-      <div className="library-preview-header">
-        <div className="library-preview-title">{item.title}</div>
-        <div className="library-preview-meta">
-          <span className="library-doclist-tag">{item.repo}</span>
-          <span className="library-preview-sep">·</span>
-          <span className="library-doclist-tag">{item.kind}</span>
-          {item.number != null && <><span className="library-preview-sep">·</span><span className="library-preview-date">#{item.number}</span></>}
-          {item.state && <><span className="library-preview-sep">·</span><span style={{ color: stateColor, fontSize: 12 }}>● {item.state}</span></>}
-        </div>
-        {item.labels.length > 0 && (
-          <div className="library-preview-tags">
-            {item.labels.map((l: string) => <span key={l} className="library-doclist-tag">{l}</span>)}
-          </div>
-        )}
-        <div className="library-preview-actions">
-          <OpenBtn url={item.url} label="Open on GitHub" kind="github" />
-          <CopyButton text={item.url} label="Copy URL" />
-        </div>
-      </div>
-      <div className="library-preview-body">
-        <FieldRow label="Saved">
-          <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>{fmtDate(item.savedAt)}</div>
-        </FieldRow>
-        {item.notes && (
-          <FieldRow label="Notes">
-            <div style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6 }}>{item.notes}</div>
-          </FieldRow>
-        )}
-      </div>
-    </div>
+    <LibraryLinkViewer
+      id={item.id}
+      title={item.title}
+      url={item.url}
+      openKind="github"
+      meta={<><span className="library-doclist-tag">{item.repo}</span><span className="library-preview-sep">·</span><span className="library-doclist-tag">{item.kind}</span>{item.number != null && <><span className="library-preview-sep">·</span><span className="library-preview-date">#{item.number}</span></>}{item.state && <><span className="library-preview-sep">·</span><span style={{ color: stateColor, fontSize: 12 }}>● {item.state}</span></>}</>}
+    />
   );
 }
 
