@@ -27,6 +27,7 @@ import { VoiceCallButton } from "./voice-call-button";
 import { VoiceCallOverlay } from "./voice-call-overlay";
 import { CsvImportModal } from "./csv-import-modal";
 import { looksLikeCsv } from "@/lib/csv-import";
+import { usageBreakdown, usageSummary, type TurnUsage } from "@/lib/usage-format";
 import { toolArgSummary } from "@/lib/tool-arg-summary";
 import { toolInputAsDiff } from "@/lib/tool-input-diff";
 
@@ -70,6 +71,10 @@ type Turn = {
   error?: boolean;
   lifecycle?: ChatTurnLifecycle;
   durationMs?: number;
+  /** Token usage / cost from the harness result event (CHAT-D12-02).
+   *  Absent when the harness emitted none (e.g. the OpenClaw bridge). */
+  usage?: TurnUsage;
+  costUsd?: number;
   origin?: "chat" | "voice";
   voiceCallId?: string;
 };
@@ -105,7 +110,7 @@ type StreamEvent =
   | { kind: "assistant_chunk"; text: string }
   | { kind: "progress"; id?: string; label: string; detail?: string; status?: "running" | "done" | "error"; durationMs?: number }
   | { kind: "tool_use"; id?: string; name: string; input?: string; output?: string; status?: "running" | "ok" | "error"; durationMs?: number }
-  | { kind: "done"; durationMs?: number; isError?: boolean; sessionId?: string }
+  | { kind: "done"; durationMs?: number; isError?: boolean; sessionId?: string; usage?: TurnUsage; costUsd?: number }
   | { kind: "error"; message: string; code?: string };
 
 type ComposerAttachment = ChatAttachment & { id: string };
@@ -186,6 +191,22 @@ function fmtDuration(ms?: number): string | null {
 function DurationText({ durationMs }: { durationMs?: number }) {
   const duration = fmtDuration(durationMs);
   return duration ? <span className="font-mono text-[10px] text-[var(--text-muted)]">{duration}</span> : null;
+}
+
+/** CHAT-D12-02: compact per-turn token/cost readout ("12.4k tok · $0.08")
+ *  with the full breakdown in the tooltip. Renders nothing when the harness
+ *  emitted no usage (e.g. the OpenClaw bridge). */
+function UsageText({ usage, costUsd }: { usage?: TurnUsage; costUsd?: number }) {
+  const summary = usageSummary(usage, costUsd);
+  if (!summary) return null;
+  return (
+    <span
+      className="font-mono text-[10px] text-[var(--text-muted)]"
+      title={usageBreakdown(usage, costUsd) ?? undefined}
+    >
+      {summary}
+    </span>
+  );
 }
 
 function lifecycleLabel(lifecycle: ChatTurnLifecycle): string {
@@ -627,6 +648,8 @@ function metaLineString(args: {
   model?: string;
   projectRoot?: string | null;
   durationMs?: number;
+  usage?: TurnUsage;
+  costUsd?: number;
 }): string {
   const parts: string[] = [];
   if (args.state === "offline") {
@@ -645,6 +668,10 @@ function metaLineString(args: {
     if (repo) parts.push(repo);
     const dur = fmtDuration(args.durationMs);
     if (dur) parts.push(dur);
+    // CHAT-D12-02: "… · 7s · 12.4k tok · $0.08" — absent when the harness
+    // emitted no usage (e.g. the OpenClaw bridge).
+    const usage = usageSummary(args.usage, args.costUsd);
+    if (usage) parts.push(usage);
   }
   return parts.join(" · ");
 }
@@ -673,6 +700,8 @@ function MetaLine({
   error,
   daemonRunning,
   durationMs,
+  usage,
+  costUsd,
   familiar,
   projectRoot,
   onSessionsChanged,
@@ -686,6 +715,8 @@ function MetaLine({
   error: boolean;
   daemonRunning: boolean | undefined;
   durationMs: number | undefined;
+  usage?: TurnUsage;
+  costUsd?: number;
   familiar: Familiar;
   projectRoot?: string;
   onSessionsChanged?: () => void;
@@ -700,6 +731,8 @@ function MetaLine({
     model: familiar.model ?? undefined,
     projectRoot: session?.project_root ?? projectRoot,
     durationMs,
+    usage,
+    costUsd,
   });
   const task = linkedContext?.task ?? null;
   // Same defense-in-depth override as the old headline row: hide a raw
@@ -1031,6 +1064,20 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
     const activeTurn = [...turns].reverse().find((turn) => turn.role === "assistant" && turn.pending);
     return activeTurn?.lifecycle ?? (busy ? "connecting" : null);
   }, [busy, turns]);
+  // Latest settled assistant turn feeds the MetaLine's complete-state
+  // one-liner: duration plus token usage / cost (CHAT-D12-02).
+  const lastSettledAssistantTurn = useMemo(
+    () =>
+      [...turns]
+        .reverse()
+        .find(
+          (t) =>
+            t.role === "assistant" &&
+            !t.pending &&
+            (typeof t.durationMs === "number" || t.usage !== undefined || typeof t.costUsd === "number"),
+        ),
+    [turns],
+  );
 
   useEffect(() => {
     setSlashIdx(0);
@@ -1102,6 +1149,8 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
               tools?: ToolEvent[];
               durationMs?: number;
               isError?: boolean;
+              usage?: TurnUsage;
+              costUsd?: number;
               createdAt?: string;
               origin?: "chat" | "voice";
               voiceCallId?: string;
@@ -1123,6 +1172,8 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
                   tools?: ToolEvent[];
                   durationMs?: number;
                   isError?: boolean;
+                  usage?: TurnUsage;
+                  costUsd?: number;
                   cancelled?: boolean;
                   createdAt?: string;
                   origin?: "chat" | "voice";
@@ -1137,6 +1188,8 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
                   reasoning: t.reasoning,
                   tools: t.tools,
                   durationMs: t.durationMs,
+                  usage: t.usage,
+                  costUsd: t.costUsd,
                   error: t.isError,
                   lifecycle: t.cancelled ? ("cancelled" as const) : undefined,
                   createdAt: t.createdAt ?? new Date().toISOString(),
@@ -1707,6 +1760,8 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
                   error: ev.isError ?? false,
                   lifecycle: ev.isError ? "failed" : "complete",
                   durationMs: ev.durationMs,
+                  usage: ev.usage,
+                  costUsd: ev.costUsd,
                   progress: settleRunningProgress(t.progress, ev.isError ? "error" : "done"),
                 }
               : t,
@@ -1939,10 +1994,9 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
           lifecycle={activeLifecycle}
           error={!!error}
           daemonRunning={daemonRunning}
-          durationMs={(() => {
-            const last = [...turns].reverse().find((t) => t.role === "assistant" && !t.pending && typeof t.durationMs === "number");
-            return last?.durationMs;
-          })()}
+          durationMs={lastSettledAssistantTurn?.durationMs}
+          usage={lastSettledAssistantTurn?.usage}
+          costUsd={lastSettledAssistantTurn?.costUsd}
           familiar={familiar}
           projectRoot={projectRoot}
           onSessionsChanged={onSessionsChanged}
@@ -2508,6 +2562,7 @@ function TurnRow({
               </button>
             ) : null}
             {showTimestamp && turn.createdAt ? <span className="opacity-60">{fmtTime(turn.createdAt)}</span> : null}
+            <UsageText usage={turn.usage} costUsd={turn.costUsd} />
           </div>
 
           <div className="cave-linear-turn-body">
