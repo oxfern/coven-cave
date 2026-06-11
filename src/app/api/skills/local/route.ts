@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
+import { homedir } from "node:os";
 import { covenHome, familiarIds, familiarWorkspace } from "@/lib/coven-paths";
 
 export const dynamic = "force-dynamic";
@@ -37,7 +38,10 @@ async function scanSkillsDir(dir: string, familiar: string, out: LocalSkillEntry
   let entries: string[] = [];
   try {
     const dirents = await readdir(dir, { withFileTypes: true });
-    entries = dirents.filter(e => e.isDirectory()).map(e => e.name);
+    // Skill folders are often symlinks (dotfiles repos, plugin managers) —
+    // isDirectory() is false for those, so accept symlinks too; the SKILL.md
+    // stat below (which follows links) validates each candidate anyway.
+    entries = dirents.filter(e => e.isDirectory() || e.isSymbolicLink()).map(e => e.name);
   } catch { return; }
 
   for (const skillName of entries) {
@@ -71,6 +75,11 @@ export async function GET() {
   for (const familiar of await familiarIds()) {
     await scanSkillsDir(path.join(await familiarWorkspace(familiar), "skills"), familiar, skills);
   }
+
+  // 3. The user's own Claude Code skills (~/.claude/skills) — these are
+  // available to every claude-harness familiar, so the Skills tab should
+  // list them alongside the Coven-managed ones.
+  await scanSkillsDir(path.join(homedir(), ".claude", "skills"), "user", skills);
 
   return NextResponse.json({ ok: true, skills });
 }
