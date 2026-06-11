@@ -394,10 +394,11 @@ function OpenChatAction({
 
   const label =
     linkedCards.length === 0
-      ? "Start chat"
+      ? "Start"
       : linkedCards.length === 1
-        ? "Open chat"
-        : `Open chat (${linkedCards.length})`;
+        ? "Open"
+        : `Open (${linkedCards.length})`;
+  const title = linkedCards.length === 0 ? "Start chat" : "Open chat";
 
   return (
     <div className="gh-action-wrap">
@@ -405,7 +406,7 @@ function OpenChatAction({
         type="button"
         onClick={handleClick}
         disabled={busy}
-        title={label}
+        title={title}
         className="gh-action-btn"
       >
         <Icon name="ph:chat-circle-dots" width={12} />
