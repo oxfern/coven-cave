@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { callDaemon } from "@/lib/coven-daemon";
+import { COMPATIBILITY_ADAPTERS } from "@/lib/harness-adapters";
+import { scanClaudeUserSkills } from "@/lib/server/skill-scan";
 
 export const dynamic = "force-dynamic";
 
@@ -56,22 +58,92 @@ export type CapabilitiesResponse = {
   error?: string;
 };
 
+/**
+ * The daemon's claude scanner misses locally-installed skills whose folders
+ * are symlinks (and doesn't always scan ~/.claude/skills at all), so the
+ * claude manifest can report skills: [] while the harness genuinely has
+ * them. Merge in our own user-skills scan; daemon-reported entries win.
+ */
+async function supplementClaudeSkills(manifest: HarnessCapabilityManifest): Promise<HarnessCapabilityManifest> {
+  if (manifest.harness_id !== "claude") return manifest;
+  try {
+    const userSkills = await scanClaudeUserSkills();
+    if (userSkills.length === 0) return manifest;
+    const seen = new Set(manifest.skills.map((s) => s.id));
+    const supplemental: HarnessSkill[] = userSkills
+      .filter((s) => !seen.has(s.id))
+      .map((s) => ({
+        id: s.id,
+        name: s.name,
+        source: "local-scan",
+        harness_id: "claude",
+        path: s.path,
+        description: s.description,
+        version: s.version,
+        tags: s.tags,
+      }));
+    return { ...manifest, skills: [...manifest.skills, ...supplemental] };
+  } catch {
+    return manifest;
+  }
+}
+
+function isManifest(data: unknown): data is HarnessCapabilityManifest {
+  return Boolean(data && typeof data === "object" && "harness_id" in data && Array.isArray((data as HarnessCapabilityManifest).skills));
+}
+
+async function fetchHarnessManifest(harness: string, refresh: string): Promise<HarnessCapabilityManifest | null> {
+  const res = await callDaemon<HarnessCapabilityManifest>({
+    path: `/api/v1/capabilities/${encodeURIComponent(harness)}${refresh}`,
+  });
+  if (!res.ok || !isManifest(res.data)) return null;
+  return supplementClaudeSkills(res.data);
+}
+
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const refresh = url.searchParams.get("refresh") === "1" ? "?refresh=1" : "";
   const harness = url.searchParams.get("harness");
 
-  const path = harness
-    ? `/api/v1/capabilities/${encodeURIComponent(harness)}${refresh}`
-    : `/api/v1/capabilities${refresh}`;
+  if (harness) {
+    const manifest = await fetchHarnessManifest(harness, refresh);
+    if (!manifest) {
+      return NextResponse.json(
+        { ok: false, error: "daemon offline", coven_skills: [], harness_capabilities: [], scanned_at: new Date().toISOString() },
+        { status: 503 },
+      );
+    }
+    return NextResponse.json({ ok: true, coven_skills: [], harness_capabilities: [manifest], scanned_at: manifest.scanned_at });
+  }
 
-  const res = await callDaemon<CapabilitiesResponse>({ path });
-  if (!res.ok || !res.data) {
-    const isOffline = res.status === 0 || (res.error != null && /(ENOENT|ECONNREFUSED|ETIMEDOUT|socket|connect)/i.test(res.error));
+  // Newer daemons repurposed the aggregate /api/v1/capabilities for
+  // control-plane capability descriptors, so try it first for the legacy
+  // manifest shape and otherwise assemble the aggregate ourselves from the
+  // per-harness endpoints (which still serve manifests).
+  const aggregate = await callDaemon<CapabilitiesResponse>({ path: `/api/v1/capabilities${refresh}` });
+  if (aggregate.ok && Array.isArray(aggregate.data?.harness_capabilities)) {
+    const manifests = await Promise.all(aggregate.data.harness_capabilities.map(supplementClaudeSkills));
+    return NextResponse.json({
+      ok: true,
+      coven_skills: aggregate.data.coven_skills ?? [],
+      harness_capabilities: manifests,
+      scanned_at: aggregate.data.scanned_at ?? new Date().toISOString(),
+    });
+  }
+
+  const harnessIds = COMPATIBILITY_ADAPTERS.map((adapter) => adapter.id);
+  const [manifestResults, covenSkillsRes] = await Promise.all([
+    Promise.all(harnessIds.map((id) => fetchHarnessManifest(id, refresh))),
+    callDaemon<{ id: string; name: string; description?: string; version?: string; tags?: string[] }[]>({ path: "/api/v1/skills" }),
+  ]);
+  const manifests = manifestResults.filter((m): m is HarnessCapabilityManifest => m !== null);
+
+  if (manifests.length === 0) {
+    const isOffline = aggregate.status === 0 || (aggregate.error != null && /(ENOENT|ECONNREFUSED|ETIMEDOUT|socket|connect)/i.test(aggregate.error));
     return NextResponse.json(
       {
         ok: false,
-        error: isOffline ? 'daemon offline' : (res.error ?? `daemon http ${res.status}`),
+        error: isOffline ? "daemon offline" : (aggregate.error ?? `daemon http ${aggregate.status}`),
         coven_skills: [],
         harness_capabilities: [],
         scanned_at: new Date().toISOString(),
@@ -79,5 +151,11 @@ export async function GET(req: Request) {
       { status: 503 },
     );
   }
-  return NextResponse.json({ ok: true, coven_skills: res.data.coven_skills, harness_capabilities: res.data.harness_capabilities, scanned_at: res.data.scanned_at });
+
+  return NextResponse.json({
+    ok: true,
+    coven_skills: covenSkillsRes.ok && Array.isArray(covenSkillsRes.data) ? covenSkillsRes.data : [],
+    harness_capabilities: manifests,
+    scanned_at: manifests[0]?.scanned_at ?? new Date().toISOString(),
+  });
 }

@@ -1,69 +1,12 @@
 import { NextResponse } from "next/server";
-import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
-import { homedir } from "node:os";
 import { covenHome, familiarIds, familiarWorkspace } from "@/lib/coven-paths";
+import { scanSkillsDir, scanClaudeUserSkills, type LocalSkillEntry } from "@/lib/server/skill-scan";
 
 export const dynamic = "force-dynamic";
 
-function parseFrontmatter(text: string): Record<string, string> {
-  const fm: Record<string, string> = {};
-  const match = text.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-  if (!match) return fm;
-  for (const line of match[1].split("\n")) {
-    const m = line.match(/^(\w[\w-]*):\s+"?([^"]*)"?\s*$/);
-    if (m) fm[m[1]] = m[2];
-  }
-  return fm;
-}
-
-function parseListField(text: string, field: string): string[] {
-  const match = text.match(new RegExp(`\\n${field}:\\s*\\n((?:\\s*-[^\\n]*\\n?)*)`));
-  if (!match) return [];
-  return match[1].match(/- (.+)/g)?.map(m => m.slice(2).trim()) ?? [];
-}
-
-export type LocalSkillEntry = {
-  id: string;
-  name: string;
-  description?: string;
-  version?: string;
-  kind?: string;
-  tags?: string[];
-  path: string;
-  familiar: string;   // "global" for shared workspace skills
-};
-
-async function scanSkillsDir(dir: string, familiar: string, out: LocalSkillEntry[]) {
-  let entries: string[] = [];
-  try {
-    const dirents = await readdir(dir, { withFileTypes: true });
-    // Skill folders are often symlinks (dotfiles repos, plugin managers) —
-    // isDirectory() is false for those, so accept symlinks too; the SKILL.md
-    // stat below (which follows links) validates each candidate anyway.
-    entries = dirents.filter(e => e.isDirectory() || e.isSymbolicLink()).map(e => e.name);
-  } catch { return; }
-
-  for (const skillName of entries) {
-    const skillMdPath = path.join(dir, skillName, "SKILL.md");
-    try {
-      await stat(skillMdPath);
-      const text = await readFile(skillMdPath, "utf8");
-      const fm = parseFrontmatter(text);
-      const tags = parseListField(text, "tags");
-      out.push({
-        id: skillName,
-        name: fm.name ?? skillName,
-        description: fm.description,
-        version: fm.version,
-        kind: fm.kind,
-        tags: tags.length ? tags : (fm.tags ? [fm.tags] : []),
-        path: skillMdPath,
-        familiar,
-      });
-    } catch { continue; }
-  }
-}
+// Re-exported so existing call sites (inspector pane) keep importing from here.
+export type { LocalSkillEntry };
 
 export async function GET() {
   const skills: LocalSkillEntry[] = [];
@@ -79,7 +22,7 @@ export async function GET() {
   // 3. The user's own Claude Code skills (~/.claude/skills) — these are
   // available to every claude-harness familiar, so the Skills tab should
   // list them alongside the Coven-managed ones.
-  await scanSkillsDir(path.join(homedir(), ".claude", "skills"), "user", skills);
+  skills.push(...await scanClaudeUserSkills());
 
   return NextResponse.json({ ok: true, skills });
 }
