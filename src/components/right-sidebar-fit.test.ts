@@ -35,4 +35,10 @@ assert.match(
   "Right panel tabs should truncate instead of overflowing the sidebar",
 );
 
+assert.match(
+  chatSurface,
+  /right-panel-close[\s\S]*?className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto"/,
+  "Right panel content wrapper must scroll vertically so pane content without an internal scroller is reachable",
+);
+
 console.log("right-sidebar-fit.test.ts OK");

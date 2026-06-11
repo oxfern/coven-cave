@@ -110,7 +110,7 @@ function RightPanel({
           <Icon name="ph:x-bold" width={11} />
         </button>
       </div>
-      <div className="min-h-0 flex-1 overflow-hidden">
+      <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
         {panel === "inspector" && (
           <InspectorPane
             familiar={activeFamiliar}
