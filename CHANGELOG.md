@@ -7,6 +7,24 @@ breaking config changes; patch releases stay additive.
 
 ## [Unreleased]
 
+## [0.0.73] - 2026-06-12
+
+Chats that persist and a workflow canvas you can rearrange by hand.
+
+### Added
+- **Draggable workflow nodes** — drag any step on the studio canvas and the arrangement sticks, persisted to a cave-only `workflows/<id>.cave.json` sidecar; the canonical manifest stays byte-identical. Unmoved steps keep their dependency-layered defaults.
+- **Library translate handoff** completed with icon whitelist and spec coverage.
+
+### Fixed
+- **Chat conversations no longer fork on resumed turns** — continued turns now resume in the conversation's original working directory (harness session stores are cwd-scoped) and keep a stable cave-owned conversation id while the harness's per-resume session id is tracked internally. Previously each continued turn could lose project context and spawn a new sidebar session.
+- **Workflow canvas edges render** — step nodes gained explicit connection handles (React Flow error #008), with a toggleable themed minimap.
+- **Machines without Node or Git are covered** — Node ships inside the app bundle (the release now refuses to build without it); Git became an advisory setup check with platform-aware install hints, missing-git API errors are actionable, and the README gains a dependency table.
+- **Friendly error when the coven CLI is missing**, and loopback requests skip the mobile-access gate.
+
+### Changed
+- **Workflow studio polish** — role attach rows align as fixed columns with right-pinned familiar tags; all studio scroll regions use thin dark scrollbars.
+- **Library metadata block** spans full width as a collapsible tab; mobile search bar spans the top-bar middle column.
+
 ## [0.0.72] - 2026-06-11
 
 The Workflow Studio release: the Cave goes from *viewing* workflows to **building, running, and staffing** them — plus first-class Projects, an embedded Browser pane, a deep chat-transcript overhaul, and a Tailscale-secure native iOS app.
