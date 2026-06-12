@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Modal } from "@/components/ui/modal";
 import { Icon } from "@/lib/icon";
 import {
@@ -65,7 +65,7 @@ function fieldsForTarget(t: CsvTargetList) {
 // ── CsvImportModal ───────────────────────────────────────────────
 
 export function CsvImportModal({ raw, familiar, onImport, onClose }: Props) {
-  const parsed = parseCsv(raw);
+  const parsed = useMemo(() => parseCsv(raw), [raw]);
   const detected = detectTargetList(parsed.headers);
 
   const [targetList, setTargetList] = useState<CsvTargetList>(detected === "unknown" ? "bookmarks" : detected);
