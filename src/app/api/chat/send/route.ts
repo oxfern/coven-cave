@@ -121,16 +121,35 @@ function normalizePath(p: string): string {
 }
 
 async function resolveCwd(requested?: string): Promise<string> {
+  const homeRoot = await realpath(homedir());
   if (requested) {
     try {
       const normalized = normalizePath(requested);
-      const s = await stat(normalized);
-      if (s.isDirectory()) return normalized;
+      const candidate = path.resolve(normalized);
+      const relToHome = path.relative(homeRoot, candidate);
+      if (
+        relToHome === ".." ||
+        relToHome.startsWith(".." + path.sep) ||
+        path.isAbsolute(relToHome) ||
+        relToHome.split(path.sep).includes("..")
+      ) {
+        return homeRoot;
+      }
+      const s = await stat(candidate);
+      if (s.isDirectory()) {
+        const resolved = await realpath(candidate);
+        if (
+          resolved === homeRoot ||
+          resolved.startsWith(homeRoot + path.sep)
+        ) {
+          return resolved;
+        }
+      }
     } catch {
       /* fall through to homedir */
     }
   }
-  return homedir();
+  return homeRoot;
 }
 
 /**
