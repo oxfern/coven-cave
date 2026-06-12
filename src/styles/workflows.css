@@ -2,10 +2,23 @@
   display: grid;
   grid-template-columns: minmax(220px, 280px) minmax(0, 1fr) minmax(260px, 340px);
   gap: 12px;
-  min-height: 620px;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
   padding: 16px;
   color: var(--text-primary);
   background: var(--background);
+}
+
+/* Long columns scroll internally so the canvas and run strip stay on screen. */
+.workflow-studio-side,
+.workflow-library {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.workflow-studio-main {
+  min-height: 0;
 }
 
 .workflow-studio-main {
@@ -373,6 +386,7 @@
 }
 
 .workflow-palette-label {
+  white-space: nowrap;
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -548,6 +562,8 @@
   list-style: none;
   display: grid;
   gap: 4px;
+  max-height: 200px;
+  overflow-y: auto;
 }
 
 .workflow-role-toggle {
@@ -757,4 +773,56 @@
   overflow: auto;
   max-height: 240px;
   white-space: pre;
+}
+
+/* ---- Studio final touch: legible edges + dark React Flow chrome ---- */
+
+.workflow-canvas .react-flow__edge-path {
+  stroke: color-mix(in oklch, var(--accent-presence) 65%, transparent);
+  stroke-width: 1.6;
+}
+
+.workflow-canvas .react-flow__edge.selected .react-flow__edge-path {
+  stroke: var(--accent-presence);
+  stroke-width: 2;
+}
+
+.workflow-canvas .react-flow__handle {
+  width: 7px;
+  height: 7px;
+  border: 1px solid var(--border-strong);
+  background: var(--card);
+}
+
+.workflow-canvas .react-flow__controls {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 30%);
+}
+
+.workflow-canvas .react-flow__controls-button {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  color: var(--text-primary);
+  fill: currentColor;
+}
+
+.workflow-canvas .react-flow__controls-button:hover {
+  background: color-mix(in oklch, var(--card) 80%, var(--accent-presence) 20%);
+}
+
+.workflow-canvas .react-flow__minimap {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--card);
+}
+
+.workflow-canvas .react-flow__minimap-mask {
+  fill: rgb(0 0 0 / 55%);
+}
+
+.workflow-canvas .react-flow__minimap-node {
+  fill: color-mix(in oklch, var(--accent-presence) 40%, transparent);
 }

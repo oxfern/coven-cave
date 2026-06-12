@@ -84,16 +84,48 @@ function workflowEdges(steps: WorkflowStepSummary[], dryRun?: WorkflowDryRunPlan
   });
 }
 
+/**
+ * Dependency depth per step: 0 for roots, 1 + max(depth of requires) otherwise.
+ * Unknown references and cycles degrade to depth 0 instead of throwing so an
+ * invalid draft still lays out.
+ */
+function stepDepths(steps: WorkflowStepSummary[]): Map<string, number> {
+  const byId = new Map(steps.map((step) => [step.id, step]));
+  const depths = new Map<string, number>();
+  const visiting = new Set<string>();
+  const depthOf = (id: string): number => {
+    const known = depths.get(id);
+    if (known !== undefined) return known;
+    if (visiting.has(id)) return 0;
+    visiting.add(id);
+    const requires = (byId.get(id)?.requires ?? []).filter((dep) => byId.has(dep));
+    const depth = requires.length === 0 ? 0 : 1 + Math.max(...requires.map(depthOf));
+    visiting.delete(id);
+    depths.set(id, depth);
+    return depth;
+  };
+  for (const step of steps) depthOf(step.id);
+  return depths;
+}
+
 export function workflowToGraph(workflow: WorkflowSummary, dryRun?: WorkflowDryRunPlan): WorkflowGraph {
   const steps = workflow.steps && workflow.steps.length > 0 ? workflow.steps : [fallbackStep(workflow)];
+  // Layered layout: column = dependency depth (manifest order when no
+  // dependencies are declared), lane = arrival order within the column.
+  const hasDependencyEdges = steps.some((step) => step.requires && step.requires.length > 0);
+  const depths = hasDependencyEdges ? stepDepths(steps) : null;
+  const laneCounts = new Map<number, number>();
   const nodes = steps.map((step, index): WorkflowGraphNode => {
     const dryRunStep = dryRunStepFor(step, dryRun);
+    const depth = depths?.get(step.id) ?? index;
+    const lane = laneCounts.get(depth) ?? 0;
+    laneCounts.set(depth, lane + 1);
     return {
       id: step.id,
       type: "workflowStep",
       position: {
-        x: 80 + index * 220,
-        y: 90 + (index % 2) * 130,
+        x: 80 + depth * 240,
+        y: 80 + lane * 140,
       },
       data: {
         label: step.name ?? step.id,

@@ -5,6 +5,7 @@ import "@xyflow/react/dist/style.css";
 import {
   Background,
   Controls,
+  MarkerType,
   MiniMap,
   ReactFlow,
   type Connection,
@@ -74,7 +75,16 @@ export function WorkflowCanvas({
   }, [action, workflow]);
 
   const nodes = useMemo(() => graph.nodes.map((node) => toFlowNode(node, selectedNode)), [graph.nodes, selectedNode]);
-  const edges = graph.edges as Edge[];
+  // Smoothstep + arrowheads so dependency direction reads on the dark canvas.
+  const edges = useMemo<Edge[]>(
+    () =>
+      graph.edges.map((edge) => ({
+        ...edge,
+        type: "smoothstep",
+        markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: "#9a8ecd" },
+      })),
+    [graph.edges],
+  );
 
   const handleNodeClick: NodeMouseHandler<WorkflowFlowNode> = (_event, node) => {
     onSelectNode({

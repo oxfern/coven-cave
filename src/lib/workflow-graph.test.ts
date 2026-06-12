@@ -53,6 +53,29 @@ assert.deepEqual(
   "steps with requires render manifest dependency edges instead of array-order edges",
 );
 
+// Layered layout: x grows with dependency depth, parallel steps share a column.
+{
+  const pos = new Map(dependencyGraph.nodes.map((node) => [node.id, node.position]));
+  assert.equal(pos.get("research")!.x, pos.get("risk")!.x, "parallel steps share a dependency column");
+  assert.notEqual(pos.get("research")!.y, pos.get("risk")!.y, "parallel steps stack in separate lanes");
+  assert.ok(pos.get("intake")!.x < pos.get("research")!.x, "dependents sit right of their requirements");
+  assert.ok(pos.get("synthesize")!.x > pos.get("research")!.x, "joins sit right of all their inputs");
+  assert.ok(pos.get("brief")!.x > pos.get("synthesize")!.x, "the sink is the right-most column");
+}
+
+// A cyclic requires graph must not hang or throw during layout.
+{
+  const cyclic = workflowToGraph({
+    id: "cyclic",
+    version: "0.0.1",
+    steps: [
+      { id: "a", kind: "agent", requires: ["b"] },
+      { id: "b", kind: "agent", requires: ["a"] },
+    ],
+  });
+  assert.equal(cyclic.nodes.length, 2, "cyclic graphs still render every node");
+}
+
 const dryRun: WorkflowDryRunPlan = {
   ok: true,
   workflowId: "nova-release-review",
