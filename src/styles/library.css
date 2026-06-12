@@ -792,8 +792,12 @@
 }
 
 /* Collapsible leading metadata block (lifted out of the body markdown).
- * Default-collapsed; open/closed state persists in localStorage. */
+ * Default-collapsed; open/closed state persists in localStorage.
+ * Spans the full content width as a slim collapsible tab; the explicit
+ * flex-basis keeps it on its own row inside the with-toc flex layouts. */
 .library-meta {
+  width: 100%;
+  flex: 0 0 100%;
   margin: 0 0 18px;
   border: 1px solid var(--border-hairline);
   border-radius: 10px;
@@ -804,8 +808,9 @@
 .library-meta-summary {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 7px;
-  padding: 9px 12px;
+  padding: 6px 12px;
   cursor: pointer;
   list-style: none;
   user-select: none;
@@ -823,7 +828,7 @@
   transition: transform 0.15s ease;
 }
 
-.library-meta[open] .library-meta-caret { transform: rotate(90deg); }
+.library-meta[open] .library-meta-caret { transform: rotate(180deg); }
 
 .library-meta-title {
   font-weight: 600;
@@ -832,7 +837,6 @@
 }
 
 .library-meta-count {
-  margin-left: auto;
   font-size: 11px;
   color: var(--text-muted);
 }
@@ -2321,6 +2325,7 @@ h3:hover .library-heading-anchor,
 .library-preview-body--with-toc {
   display: flex;
   flex-direction: row;
+  flex-wrap: wrap; /* lets the full-basis metadata block take its own row */
   align-items: flex-start;
   gap: 0;
   flex: 1;
@@ -2339,6 +2344,7 @@ h3:hover .library-heading-anchor,
 .library-reader-body--with-toc {
   display: flex;
   flex-direction: row;
+  flex-wrap: wrap; /* lets the full-basis metadata block take its own row */
   align-items: flex-start;
   gap: 0;
   min-height: 0;

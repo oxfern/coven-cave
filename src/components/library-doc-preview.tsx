@@ -99,6 +99,95 @@ function OpenBtn({ url, label, kind = "web" }: { url: string; label?: string; ki
   );
 }
 
+type TranslationSource =
+  | { kind: "url"; title: string; url: string }
+  | { kind: "text"; title: string; text: string }
+  | { kind: "file"; title: string; path: string };
+
+function translateTargetLang() {
+  const raw = typeof navigator !== "undefined" ? navigator.language : "";
+  return raw.split("-")[0]?.toLowerCase() || "en";
+}
+
+function googleTranslateUrl(url: string) {
+  const translated = new URL("https://translate.google.com/translate");
+  translated.searchParams.set("sl", "auto");
+  translated.searchParams.set("tl", translateTargetLang());
+  translated.searchParams.set("u", url);
+  return translated.toString();
+}
+
+function buildTranslationPrompt(source: Extract<TranslationSource, { kind: "text" | "file" }>) {
+  if (source.kind === "file") {
+    return [
+      `Translate this paper or document into ${translateTargetLang()}.`,
+      `Title: ${source.title}`,
+      `Local file: ${source.path}`,
+      "",
+      "Preserve technical terms, citations, headings, and lists.",
+    ].join("\n");
+  }
+  const clipped = source.text.length > 24_000 ? `${source.text.slice(0, 24_000)}\n\n[truncated]` : source.text;
+  return [
+    `Translate this article or document into ${translateTargetLang()}.`,
+    `Title: ${source.title}`,
+    "",
+    "Preserve technical terms, citations, headings, and lists.",
+    "",
+    clipped,
+  ].join("\n");
+}
+
+function TranslateButton({
+  source,
+  compact,
+  readerIcon,
+}: {
+  source: TranslationSource;
+  compact?: boolean;
+  readerIcon?: boolean;
+}) {
+  const [copied, setCopied] = useState(false);
+  const label = copied ? "Prompt copied" : "Translate";
+
+  const handleClick = () => {
+    if (source.kind === "url") {
+      void openUrl(googleTranslateUrl(source.url));
+      return;
+    }
+    navigator.clipboard.writeText(buildTranslationPrompt(source))
+      .then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); })
+      .catch(() => undefined);
+  };
+
+  if (readerIcon) {
+    return (
+      <button
+        type="button"
+        className="library-reader-iconbtn"
+        onClick={handleClick}
+        title={label}
+        aria-label={label}
+      >
+        <Icon name={copied ? "ph:check" : "ph:translate"} width={13} />
+      </button>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      className={`library-preview-action-btn${compact ? " library-preview-action-btn--compact" : ""}`}
+      onClick={handleClick}
+      title={label}
+      aria-label={label}
+    >
+      <Icon name={copied ? "ph:check" : "ph:translate"} width={compact ? 12 : 13} />
+      <span>{label}</span>
+    </button>
+  );
+}
+
 type TauriInvokeBridge = {
   invoke: <T = unknown>(cmd: string, args?: Record<string, unknown>) => Promise<T>;
   listen: <T = unknown>(event: string, cb: (e: { payload: T }) => void) => Promise<() => void>;
@@ -228,6 +317,7 @@ function LibraryLinkViewer({
           <span className="library-link-viewer-mode">viewer</span>
         </div>
         <div className="library-preview-actions">
+          <TranslateButton source={{ kind: "url", title, url }} />
           <OpenBtn url={url} label={openKind === "github" ? "Open on GitHub" : "Open external"} kind={openKind} />
           <CopyButton text={url} label="Copy URL" />
         </div>
@@ -780,6 +870,7 @@ function DocDetail({ doc, docNav }: { doc: LibraryDocBody; docNav?: DocNav }) {
           )}
         </span>
         <span className="library-preview-meta-actions">
+          <TranslateButton source={{ kind: "text", title: doc.title, text: renderBody }} compact />
           <button
             type="button"
             className="library-preview-action-btn library-preview-action-btn--compact"
@@ -871,6 +962,7 @@ function DocDetail({ doc, docNav }: { doc: LibraryDocBody; docNav?: DocNav }) {
                 )}
               </div>
               <div className="library-reader-actions">
+                <TranslateButton source={{ kind: "text", title: doc.title, text: renderBody }} readerIcon />
                 {docNav && docNav.total > 1 && (
                   <>
                     <button
@@ -996,6 +1088,7 @@ function PdfViewer({ localPath, title }: { localPath: string; title: string }) {
       <div className="library-preview-header">
         <div className="library-preview-title">{title}</div>
         <div className="library-preview-actions">
+          <TranslateButton source={{ kind: "file", title, path: localPath }} />
           <button
             type="button"
             className="library-preview-action-btn"
