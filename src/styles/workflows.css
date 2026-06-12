@@ -558,25 +558,52 @@
 
 .workflow-role-list {
   margin: 4px 0 0;
-  padding: 0;
+  padding: 0 8px 0 0;
   list-style: none;
   display: grid;
-  gap: 4px;
+  gap: 2px;
   max-height: 200px;
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
 }
 
+/* checkbox · fixed emoji slot · name (ellipsized) · familiar pinned right */
 .workflow-role-toggle {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 20px minmax(0, 1fr) auto;
   align-items: center;
   gap: 7px;
   font-size: 12px;
   cursor: pointer;
+  padding: 3px 4px;
+  border-radius: 6px;
+}
+
+.workflow-role-toggle:hover {
+  background: color-mix(in oklch, var(--accent-presence) 8%, transparent);
+}
+
+.workflow-role-toggle input[type="checkbox"] {
+  margin: 0;
+}
+
+.workflow-role-emoji {
+  text-align: center;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.workflow-role-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .workflow-role-familiar {
   font-size: 11px;
   color: var(--muted-foreground);
+  text-align: right;
 }
 
 .workflow-runs-panel {
@@ -825,4 +852,40 @@
 
 .workflow-canvas .react-flow__minimap-node {
   fill: color-mix(in oklch, var(--accent-presence) 40%, transparent);
+}
+
+/* ---- Thin dark scrollbars for every scrolling studio region ---- */
+
+.workflow-studio-side,
+.workflow-library,
+.workflow-runs-panel,
+.workflow-manifest-yaml {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+.workflow-studio-side::-webkit-scrollbar,
+.workflow-library::-webkit-scrollbar,
+.workflow-runs-panel::-webkit-scrollbar,
+.workflow-manifest-yaml::-webkit-scrollbar,
+.workflow-role-list::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.workflow-studio-side::-webkit-scrollbar-track,
+.workflow-library::-webkit-scrollbar-track,
+.workflow-runs-panel::-webkit-scrollbar-track,
+.workflow-manifest-yaml::-webkit-scrollbar-track,
+.workflow-role-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.workflow-studio-side::-webkit-scrollbar-thumb,
+.workflow-library::-webkit-scrollbar-thumb,
+.workflow-runs-panel::-webkit-scrollbar-thumb,
+.workflow-manifest-yaml::-webkit-scrollbar-thumb,
+.workflow-role-list::-webkit-scrollbar-thumb {
+  background: color-mix(in oklch, var(--border-strong) 80%, transparent);
+  border-radius: 999px;
 }

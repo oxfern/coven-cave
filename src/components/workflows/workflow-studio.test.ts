@@ -104,6 +104,9 @@ assert.match(runsPanel, /dry-run snapshots and daemon executions/i, "Runs panel 
 assert.match(attachments, /onAttachRole/, "Attachments should persist role bindings");
 assert.match(attachments, /onUpdateMeta/, "Attachments should bind familiars into the manifest");
 assert.match(attachments, /onScheduleRequest/, "Attachments should open scheduling");
+assert.match(attachments, /workflow-role-emoji/, "Role rows reserve a fixed emoji slot so names align");
+assert.match(css, /grid-template-columns: auto 20px minmax\(0, 1fr\) auto/, "Role rows align as checkbox/emoji/name/familiar columns");
+assert.match(css, /scrollbar-width: thin/, "Studio scroll regions use thin themed scrollbars");
 
 assert.match(dialogs, /WorkflowCreateDialog/, "Create dialog exists");
 assert.match(dialogs, /WorkflowScheduleDialog/, "Schedule dialog exists");

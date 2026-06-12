@@ -96,10 +96,10 @@ export function WorkflowAttachments({
                           checked={attached}
                           onChange={() => onAttachRole(role, !attached)}
                         />
-                        <span className="workflow-role-name">
-                          {role.emoji ? `${role.emoji} ` : ""}
-                          {role.name}
+                        <span className="workflow-role-emoji" aria-hidden="true">
+                          {role.emoji ?? ""}
                         </span>
+                        <span className="workflow-role-name">{role.name}</span>
                         <span className="workflow-role-familiar">{role.familiar}</span>
                       </label>
                     </li>
