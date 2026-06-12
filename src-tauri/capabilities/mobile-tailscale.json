@@ -3,7 +3,7 @@
   "identifier": "mobile-tailscale",
   "description": "Mobile webview capability for Tailscale-secured Cave access",
   "local": false,
-  "platforms": ["iOS", "android"],
+  "platforms": ["iOS"],
   "windows": ["main"],
   "permissions": [
     "core:default",

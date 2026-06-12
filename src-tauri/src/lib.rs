@@ -804,7 +804,7 @@ pub fn run() {
 
                     if !allowed {
                         panic!(
-                            "CAVE_MOBILE_DEV_URL must be https://<host>.ts.net or http://localhost - got: {}",
+                            "CAVE_MOBILE_DEV_URL must be https://<host>.ts.net, https://localhost, http://localhost, or http://127.0.0.1 - got: {}",
                             url
                         );
                     }

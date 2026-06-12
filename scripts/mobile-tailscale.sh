@@ -146,8 +146,9 @@ start_with_tmux() {
   fi
 
   if [ "${CAVE_MOBILE_NATIVE:-0}" = "1" ]; then
+    # Explicitly unset token env vars so an inherited shell env can't re-enable token gating.
     tmux new-session -d -s "$TMUX_SESSION" -c "$PWD" \
-      "bash -lc 'exec pnpm exec next dev -H \"$HOST\" -p \"$PORT\" >>\"$LOG_FILE\" 2>&1'"
+      "bash -lc 'unset COVEN_CAVE_ACCESS_TOKEN COVEN_CAVE_AUTH_TOKEN; exec pnpm exec next dev -H \"$HOST\" -p \"$PORT\" >>\"$LOG_FILE\" 2>&1'"
   else
     tmux new-session -d -s "$TMUX_SESSION" -c "$PWD" \
       "bash -lc 'COVEN_CAVE_ACCESS_TOKEN=\"\$(cat \"$TOKEN_FILE\")\" exec pnpm exec next dev -H \"$HOST\" -p \"$PORT\" >>\"$LOG_FILE\" 2>&1'"
@@ -157,7 +158,8 @@ start_with_tmux() {
 
 start_with_nohup() {
   if [ "${CAVE_MOBILE_NATIVE:-0}" = "1" ]; then
-    nohup pnpm exec next dev -H "$HOST" -p "$PORT" >"$LOG_FILE" 2>&1 </dev/null &
+    # Explicitly unset token env vars so an inherited shell env can't re-enable token gating.
+    nohup env -u COVEN_CAVE_ACCESS_TOKEN -u COVEN_CAVE_AUTH_TOKEN pnpm exec next dev -H "$HOST" -p "$PORT" >"$LOG_FILE" 2>&1 </dev/null &
   else
     nohup env COVEN_CAVE_ACCESS_TOKEN="$ACCESS_TOKEN" pnpm exec next dev -H "$HOST" -p "$PORT" >"$LOG_FILE" 2>&1 </dev/null &
   fi
@@ -171,6 +173,11 @@ start_next_server() {
   if port_is_listening >/dev/null 2>&1; then
     ensure_state_dir
     if [ "${CAVE_MOBILE_NATIVE:-0}" = "1" ]; then
+      # Refuse to reuse a server that may be token-gated from a prior non-native start.
+      if [ -n "${COVEN_CAVE_ACCESS_TOKEN:-}" ] || [ -s "$TOKEN_FILE" ]; then
+        echo "Error: port ${PORT} is already in use by a token-gated server. Run 'pnpm mobile:tailscale:stop' first." >&2
+        exit 1
+      fi
       echo "CovenCave native mobile server is already listening on ${HOST}:${PORT}."
       return 0
     fi
