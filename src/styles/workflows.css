@@ -10,11 +10,33 @@
   background: var(--background);
 }
 
+.workflow-studio-shell.is-left-collapsed {
+  grid-template-columns: 0 minmax(0, 1fr) minmax(260px, 340px);
+}
+
+.workflow-studio-shell.is-right-collapsed {
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr) 0;
+}
+
+.workflow-studio-shell.is-left-collapsed.is-right-collapsed {
+  grid-template-columns: 0 minmax(0, 1fr) 0;
+}
+
 /* Long columns scroll internally so the canvas and run strip stay on screen. */
 .workflow-studio-side,
 .workflow-library {
   min-height: 0;
   overflow-y: auto;
+}
+
+.workflow-studio-shell.is-left-collapsed > .workflow-library,
+.workflow-studio-shell.is-right-collapsed > .workflow-studio-side {
+  visibility: hidden;
+  pointer-events: none;
+  overflow: hidden;
+  border-width: 0;
+  padding: 0;
+  opacity: 0;
 }
 
 .workflow-studio-main {
@@ -23,9 +45,39 @@
 
 .workflow-studio-main {
   display: grid;
+  position: relative;
   min-width: 0;
   grid-template-rows: auto minmax(320px, 1fr) auto auto;
   gap: 0;
+}
+
+.workflow-panel-toggle {
+  position: absolute;
+  z-index: 8;
+  top: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: color-mix(in oklch, var(--card) 88%, transparent);
+  color: var(--text-primary);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 22%);
+}
+
+.workflow-panel-toggle:hover {
+  border-color: color-mix(in oklch, var(--accent-presence) 54%, var(--border));
+  background: color-mix(in oklch, var(--card) 78%, var(--accent-presence) 22%);
+}
+
+.workflow-panel-toggle-left {
+  left: 8px;
+}
+
+.workflow-panel-toggle-right {
+  right: 8px;
 }
 
 .workflow-studio-side,
@@ -193,6 +245,7 @@
 }
 
 .workflow-canvas {
+  position: relative;
   min-height: 420px;
   overflow: hidden;
   border: 1px solid var(--border);
@@ -200,6 +253,29 @@
   background:
     linear-gradient(color-mix(in srgb, var(--muted) 45%, transparent), transparent),
     var(--background);
+}
+
+.workflow-minimap-toggle {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 6;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: color-mix(in oklch, var(--card) 88%, transparent);
+  color: var(--text-primary);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 22%);
+}
+
+.workflow-minimap-toggle:hover,
+.workflow-minimap-toggle.is-active {
+  border-color: color-mix(in oklch, var(--accent-presence) 54%, var(--border));
+  background: color-mix(in oklch, var(--card) 78%, var(--accent-presence) 22%);
 }
 
 .workflow-canvas-empty {
@@ -358,6 +434,12 @@
     grid-template-columns: 1fr;
     min-height: 0;
     padding: 12px;
+  }
+
+  .workflow-studio-shell.is-left-collapsed,
+  .workflow-studio-shell.is-right-collapsed,
+  .workflow-studio-shell.is-left-collapsed.is-right-collapsed {
+    grid-template-columns: 1fr;
   }
 
   .workflow-studio-main {
@@ -844,6 +926,7 @@
   border-radius: 8px;
   overflow: hidden;
   background: var(--card);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 30%);
 }
 
 .workflow-canvas .react-flow__minimap-mask {

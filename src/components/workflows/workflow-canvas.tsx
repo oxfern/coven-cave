@@ -5,8 +5,10 @@ import "@xyflow/react/dist/style.css";
 import {
   Background,
   Controls,
+  Handle,
   MarkerType,
   MiniMap,
+  Position,
   ReactFlow,
   type Connection,
   type Edge,
@@ -15,12 +17,15 @@ import {
   type NodeProps,
   type NodeTypes,
 } from "@xyflow/react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { Icon } from "@/lib/icon";
 import { workflowToGraph, type WorkflowGraphNode, type WorkflowGraphNodeData } from "@/lib/workflow-graph";
 import type { WorkflowDryRunPlan, WorkflowSummary } from "@/lib/workflows";
 import type { WorkflowStudioActionState } from "./workflow-studio";
 
 type WorkflowFlowNode = Node<WorkflowGraphNodeData & Record<string, unknown>, "workflowStep">;
+const WORKFLOW_NODE_WIDTH = 172;
+const WORKFLOW_NODE_HEIGHT = 74;
 
 type WorkflowCanvasProps = {
   workflow: WorkflowSummary | null;
@@ -36,10 +41,16 @@ type WorkflowCanvasProps = {
 export function WorkflowStepNode({ data, selected }: NodeProps<WorkflowFlowNode>) {
   return (
     <div className={`workflow-node workflow-node-${data.tone}${selected ? " is-selected" : ""}`}>
+      {/* Connection points React Flow attaches edges to. The layered layout runs
+          left→right by dependency depth, so dependencies enter on the left
+          (target) and continue on the right (source). Without these handles
+          every edge fails with error #008 and no graph connections render. */}
+      <Handle type="target" position={Position.Left} />
       <div className="workflow-node-kind">{data.kind}</div>
       <div className="workflow-node-label">{data.label}</div>
       {data.uses && <div className="workflow-node-uses">{data.uses}</div>}
       {data.status && <div className={`workflow-node-status workflow-node-status-${data.status}`}>{data.status}</div>}
+      <Handle type="source" position={Position.Right} />
     </div>
   );
 }
@@ -55,8 +66,22 @@ function toFlowNode(node: WorkflowGraphNode, selectedNode: WorkflowGraphNode | n
   return {
     ...node,
     selected: selectedNode?.id === node.id,
+    initialWidth: WORKFLOW_NODE_WIDTH,
+    initialHeight: WORKFLOW_NODE_HEIGHT,
     data: { ...node.data },
   };
+}
+
+function workflowMiniMapNodeColor(node: Node): string {
+  const data = node.data as Partial<WorkflowGraphNodeData> | undefined;
+  if (data?.status === "blocked") return "#b95050";
+  if (data?.status === "ready") return "#3f8f5b";
+  if (data?.tone === "agent") return "#6b8fbf";
+  if (data?.tone === "gate") return "#b5892f";
+  if (data?.tone === "tool") return "#7c9b70";
+  if (data?.tone === "workflow") return "#9b7cb7";
+  if (data?.tone === "output") return "#5f9ea0";
+  return "#7b7f87";
 }
 
 export function WorkflowCanvas({
@@ -69,6 +94,7 @@ export function WorkflowCanvas({
   onDisconnect,
   onRemoveStep,
 }: WorkflowCanvasProps) {
+  const [showMiniMap, setShowMiniMap] = useState(false);
   const graph = useMemo(() => {
     if (!workflow) return { nodes: [] as WorkflowGraphNode[], edges: [] as Edge[] };
     return workflowToGraph(workflow, dryRunFromAction(action));
@@ -124,6 +150,16 @@ export function WorkflowCanvas({
 
   return (
     <section className="workflow-canvas" aria-label={`${workflow.name ?? workflow.id} graph`}>
+      <button
+        type="button"
+        className={`workflow-minimap-toggle${showMiniMap ? " is-active" : ""}`}
+        aria-label={showMiniMap ? "Hide workflow minimap" : "Show workflow minimap"}
+        aria-pressed={showMiniMap}
+        title={showMiniMap ? "Hide workflow minimap" : "Show workflow minimap"}
+        onClick={() => setShowMiniMap((visible) => !visible)}
+      >
+        <Icon name="ph:graph" width={14} />
+      </button>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -138,7 +174,19 @@ export function WorkflowCanvas({
         proOptions={{ hideAttribution: true }}
       >
         <Background />
-        <MiniMap pannable zoomable />
+        {showMiniMap && (
+          <MiniMap
+            zoomable
+            pannable
+            position="bottom-right"
+            nodeColor={workflowMiniMapNodeColor}
+            nodeStrokeWidth={3}
+            nodeBorderRadius={6}
+            maskColor="rgb(0 0 0 / 48%)"
+            bgColor="var(--card)"
+            style={{ width: 180, height: 118 }}
+          />
+        )}
         <Controls showInteractive={false} />
       </ReactFlow>
     </section>

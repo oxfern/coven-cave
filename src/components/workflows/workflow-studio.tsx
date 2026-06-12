@@ -3,6 +3,7 @@
 import "@/styles/workflows.css";
 
 import { useState } from "react";
+import { Icon } from "@/lib/icon";
 import type { WorkflowGraphNode } from "@/lib/workflow-graph";
 import type {
   WorkflowDryRunPlan,
@@ -84,9 +85,16 @@ export function WorkflowStudio(props: WorkflowStudioProps) {
   } = props;
   const [createOpen, setCreateOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [leftPanelOpen, setLeftPanelOpen] = useState(true);
+  const [rightPanelOpen, setRightPanelOpen] = useState(true);
+  const shellClassName = [
+    "workflow-studio-shell",
+    leftPanelOpen ? "" : "is-left-collapsed",
+    rightPanelOpen ? "" : "is-right-collapsed",
+  ].filter(Boolean).join(" ");
 
   return (
-    <section className="workflow-studio-shell" aria-label="Workflow Studio">
+    <section className={shellClassName} aria-label="Workflow Studio">
       <WorkflowLibrary
         workflows={workflows}
         selectedWorkflow={selectedWorkflow}
@@ -101,6 +109,26 @@ export function WorkflowStudio(props: WorkflowStudioProps) {
         onDelete={props.onDelete}
       />
       <main className="workflow-studio-main">
+        <button
+          type="button"
+          className="workflow-panel-toggle workflow-panel-toggle-left"
+          aria-label={leftPanelOpen ? "Hide workflow library" : "Show workflow library"}
+          aria-expanded={leftPanelOpen}
+          title={leftPanelOpen ? "Hide workflow library" : "Show workflow library"}
+          onClick={() => setLeftPanelOpen((open) => !open)}
+        >
+          <Icon name={leftPanelOpen ? "ph:caret-left" : "ph:caret-right"} width={14} />
+        </button>
+        <button
+          type="button"
+          className="workflow-panel-toggle workflow-panel-toggle-right"
+          aria-label={rightPanelOpen ? "Hide workflow details" : "Show workflow details"}
+          aria-expanded={rightPanelOpen}
+          title={rightPanelOpen ? "Hide workflow details" : "Show workflow details"}
+          onClick={() => setRightPanelOpen((open) => !open)}
+        >
+          <Icon name={rightPanelOpen ? "ph:caret-right" : "ph:caret-left"} width={14} />
+        </button>
         <WorkflowPalette workflow={selectedWorkflow} onAddStep={props.onAddStep} />
         <WorkflowCanvas
           workflow={selectedWorkflow}

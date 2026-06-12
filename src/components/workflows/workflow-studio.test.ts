@@ -76,6 +76,14 @@ assert.match(studio, /WorkflowRunsPanel/, "Studio should include the runs panel"
 assert.match(studio, /WorkflowCreateDialog/, "Studio should wire the create dialog");
 assert.match(studio, /WorkflowScheduleDialog/, "Studio should wire the schedule dialog");
 assert.match(studio, /onUndo[\s\S]*onRedo/, "Studio should thread undo/redo");
+assert.match(studio, /leftPanelOpen,\s*setLeftPanelOpen[\s\S]{0,80}useState\(true\)/, "Studio should keep the workflow library panel open by default");
+assert.match(studio, /rightPanelOpen,\s*setRightPanelOpen[\s\S]{0,80}useState\(true\)/, "Studio should keep the workflow details panel open by default");
+assert.match(studio, /aria-label=\{leftPanelOpen \? "Hide workflow library" : "Show workflow library"\}/, "Studio should expose an accessible left-panel toggle");
+assert.match(studio, /aria-label=\{rightPanelOpen \? "Hide workflow details" : "Show workflow details"\}/, "Studio should expose an accessible right-panel toggle");
+assert.match(studio, /is-left-collapsed[\s\S]{0,160}is-right-collapsed/, "Studio should put collapsed panel state on the shell");
+assert.match(css, /\.workflow-panel-toggle/, "Workflow CSS should style side-panel collapse toggles");
+assert.match(css, /\.workflow-studio-shell\.is-left-collapsed/, "Workflow CSS should collapse the left workflow panel");
+assert.match(css, /\.workflow-studio-shell\.is-right-collapsed/, "Workflow CSS should collapse the right workflow panel");
 
 for (const kind of ["agent", "skill", "tool", "human-gate", "workflow"]) {
   assert.match(palette, new RegExp(`"${kind}"`), `Palette should offer the ${kind} step kind`);
@@ -85,6 +93,13 @@ assert.match(canvas, /onConnect/, "Canvas should support drawing dependency edge
 assert.match(canvas, /onEdgesDelete/, "Canvas should support deleting dependency edges");
 assert.match(canvas, /onNodesDelete/, "Canvas should support deleting step nodes");
 assert.match(canvas, /deleteKeyCode/, "Canvas should map delete keys for edit operations");
+assert.match(canvas, /showMiniMap,\s*setShowMiniMap[\s\S]{0,80}useState\(false\)/, "Canvas minimap should default hidden");
+assert.match(canvas, /aria-label=\{showMiniMap \? "Hide workflow minimap" : "Show workflow minimap"\}/, "Canvas should expose an accessible minimap toggle");
+assert.match(canvas, /\{showMiniMap && \([\s\S]{0,700}<MiniMap/, "Canvas should only mount the minimap after the toggle is enabled");
+assert.match(canvas, /nodeColor=\{workflowMiniMapNodeColor\}/, "Minimap should color live workflow nodes by workflow tone");
+assert.match(canvas, /zoomable[\s\S]{0,120}pannable[\s\S]{0,120}position="bottom-right"/, "Minimap should be interactive and anchored inside the viewer");
+assert.match(canvas, /initialWidth:\s*WORKFLOW_NODE_WIDTH[\s\S]{0,80}initialHeight:\s*WORKFLOW_NODE_HEIGHT/, "Flow nodes should expose dimensions so the minimap can draw the actual workflow");
+assert.match(css, /\.workflow-minimap-toggle/, "Workflow CSS should style the minimap toggle");
 
 assert.match(inspector, /onUpdateStep/, "Inspector should edit step fields");
 assert.match(inspector, /onUpdateMeta/, "Inspector should edit workflow metadata");
