@@ -102,4 +102,61 @@ assert.match(
   "success is verified by resolving the installed binary, not just exit code 0",
 );
 
+// ── Background install jobs ─────────────────────────────────────────────────
+// POST starts the installer and returns immediately; GET polls job status.
+
+assert.match(
+  source,
+  /__covenInstallJobs/,
+  "job registry lives on globalThis so dev HMR cannot orphan running jobs",
+);
+
+assert.match(
+  source,
+  /export async function GET/,
+  "a GET status endpoint exists for the client to poll",
+);
+
+assert.match(
+  source,
+  /\{ status: 202 \}/,
+  "POST registers the job and returns 202 without awaiting the installer",
+);
+
+assert.match(
+  source,
+  /existing\?\.status === "running"/,
+  "re-POST while a target is running is idempotent — no duplicate spawn",
+);
+
+assert.match(
+  source,
+  /other\.kind === "npm"/,
+  "npm-kind installs are mutually exclusive (global npm tree races)",
+);
+
+assert.match(
+  source,
+  /\{ status: 409 \}/,
+  "a conflicting npm install is rejected with 409, not queued",
+);
+
+assert.match(
+  source,
+  /appendOutput\(job, stripAnsi\(/,
+  "installer output is ANSI-stripped at append time, so the cap counts visible bytes",
+);
+
+assert.match(
+  source,
+  /slice\(-OUTPUT_CAP\)/,
+  "job output is capped, not unbounded",
+);
+
+assert.match(
+  source,
+  /status: "running" as const, elapsedMs, tail/,
+  "the polled running view exposes status/elapsedMs/tail — the UI contract",
+);
+
 console.log("onboarding install route.test.ts: ok");

@@ -190,4 +190,66 @@ assert.match(
   "harness list retries while empty so a slow first fetch cannot strand the runtime step",
 );
 
+// ── Background install jobs (client) ────────────────────────────────────────
+
+assert.match(
+  source,
+  /installJobs/,
+  "per-target install jobs replace the single global busy flag",
+);
+
+assert.doesNotMatch(
+  source,
+  /disabled=\{installBusy !== null\}/,
+  "one running install must not disable every other install button",
+);
+
+assert.match(
+  source,
+  /api\/onboarding\/install\?target=/,
+  "the client polls the job status endpoint",
+);
+
+assert.match(
+  source,
+  /NPM_INSTALL_TARGETS/,
+  "npm-kind targets share a busy lock (mirrors the server's 409)",
+);
+
+assert.match(
+  source,
+  /Installing… \$\{formatElapsed\(/,
+  "busy install buttons show elapsed time, not a frozen label",
+);
+
+assert.match(
+  source,
+  /ph:circle-notch-bold/,
+  "busy install buttons show a spinner",
+);
+
+assert.match(
+  source,
+  /\{busy && job \? <InstallLiveTail/,
+  "live installer output renders while a job runs",
+);
+
+assert.match(
+  source,
+  /disabled=\{busy \|\|/,
+  "the disable rule is per-target (own busy state), not a global lock",
+);
+
+assert.match(
+  source,
+  /<HermesSetupNext onCopy/,
+  "a successful Hermes install surfaces the setup next-step at a render site",
+);
+
+assert.match(
+  source,
+  /Show full output/,
+  "failed installs expose the full installer output tail",
+);
+
 console.log("onboarding-guided-steps.test.ts: ok");

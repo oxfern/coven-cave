@@ -69,6 +69,30 @@ type InstallResult = {
   detail: string;
 };
 
+type InstallJobView = {
+  status: "running" | "done";
+  elapsedMs: number;
+  tail: string;
+  ok?: boolean;
+  binaryPath?: string | null;
+  error?: string;
+};
+
+/** Mirrors the server's per-target install mechanism (route.ts INSTALL_TARGETS).
+ *  npm-kind installs are mutually exclusive — the route 409s — so they share
+ *  one client-side busy lock. */
+const INSTALL_TARGET_KIND: Record<InstallTarget, "npm" | "script"> = {
+  "coven-cli": "npm",
+  codex: "npm",
+  claude: "npm",
+  openclaw: "npm",
+  hermes: "script",
+};
+const ALL_INSTALL_TARGETS = Object.keys(INSTALL_TARGET_KIND) as InstallTarget[];
+const NPM_INSTALL_TARGETS = ALL_INSTALL_TARGETS.filter(
+  (target) => INSTALL_TARGET_KIND[target] === "npm",
+);
+
 type SshCheckState =
   | { state: "idle" }
   | { state: "checking" }
@@ -282,7 +306,9 @@ export function OnboardingOverlay({ open, onDismiss }: Props) {
   // follows the first incomplete required step automatically.
   const [expandedStep, setExpandedStep] = useState<string | null>(null);
   // One-click installs (/api/onboarding/install)
-  const [installBusy, setInstallBusy] = useState<InstallTarget | null>(null);
+  const [installJobs, setInstallJobs] = useState<
+    Partial<Record<InstallTarget, InstallJobView>>
+  >({});
   const [installResults, setInstallResults] = useState<
     Partial<Record<InstallTarget, InstallResult>>
   >({});
@@ -501,9 +527,13 @@ export function OnboardingOverlay({ open, onDismiss }: Props) {
   };
 
   const runInstall = async (target: InstallTarget) => {
-    setInstallBusy(target);
     setSetupError(null);
     setNodeHint(null);
+    setInstallResults((prev) => {
+      const next = { ...prev };
+      delete next[target];
+      return next;
+    });
     try {
       const res = await fetch("/api/onboarding/install", {
         method: "POST",
@@ -511,12 +541,13 @@ export function OnboardingOverlay({ open, onDismiss }: Props) {
         body: JSON.stringify({ target }),
       });
       const json = (await res.json().catch(() => ({}))) as {
-        ok?: boolean;
+        started?: boolean;
+        status?: string;
+        elapsedMs?: number;
+        tail?: string;
         npmMissing?: boolean;
         hint?: string;
         error?: string;
-        binaryPath?: string | null;
-        stderr?: string;
       };
       if (json.npmMissing) {
         setNodeHint(
@@ -532,27 +563,32 @@ export function OnboardingOverlay({ open, onDismiss }: Props) {
         }));
         return;
       }
-      if (!res.ok || json.ok === false) {
+      if (!res.ok) {
+        // 409 (another npm install running) and hard start failures land here.
         setInstallResults((prev) => ({
           ...prev,
           [target]: {
             ok: false,
-            detail: json.error ?? json.stderr?.slice(-300) ?? "install failed",
+            detail: json.error ?? "install failed to start",
           },
         }));
         return;
       }
-      setInstallResults((prev) => ({
+      // 202 started (or idempotent 200 for an already-running job): hand off
+      // to the polling effect. Seed with the body's real elapsed/tail when
+      // present (idempotent re-POST returns the live view) so the UI doesn't
+      // flash back to zero on a re-POST.
+      setInstallJobs((prev) => ({
         ...prev,
-        [target]: {
-          ok: true,
-          detail: json.binaryPath
-            ? `installed at ${json.binaryPath}`
-            : "installed",
-        },
+        [target]:
+          json.status === "running" && typeof json.elapsedMs === "number"
+            ? {
+                status: "running",
+                elapsedMs: json.elapsedMs,
+                tail: json.tail ?? "",
+              }
+            : { status: "running", elapsedMs: 0, tail: "" },
       }));
-      await refresh();
-      await loadHarnesses();
     } catch (err) {
       setInstallResults((prev) => ({
         ...prev,
@@ -561,10 +597,118 @@ export function OnboardingOverlay({ open, onDismiss }: Props) {
           detail: err instanceof Error ? err.message : "install failed",
         },
       }));
-    } finally {
-      setInstallBusy(null);
     }
   };
+
+  // Poll cadence is keyed on WHICH targets are running, not on the job map
+  // itself — every poll stores a fresh view object, and keying on the map
+  // would tear down and immediately re-fire the interval (hot loop).
+  const runningInstallKey = (
+    Object.entries(installJobs) as [InstallTarget, InstallJobView][]
+  )
+    .filter(([, job]) => job.status === "running")
+    .map(([target]) => target)
+    .sort()
+    .join(",");
+
+  // Poll running install jobs every 2s. The interval is keyed on the sorted
+  // running-target signature so storing poll results does not tear it down;
+  // it only re-runs when a target starts or stops running.
+  useEffect(() => {
+    if (!runningInstallKey) return;
+    const targets = runningInstallKey.split(",") as InstallTarget[];
+    let cancelled = false;
+    const tick = async () => {
+      for (const target of targets) {
+        try {
+          const res = await fetch(
+            `/api/onboarding/install?target=${encodeURIComponent(target)}`,
+          );
+          if (!res.ok || cancelled) continue;
+          const json = (await res.json()) as
+            | { status: "idle" }
+            | InstallJobView;
+          if (cancelled) return;
+          if (json.status === "idle") {
+            // Server restarted mid-install: the job is gone; let the harness
+            // refresh tell the truth about whether the binary landed.
+            setInstallJobs((prev) => {
+              const next = { ...prev };
+              delete next[target];
+              return next;
+            });
+            void refresh();
+            continue;
+          }
+          setInstallJobs((prev) => ({ ...prev, [target]: json }));
+          if (json.status === "done") {
+            setInstallResults((prev) => ({
+              ...prev,
+              [target]: json.ok
+                ? {
+                    ok: true,
+                    detail: json.binaryPath
+                      ? `installed at ${json.binaryPath}`
+                      : "installed",
+                  }
+                : { ok: false, detail: json.error ?? "install failed" },
+            }));
+            await refresh();
+            await loadHarnesses();
+          }
+        } catch {
+          // Transient poll failure — next tick retries.
+        }
+      }
+    };
+    void tick();
+    const id = setInterval(() => void tick(), 2000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runningInstallKey]);
+
+  // Re-attach to server-side jobs the first time the overlay opens. The
+  // overlay is always mounted (open=false hides it but doesn't unmount), so
+  // firing on [] would probe 5 targets on every workspace load for users who
+  // are fully onboarded. A once-ref ensures the probe runs exactly once, on
+  // the first render where open is true.
+  const reAttachFiredRef = useRef(false);
+  useEffect(() => {
+    if (!open || reAttachFiredRef.current) return;
+    reAttachFiredRef.current = true;
+    let cancelled = false;
+    void (async () => {
+      const entries = await Promise.all(
+        ALL_INSTALL_TARGETS.map(async (target) => {
+          try {
+            const res = await fetch(
+              `/api/onboarding/install?target=${encodeURIComponent(target)}`,
+            );
+            if (!res.ok || cancelled) return null;
+            const json = (await res.json()) as { status: string };
+            return json.status === "running"
+              ? ([target, json as InstallJobView] as const)
+              : null;
+          } catch {
+            return null;
+          }
+        }),
+      );
+      if (cancelled) return;
+      const running = Object.fromEntries(
+        entries.filter((entry): entry is NonNullable<typeof entry> => !!entry),
+      );
+      if (Object.keys(running).length > 0) {
+        setInstallJobs((prev) => ({ ...running, ...prev }));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   const testSsh = async () => {
     const host = sshHost.trim();
@@ -1036,7 +1180,7 @@ export function OnboardingOverlay({ open, onDismiss }: Props) {
                         {step.key === "covenCli" ? (
                           <StepCovenCli
                             platformCopy={platformCopy}
-                            installBusy={installBusy}
+                            installJobs={installJobs}
                             installResult={installResults["coven-cli"]}
                             nodeHint={nodeHint}
                             onInstall={() => void runInstall("coven-cli")}
@@ -1066,7 +1210,7 @@ export function OnboardingOverlay({ open, onDismiss }: Props) {
                           <StepRuntimes
                             chatHarnesses={chatHarnesses}
                             platform={activePlatform}
-                            installBusy={installBusy}
+                            installJobs={installJobs}
                             installResults={installResults}
                             nodeHint={nodeHint}
                             onInstall={(target) => void runInstall(target)}
@@ -1274,6 +1418,54 @@ export function OnboardingOverlay({ open, onDismiss }: Props) {
 
 // ── Step bodies ───────────────────────────────────────────────────────────────
 
+function formatElapsed(ms: number): string {
+  const totalSeconds = Math.floor(Math.max(0, ms) / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+}
+
+/** Last N non-empty lines of installer output (\r-heavy progress bars are
+ *  normalized to line breaks first). */
+function lastLines(text: string, count: number): string {
+  return text
+    .replace(/\r/g, "\n")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(-count)
+    .join("\n");
+}
+
+function InstallLiveTail({ tail }: { tail: string }) {
+  const visible = lastLines(tail, 3);
+  if (!visible) return null;
+  return (
+    <pre className="max-h-16 overflow-hidden whitespace-pre-wrap break-all rounded-md border border-[var(--border-hairline)] bg-[var(--bg-base)] px-3 py-2 font-mono text-[11px] leading-4 text-[var(--text-muted)]">
+      {visible}
+    </pre>
+  );
+}
+
+function anyNpmInstallRunning(
+  jobs: Partial<Record<InstallTarget, InstallJobView>>,
+): boolean {
+  return NPM_INSTALL_TARGETS.some(
+    (target) => jobs[target]?.status === "running",
+  );
+}
+
+function HermesSetupNext({ onCopy }: { onCopy: (text: string) => Promise<boolean> }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <p className="text-[11px] font-medium text-[var(--text-secondary)]">
+        Next step — finish setup in a terminal:
+      </p>
+      <CommandRow command="hermes setup" onCopy={onCopy} />
+    </div>
+  );
+}
+
 function CommandRow({
   command,
   onCopy,
@@ -1355,19 +1547,22 @@ function InstallResultNote({ result }: { result?: InstallResult }) {
 
 function StepCovenCli({
   platformCopy,
-  installBusy,
+  installJobs,
   installResult,
   nodeHint,
   onInstall,
   onCopy,
 }: {
   platformCopy: (typeof PLATFORM_COPY)[PlatformId];
-  installBusy: InstallTarget | null;
+  installJobs: Partial<Record<InstallTarget, InstallJobView>>;
   installResult?: InstallResult;
   nodeHint: string | null;
   onInstall: () => void;
   onCopy: (text: string) => Promise<boolean>;
 }) {
+  const npmJobRunning = anyNpmInstallRunning(installJobs);
+  const job = installJobs["coven-cli"];
+  const busy = job?.status === "running";
   return (
     <div className="flex flex-col gap-3">
       <p className="text-[12px] leading-5 text-[var(--text-secondary)]">
@@ -1377,12 +1572,17 @@ function StepCovenCli({
       <div className="flex flex-wrap items-center gap-2">
         <button
           onClick={onInstall}
-          disabled={installBusy !== null}
+          disabled={busy || npmJobRunning}
+          aria-busy={busy}
           className="focus-ring inline-flex items-center gap-2 rounded-md bg-[var(--accent-presence)] px-4 py-2 text-[13px] font-medium text-white hover:bg-[color-mix(in_oklch,var(--accent-presence)_85%,#000)] disabled:opacity-50"
         >
-          <Icon name="ph:arrow-down-bold" />
-          {installBusy === "coven-cli"
-            ? "Installing… (can take a minute)"
+          {busy ? (
+            <Icon name="ph:circle-notch-bold" className="animate-spin" />
+          ) : (
+            <Icon name="ph:arrow-down-bold" />
+          )}
+          {busy && job
+            ? `Installing… ${formatElapsed(job.elapsedMs)}`
             : "Install coven CLI"}
         </button>
         <span className="text-[11px] text-[var(--text-muted)]">
@@ -1390,6 +1590,7 @@ function StepCovenCli({
         </span>
       </div>
       <CommandRow command={platformCopy.installCommand} onCopy={onCopy} />
+      {busy && job ? <InstallLiveTail tail={job.tail} /> : null}
       <InstallResultNote result={installResult} />
       {nodeHint ? (
         <NodeSetupNotice hint={nodeHint} nodeSetup={platformCopy.nodeSetup} />
@@ -1409,7 +1610,7 @@ function StepCovenCli({
 function StepRuntimes({
   chatHarnesses,
   platform,
-  installBusy,
+  installJobs,
   installResults,
   nodeHint,
   onInstall,
@@ -1418,13 +1619,14 @@ function StepRuntimes({
 }: {
   chatHarnesses: HarnessReport[];
   platform: PlatformId;
-  installBusy: InstallTarget | null;
+  installJobs: Partial<Record<InstallTarget, InstallJobView>>;
   installResults: Partial<Record<InstallTarget, InstallResult>>;
   nodeHint: string | null;
   onInstall: (target: InstallTarget) => void;
   onCopy: (text: string) => Promise<boolean>;
   onRefresh: () => void;
 }) {
+  const npmJobRunning = anyNpmInstallRunning(installJobs);
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-start justify-between gap-3">
@@ -1446,6 +1648,8 @@ function StepRuntimes({
         {chatHarnesses.map((adapter) => {
           const oneClick = HARNESS_ONE_CLICK[adapter.id];
           const result = oneClick ? installResults[oneClick.target] : undefined;
+          const job = oneClick ? installJobs[oneClick.target] : undefined;
+          const busy = job?.status === "running";
           return (
             <div
               key={adapter.id}
@@ -1470,18 +1674,30 @@ function StepRuntimes({
                   ? (adapter.path ?? adapter.binary)
                   : adapter.binary}
               </div>
+              {/* A successful in-session install flips installed=true on the harness
+                  refresh, unmounting the not-installed branch's hint — keep it visible. */}
+              {adapter.installed && adapter.id === "hermes" && result?.ok ? (
+                <div className="mt-2">
+                  <HermesSetupNext onCopy={onCopy} />
+                </div>
+              ) : null}
               {!adapter.installed ? (
                 <div className="mt-2 flex flex-col gap-2">
                   {oneClick ? (
                     <>
                       <button
                         onClick={() => onInstall(oneClick.target)}
-                        disabled={installBusy !== null}
+                        disabled={busy || (NPM_INSTALL_TARGETS.includes(oneClick.target) && npmJobRunning)}
+                        aria-busy={busy}
                         className="focus-ring inline-flex w-fit items-center gap-2 rounded-md bg-[var(--accent-presence)] px-3 py-1.5 text-[12px] font-medium text-white hover:bg-[color-mix(in_oklch,var(--accent-presence)_85%,#000)] disabled:opacity-50"
                       >
-                        <Icon name="ph:arrow-down-bold" />
-                        {installBusy === oneClick.target
-                          ? "Installing…"
+                        {busy ? (
+                          <Icon name="ph:circle-notch-bold" className="animate-spin" />
+                        ) : (
+                          <Icon name="ph:arrow-down-bold" />
+                        )}
+                        {busy && job
+                          ? `Installing… ${formatElapsed(job.elapsedMs)}`
                           : `Install ${adapter.label}`}
                       </button>
                       <CommandRow
@@ -1492,6 +1708,7 @@ function StepRuntimes({
                         }
                         onCopy={onCopy}
                       />
+                      {busy && job ? <InstallLiveTail tail={job.tail} /> : null}
                       <p className="text-[11px] leading-4 text-[var(--text-muted)]">
                         After install: {oneClick.afterInstall}.
                       </p>
@@ -1502,6 +1719,19 @@ function StepRuntimes({
                     </p>
                   )}
                   <InstallResultNote result={result} />
+                  {adapter.id === "hermes" && result?.ok ? (
+                    <HermesSetupNext onCopy={onCopy} />
+                  ) : null}
+                  {result && !result.ok && job?.status === "done" && job.tail ? (
+                    <details>
+                      <summary className="cursor-pointer text-[11px] text-[var(--text-muted)]">
+                        Show full output
+                      </summary>
+                      <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-all rounded-md border border-[var(--border-hairline)] bg-[var(--bg-base)] px-3 py-2 font-mono text-[11px] leading-4 text-[var(--text-muted)]">
+                        {job.tail}
+                      </pre>
+                    </details>
+                  ) : null}
                 </div>
               ) : null}
             </div>
