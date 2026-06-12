@@ -25,6 +25,7 @@
 .sidebar-header {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   padding: 0 7px;
   flex-shrink: 0;
 }
