@@ -732,6 +732,11 @@ assert.match(
 );
 assert.match(
   mentionSendSource,
+  /async function resolveFamiliarWorkspace\([\s\S]*?readFamiliarWorkspaces\(\)[\s\S]*?path\.resolve\(familiarsRoot, familiarId\)[\s\S]*?path\.relative\(familiarsRoot, candidate\)[\s\S]*?relative\.startsWith\("\.\."\)/,
+  "/chat/send must validate default familiar workspace paths under the familiar root while preserving configured workspaces",
+);
+assert.match(
+  mentionSendSource,
   /const real = await realpath\(candidate\);[\s\S]*?real\.startsWith\(realRoot \+ path\.sep\)/,
   "/chat/send must re-check containment on the realpathed file so in-repo symlinks cannot smuggle outside paths",
 );
@@ -747,6 +752,11 @@ assert.match(
 );
 assert.match(
   mentionSendSource,
-  /const mentionedFiles = imagesSupported\s*\n\s*\? await resolveMentionedFiles\(\s*\n\s*body\.mentionedFiles,\s*\n\s*body\.mentionedFilesRoot \?\? body\.projectRoot,/,
-  "Mentions are only delivered to harnesses that can Read this machine's filesystem, against the client-supplied root",
+  /const resolvedFamiliarWorkspace = !sshRuntime\s*\n\s*\? await resolveFamiliarWorkspace\(body\.familiarId\)\s*\n\s*: undefined;/,
+  "Mention roots must come from the validated familiar workspace, not a client-supplied path",
+);
+assert.match(
+  mentionSendSource,
+  /const mentionedFiles = imagesSupported\s*\n\s*\? await resolveMentionedFiles\(\s*\n\s*body\.mentionedFiles,\s*\n\s*resolvedFamiliarWorkspace,/,
+  "Mentions are only delivered to harnesses that can Read this machine's filesystem, against the validated familiar workspace",
 );
