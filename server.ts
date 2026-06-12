@@ -48,14 +48,31 @@ function getTokenFromCookie(header: string | undefined): string {
   return "";
 }
 
+// Mirrors isLoopbackHost in src/proxy-helpers.ts (host header, port stripped).
+function isLoopbackHostHeader(host: string | undefined): boolean {
+  if (!host) return false;
+  const hostname = host.startsWith("[")
+    ? host.slice(1, host.indexOf("]"))
+    : host.split(":")[0];
+  return hostname === "127.0.0.1" || hostname === "localhost" || hostname === "::1";
+}
+
 function isAuthorized(req: IncomingMessage): boolean {
   if (!ACCESS_TOKEN) return true;
 
   const cookie = getTokenFromCookie(req.headers.cookie);
-  if (cookie === ACCESS_TOKEN) return true;
-
   const auth = req.headers.authorization ?? "";
-  return auth.startsWith("Bearer ") && auth.slice("Bearer ".length) === ACCESS_TOKEN;
+  const bearer = auth.startsWith("Bearer ") ? auth.slice("Bearer ".length) : "";
+  const supplied = cookie || bearer;
+  // A supplied credential is always verified, even on loopback.
+  if (supplied) return supplied === ACCESS_TOKEN;
+  // No credential: loopback connections are the local app itself — the
+  // mobile-access token gates remote (Tailscale) entry, which arrives with a
+  // tailnet Host header even though the socket is proxied via loopback.
+  // Mirrors shouldRequireMobileAccessCredential (src/proxy-helpers.ts,
+  // 9d0001c); without this, every desktop-webview terminal upgrade 401'd the
+  // moment the Tauri shell exported COVEN_CAVE_ACCESS_TOKEN.
+  return isLoopbackHostHeader(req.headers.host);
 }
 
 function isLoopbackHostname(hostname: string): boolean {

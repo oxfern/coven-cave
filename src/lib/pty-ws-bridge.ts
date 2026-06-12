@@ -36,11 +36,12 @@ export class PtyWsBridge {
         settled = true;
         resolve();
       });
-      ws.addEventListener("error", (event) => {
-        if (!settled) {
-          settled = true;
-          reject(event);
-        }
+      // WebSocket "error" events carry no diagnostics (rejecting with one
+      // renders as "[object Event]"); the close event that follows carries
+      // the code/reason. Wait for it so the terminal can say something
+      // actionable.
+      ws.addEventListener("error", () => {
+        /* close fires next with the real detail */
       });
       ws.addEventListener("message", (event) => {
         if (!(event.data instanceof ArrayBuffer)) return;
@@ -55,9 +56,19 @@ export class PtyWsBridge {
           for (const cb of this.exitHandlers) cb(code);
         }
       });
-      ws.addEventListener("close", () => {
+      ws.addEventListener("close", (event) => {
         if (this.ws === ws) {
           this.ws = null;
+        }
+        if (!settled) {
+          settled = true;
+          const reason = event.reason ? ` — ${event.reason}` : "";
+          reject(
+            new Error(
+              `the Cave server refused the terminal websocket (close ${event.code}${reason}). ` +
+                "Restart the app; if this is a remote/mobile session, re-open it from a fresh handoff link.",
+            ),
+          );
         }
       });
     });

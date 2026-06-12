@@ -91,4 +91,38 @@ assert.match(
   "dev builds boot against the live dev server instead of requiring a sidecar bundle",
 );
 
+
+// Mobile-access gate on the WS upgrade: a supplied credential is always
+// verified, but credential-less loopback connections are the local app
+// itself and must not 401 (the v0.0.72 regression behind "Terminal
+// connection failed: [object Event]").
+assert.match(
+  src,
+  /if \(supplied\) return supplied === ACCESS_TOKEN;/,
+  "supplied credentials are verified even on loopback",
+);
+assert.match(
+  src,
+  /return isLoopbackHostHeader\(req\.headers\.host\);/,
+  "credential-less loopback upgrades stay authorized",
+);
+
+const bridge = readFileSync(new URL("./lib/pty-ws-bridge.ts", import.meta.url), "utf8");
+assert.match(
+  bridge,
+  /reject\(\s*new Error\(/,
+  "bridge rejects with an Error, never a raw Event",
+);
+assert.match(
+  bridge,
+  /close \$\{event\.code\}/,
+  "bridge surfaces the websocket close code",
+);
+const terminal = readFileSync(new URL("./components/bottom-terminal.tsx", import.meta.url), "utf8");
+assert.match(
+  terminal,
+  /err instanceof Error \? err\.message : String\(err\)/,
+  "terminal renders the error message, not [object Event]",
+);
+
 console.log("server-pty-ws.test.ts OK");

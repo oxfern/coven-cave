@@ -364,7 +364,8 @@ export function BottomTerminal({
       try {
         await bridge.connect(threadId, term.cols, term.rows, projectRootRef.current);
       } catch (err) {
-        const failMsg = `\r\n\x1b[31mTerminal connection failed: ${String(err)}\x1b[0m\r\n`;
+        const detail = err instanceof Error ? err.message : String(err);
+        const failMsg = `\r\n\x1b[31mTerminal connection failed: ${detail}\x1b[0m\r\n`;
         term.write(failMsg);
         pushToMirror(new TextEncoder().encode(failMsg));
         return;
