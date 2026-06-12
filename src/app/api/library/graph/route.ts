@@ -94,9 +94,31 @@ async function readAllGraphMeta(): Promise<Omit<GraphifyResult, "graphJson" | "r
   return metas.sort((a, b) => (a.generatedAt < b.generatedAt ? 1 : -1));
 }
 
+function isSafeGraphId(id: string): boolean {
+  return /^[A-Za-z0-9_-]+$/.test(id);
+}
+
 async function readGraphById(id: string): Promise<GraphifyResult | null> {
+  if (!isSafeGraphId(id)) {
+    return null;
+  }
+
+  const graphsRoot = path.resolve(GRAPHS_DIR);
+  const expectedFile = `${id}.json`;
+
   try {
-    const raw = await fs.readFile(path.join(GRAPHS_DIR, `${id}.json`), "utf-8");
+    const files = await fs.readdir(graphsRoot);
+    const matchedFile = files.find((file) => file === expectedFile);
+    if (!matchedFile) {
+      return null;
+    }
+
+    const safePath = path.resolve(graphsRoot, matchedFile);
+    if (!(safePath === graphsRoot || safePath.startsWith(`${graphsRoot}${path.sep}`))) {
+      return null;
+    }
+
+    const raw = await fs.readFile(safePath, "utf-8");
     return withGraphRunSnapshots(JSON.parse(raw) as GraphifyResult);
   } catch {
     return null;
