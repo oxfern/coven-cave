@@ -32,9 +32,33 @@ function isWithinRoot(candidate: string, root: string): boolean {
   return candidate === root || candidate.startsWith(root + path.sep);
 }
 
-export function resolveAllowedProjectPath(value: string): string | null {
+function relativeWithinRoot(candidate: string, root: string): string | null {
+  const relativePath = path.relative(root, candidate);
+  if (
+    relativePath.startsWith("..") ||
+    path.isAbsolute(relativePath) ||
+    relativePath.split(path.sep).includes("..")
+  ) {
+    return null;
+  }
+  return relativePath;
+}
+
+export function resolveAllowedProjectSubpath(value: string): { root: string; relativePath: string } | null {
   const candidate = realpathOrResolve(value);
-  return ALLOWED_ROOTS.some((root) => isWithinRoot(candidate, root))
-    ? candidate
-    : null;
+  for (const root of ALLOWED_ROOTS) {
+    if (isWithinRoot(candidate, root)) {
+      const relativePath = relativeWithinRoot(candidate, root);
+      if (relativePath !== null) {
+        return { root, relativePath };
+      }
+    }
+  }
+
+  return null;
+}
+
+export function resolveAllowedProjectPath(value: string): string | null {
+  const subpath = resolveAllowedProjectSubpath(value);
+  return subpath ? path.join(subpath.root, subpath.relativePath) : null;
 }
