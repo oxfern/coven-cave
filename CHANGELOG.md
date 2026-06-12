@@ -7,6 +7,44 @@ breaking config changes; patch releases stay additive.
 
 ## [Unreleased]
 
+## [0.0.72] - 2026-06-11
+
+The Workflow Studio release: the Cave goes from *viewing* workflows to **building, running, and staffing** them — plus first-class Projects, an embedded Browser pane, a deep chat-transcript overhaul, and a Tailscale-secure native iOS app.
+
+**Workflow Studio at a glance**
+
+| Capability | v0.0.71 | v0.0.72 |
+| --- | --- | --- |
+| Library | read-only manifest list | search, **create from 8 CWF-01 pattern templates**, duplicate, delete |
+| Canvas | static step preview | full visual builder — palette steps, drag dependency edges (cycle-guarded), delete, **undo/redo**, layered DAG layout with directional edges |
+| Manifest | summary fields | **live canonical YAML**, key-ordered saves back to `workflows/*.yaml` |
+| Validation | saved workflows only | unsaved drafts validate **and dry-run** before they ever touch disk |
+| Runs | — | run-history panel: dry-run plan snapshots + daemon executions; Play stays honestly guarded until the engine exists |
+| Assignments | — | familiars persist into the manifest; **roles gain workflows via ROLE.md** |
+| Automation | — | schedule a workflow as an Automations reminder that deep-links back |
+
+### Added
+- **Workflow Studio v2** — visual builder with step palette, editable inspector, requires-edge drawing with cycle rejection, undo/redo, save back to canonical CWF-01 YAML, create-from-pattern, duplicate/delete/search, run history, role assignment into ROLE.md, and schedule-as-automation (#458, #466, #470, #472, #473).
+- **Projects, first-class** — a dedicated Projects page and registry, with the chat composer using the configured project selector (#461).
+- **Browser pane** — an embedded browser surface with a collapsible toolbar and click-to-pin rail (#460, #463).
+- **Native iOS app over Tailscale** — Tailscale-secured native iOS Tauri build with persistent handoff invites.
+- **Chat, deeper transcript tooling** — in-transcript find with turn-level jump (#434), conversation content search, @-mention repo files from the composer (#437), per-turn token usage and cost, working-tree changes panel with per-file diff and revert (#422), patch checkpoints, and response metadata on replies.
+- **Terminal split panes** — run multiple shells side by side with stabilized pane layout.
+- **Library provenance timeline** — graphify moved into a 3D timeline view (#456, #457).
+- **Capabilities operator map** — inspector with URL-persistent filters that survive reloads.
+
+### Changed
+- **Chat shell** — the right panel splits vertically (#459); the chat list gains a side-panel optimization and compact mode (#465); empty-state project selector and prompt buttons are more compact (#468); sidebar header rows are fully clickable.
+- **Transcript rendering** — tool calls interleave at their chronological position in the turn (#440); collapsed tool rows summarize their arguments; mutation tool inputs render as diffs; sticky code headers with height clamps (#433).
+
+### Fixed
+- **Chat correctness** — cancelled turns persist as cancelled instead of fabricated errors (#416); failed turns show a visible retry (#420); concurrent tool events are preserved; chat hash navigation hardened; slash menus get combobox/listbox ARIA (#423); overlays trap focus; mention-picker index is clamped.
+- **Chat performance and readability** — 1000-turn transcripts render with indexed caches and turn maps (#444); muted-ink contrast, table overflow, and tool clamping pass (#442); linear line length capped with dark code chrome fixed in light mode (#425).
+- **Sessions** — sessions without a valid cwd are filtered from the chat list (#455).
+- **Build safety** — CaveProject types extracted to a client-safe module so `node:fs` stays out of the browser bundle (#462).
+- **Release pipeline** — macOS DMG packaging retries transient failures.
+- **Workflow Studio polish** — layered dependency layout, legible directional edges, dark-themed canvas chrome, and viewport containment so run controls stay on screen.
+
 ## [0.0.71] - 2026-06-11
 
 ### Added
