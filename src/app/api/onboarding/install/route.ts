@@ -1,0 +1,233 @@
+import { NextResponse } from "next/server";
+import { execFile, spawn } from "node:child_process";
+import { promisify } from "node:util";
+import { stripAnsi } from "@/lib/ansi";
+import { covenSpawnEnv } from "@/lib/coven-bin";
+
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
+const execFileAsync = promisify(execFile);
+
+/**
+ * One-click dependency installs for onboarding.
+ *
+ * Hard allowlist: the request names a TARGET, never a command. Every target
+ * maps to a fixed install mechanism so nothing user-controlled ever reaches
+ * a shell:
+ *
+ *   - kind "npm":    `npm install -g <pinned package>`
+ *   - kind "script": the harness's official installer at a pinned HTTPS URL,
+ *                    run byte-for-byte as its docs instruct users to run it
+ *                    (bash on POSIX, PowerShell on Windows).
+ */
+const INSTALL_TARGETS = {
+  "coven-cli": {
+    kind: "npm",
+    label: "coven CLI",
+    packageName: "@opencoven/cli@latest",
+    binary: "coven",
+    timeoutMs: 240_000,
+  },
+  codex: {
+    kind: "npm",
+    label: "Codex",
+    packageName: "@openai/codex",
+    binary: "codex",
+    timeoutMs: 240_000,
+  },
+  claude: {
+    kind: "npm",
+    label: "Claude Code",
+    packageName: "@anthropic-ai/claude-code",
+    binary: "claude",
+    timeoutMs: 240_000,
+  },
+  openclaw: {
+    kind: "npm",
+    label: "OpenClaw",
+    packageName: "openclaw@latest",
+    binary: "openclaw",
+    timeoutMs: 240_000,
+  },
+  hermes: {
+    kind: "script",
+    label: "Hermes",
+    // Official installer (github.com/NousResearch/hermes-agent#quick-install).
+    // It provisions its own dependencies (uv, Python, …), so no npm precheck.
+    posix: "curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash",
+    windows: "iex (irm https://hermes-agent.nousresearch.com/install.ps1)",
+    binary: "hermes",
+    // Heavier than an npm install — it bootstraps a Python toolchain.
+    timeoutMs: 600_000,
+  },
+} as const;
+
+type InstallTarget = keyof typeof INSTALL_TARGETS;
+
+function nodeInstallHint(): string {
+  if (process.platform === "darwin") {
+    return "Install Node.js LTS from https://nodejs.org or with `brew install node`, then click Install again.";
+  }
+  if (process.platform === "win32") {
+    return "Install Node.js LTS from https://nodejs.org (or `winget install OpenJS.NodeJS.LTS`), restart Cave so the new PATH applies, then click Install again.";
+  }
+  return "Install Node.js LTS from https://nodejs.org or your package manager (e.g. `sudo apt install nodejs npm`), then click Install again.";
+}
+
+async function commandPath(binary: string): Promise<string | null> {
+  const finder = process.platform === "win32" ? "where" : "which";
+  try {
+    const { stdout } = await execFileAsync(finder, [binary], {
+      env: covenSpawnEnv(),
+      timeout: 1500,
+    });
+    return stdout.trim().split(/\r?\n/)[0] || null;
+  } catch {
+    return null;
+  }
+}
+
+function isInstallTarget(value: unknown): value is InstallTarget {
+  return typeof value === "string" && value in INSTALL_TARGETS;
+}
+
+type SpawnPlan = {
+  command: string;
+  args: string[];
+  shell: boolean;
+};
+
+/** Resolve the fixed spawn plan for a target. Returns null when a
+ *  prerequisite is missing (npm targets need npm on PATH). */
+async function spawnPlanFor(
+  target: (typeof INSTALL_TARGETS)[InstallTarget],
+): Promise<SpawnPlan | { npmMissing: true } | null> {
+  if (target.kind === "npm") {
+    const npm = await commandPath("npm");
+    if (!npm) return { npmMissing: true };
+    return {
+      command: npm,
+      args: ["install", "-g", target.packageName],
+      // Windows resolves npm to npm.cmd, which Node refuses to spawn without
+      // a shell. The argv is fully fixed (allowlisted package, no user
+      // input), so shell interpolation has nothing to grab.
+      shell: process.platform === "win32",
+    };
+  }
+  // kind === "script" — run the harness's official installer exactly as its
+  // docs instruct. The command string is a pinned constant from the
+  // allowlist above; the request never contributes to it.
+  if (process.platform === "win32") {
+    return {
+      command: "powershell",
+      args: ["-NoProfile", "-Command", target.windows],
+      shell: false,
+    };
+  }
+  return {
+    command: "bash",
+    args: ["-lc", target.posix],
+    shell: false,
+  };
+}
+
+export async function POST(req: Request) {
+  let body: { target?: unknown };
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json(
+      { ok: false, error: "invalid json body" },
+      { status: 400 },
+    );
+  }
+
+  if (!isInstallTarget(body.target)) {
+    return NextResponse.json(
+      { ok: false, error: "unknown install target" },
+      { status: 400 },
+    );
+  }
+  const target = INSTALL_TARGETS[body.target];
+
+  const plan = await spawnPlanFor(target);
+  if (plan && "npmMissing" in plan) {
+    return NextResponse.json(
+      {
+        ok: false,
+        npmMissing: true,
+        error: "npm is not available on PATH",
+        hint: nodeInstallHint(),
+      },
+      { status: 422 },
+    );
+  }
+  if (!plan) {
+    return NextResponse.json(
+      { ok: false, error: "no install plan for this platform" },
+      { status: 500 },
+    );
+  }
+
+  return new Promise<Response>((resolve) => {
+    const child = spawn(plan.command, plan.args, {
+      stdio: ["ignore", "pipe", "pipe"],
+      env: covenSpawnEnv(),
+      shell: plan.shell,
+    });
+    let out = "";
+    let err = "";
+    child.stdout.on("data", (d) => (out += d.toString()));
+    child.stderr.on("data", (d) => (err += d.toString()));
+    const timer = setTimeout(() => {
+      child.kill("SIGTERM");
+      resolve(
+        NextResponse.json(
+          {
+            ok: false,
+            error: `install timed out after ${target.timeoutMs / 1000}s`,
+            stdout: stripAnsi(out),
+            stderr: stripAnsi(err),
+          },
+          { status: 504 },
+        ),
+      );
+    }, target.timeoutMs);
+    child.on("error", (e) => {
+      clearTimeout(timer);
+      resolve(
+        NextResponse.json({ ok: false, error: e.message }, { status: 500 }),
+      );
+    });
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      void (async () => {
+        const installedPath = await commandPath(target.binary);
+        const ok = code === 0 && !!installedPath;
+        resolve(
+          NextResponse.json(
+            {
+              ok,
+              target: body.target,
+              label: target.label,
+              code,
+              binaryPath: installedPath,
+              stdout: stripAnsi(out).slice(-4000),
+              stderr: stripAnsi(err).slice(-4000),
+              ...(ok
+                ? {}
+                : {
+                    error:
+                      code === 0
+                        ? `${target.binary} still is not on PATH after install — open a new terminal or restart Cave, then re-check.`
+                        : `installer exited with code ${code}`,
+                  }),
+            },
+            { status: ok ? 200 : 502 },
+          ),
+        );
+      })();
+    });
+  });
+}
