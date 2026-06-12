@@ -38,4 +38,45 @@ assert.doesNotMatch(
   "onboarding status should not return stale repo-source CLI install guidance",
 );
 
+// Dependency coverage: machines without git still complete onboarding, but
+// the checklist must surface git as a recommended install with a hint.
+assert.match(source, /async function checkGit\(\): Promise<Step>/, "preflight checks for git");
+assert.match(
+  source,
+  /optional: true/,
+  "git is an advisory step — its absence must not gate onboarding",
+);
+assert.match(
+  source,
+  /s\.ok \|\| s\.optional/,
+  "complete treats optional steps as non-blocking",
+);
+assert.match(
+  source,
+  /changes panel, project files, and checkpoints need Git/,
+  "git hint names the features that need it",
+);
+assert.match(
+  source,
+  /xcode-select --install/,
+  "git hint is platform-aware (macOS path present)",
+);
+
+const overlay = readFileSync(
+  new URL("../../../../components/onboarding-overlay.tsx", import.meta.url),
+  "utf8",
+);
+assert.match(overlay, /git\?: Step/, "overlay accepts the git step");
+assert.match(overlay, /Find Git \(recommended\)/, "overlay renders the git checklist row");
+
+const projectFiles = readFileSync(
+  new URL("../../project/files/route.ts", import.meta.url),
+  "utf8",
+);
+assert.match(
+  projectFiles,
+  /git unavailable — install Git to browse project files/,
+  "missing git must not masquerade as 'not a git repository'",
+);
+
 console.log("onboarding-status route.test.ts: ok");

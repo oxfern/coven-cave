@@ -90,7 +90,12 @@ async function resolveIndexRoot(root: string): Promise<RootResolution> {
       return { ok: false, status: 422, error: "not a git repository", notARepo: true };
     }
     return { ok: true, root: real };
-  } catch {
+  } catch (err) {
+    // A machine without git must not masquerade as "not a repo" — surface
+    // the missing dependency so the UI can point at the install fix.
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+      return { ok: false, status: 500, error: "git unavailable — install Git to browse project files" };
+    }
     return { ok: false, status: 422, error: "not a git repository", notARepo: true };
   }
 }

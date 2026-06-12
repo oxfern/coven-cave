@@ -13,7 +13,7 @@ type PruneState =
   | { pruning: true }
   | { pruned: number }
   | { error: string };
-type Step = { ok: boolean; detail?: string; hint?: string };
+type Step = { ok: boolean; detail?: string; hint?: string; optional?: boolean };
 type PlatformId = "windows" | "linux" | "mac" | "unknown";
 
 type OnboardingStatus = {
@@ -21,6 +21,7 @@ type OnboardingStatus = {
   steps: {
     covenCli: Step;
     covenHome: Step;
+    git?: Step;
     adapters: Step;
     daemon: Step;
     familiars: Step;
@@ -454,6 +455,17 @@ export function OnboardingOverlay({ open, onDismiss }: Props) {
         ok: !!s?.covenHome.ok,
         detail: s?.covenHome.detail ?? s?.covenHome.hint ?? "checking...",
         icon: "ph:folder",
+      },
+      {
+        key: "git",
+        title: "Find Git (recommended)",
+        // Advisory: absence never blocks setup; treat "not reported" as fine.
+        ok: s?.git ? s.git.ok : true,
+        detail:
+          s?.git?.detail ??
+          s?.git?.hint ??
+          "Powers the changes panel, project files, and checkpoints.",
+        icon: "ph:git-branch-bold",
       },
       {
         key: "adapters",

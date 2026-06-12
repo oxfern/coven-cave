@@ -22,7 +22,32 @@ export const runtime = "nodejs";
 const execFileAsync = promisify(execFile);
 const COVEN_CLI_INSTALL_COMMAND = "npm i -g @opencoven/cli@latest";
 
-type Step = { ok: boolean; detail?: string; hint?: string };
+type Step = { ok: boolean; detail?: string; hint?: string; optional?: boolean };
+
+function gitInstallHint(): string {
+  if (process.platform === "darwin") {
+    return "Install Git with `xcode-select --install` or from https://git-scm.com, then re-check.";
+  }
+  if (process.platform === "win32") {
+    return "Install Git from https://git-scm.com/download/win, then re-check.";
+  }
+  return "Install Git with your package manager (e.g. `sudo apt install git`), then re-check.";
+}
+
+/**
+ * Advisory: Cave boots and chats without git (Node ships inside the app
+ * bundle), but the changes panel, project file tree, and checkpoints all
+ * shell out to it. Missing git never blocks onboarding completion.
+ */
+async function checkGit(): Promise<Step> {
+  const found = await commandPath("git");
+  if (found) return { ok: true, optional: true, detail: found };
+  return {
+    ok: false,
+    optional: true,
+    hint: `Chat works without it, but the changes panel, project files, and checkpoints need Git. ${gitInstallHint()}`,
+  };
+}
 
 async function checkCovenCli(): Promise<Step> {
   const found = await commandPath("coven");
@@ -178,9 +203,10 @@ async function checkBinding(familiarsAvailable: boolean, daemonOk: boolean): Pro
 
 export async function GET() {
   const openclawAgentCount = await countOpenClawAgents();
-  const [covenCli, covenHome, daemon, familiarsRes] = await Promise.all([
+  const [covenCli, covenHome, git, daemon, familiarsRes] = await Promise.all([
     checkCovenCli(),
     checkCovenHome(),
+    checkGit(),
     checkDaemon(),
     checkFamiliars(),
   ]);
@@ -190,12 +216,14 @@ export async function GET() {
   const steps = {
     covenCli,
     covenHome,
+    git,
     adapters,
     daemon,
     familiars: familiarsRes.step,
     binding,
   };
-  const complete = Object.values(steps).every((s) => s.ok);
+  // Optional steps (git) surface in the checklist but never gate completion.
+  const complete = Object.values(steps).every((s) => s.ok || s.optional);
 
   return NextResponse.json({ ok: true, complete, steps });
 }

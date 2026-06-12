@@ -33,6 +33,16 @@ Download the matching asset from [Releases](https://github.com/OpenCoven/coven-c
 
 Cave also needs a local runtime source: Codex, Claude Code, Hermes, an existing OpenClaw agent, or another Coven adapter manifest. On first launch, Cave opens a setup screen that checks the `coven` CLI and daemon, creates `~/.coven` when needed, lets you choose a runtime, writes the first familiar binding, creates a Hermes adapter manifest when needed, and starts the daemon.
 
+### What you do — and don't — need installed
+
+| Dependency | Needed? | Why |
+| --- | --- | --- |
+| Node.js | **No** | Cave bundles its own Node runtime inside the app; it only falls back to a system Node if the bundled one is missing. |
+| Git | Recommended | The working-tree changes panel, project file tree, and patch checkpoints shell out to `git`. Everything else (chat, boards, workflows, library) works without it. Setup flags it but never blocks on it. |
+| `coven` CLI | **Yes** | Powers native familiar chat, the daemon, and doctor checks. Setup walks you through `npm i -g @opencoven/cli@latest`. |
+| A runtime source | **Yes** (any one) | Codex, Claude Code, Hermes, or an OpenClaw agent — see below. |
+| OpenSSH / Tailscale / graphify | Optional | Only for SSH-runtime familiars, mobile handoff, and Library knowledge graphs respectively; each surfaces a clear message if missing. |
+
 ### First Familiar Without OpenClaw
 
 OpenClaw is not required to use Cave. A fresh machine can start with any installed harness:

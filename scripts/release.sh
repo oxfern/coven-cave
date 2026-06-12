@@ -218,6 +218,12 @@ if [ -z "$APP_PATH" ] || [ ! -d "$APP_PATH" ]; then
 fi
 echo "    found: $APP_PATH"
 
+# Users without system Node depend entirely on the bundled runtime — a DMG
+# missing it would install fine and then fatal-exit on launch. Fail the
+# release instead of shipping that.
+require_file "$APP_PATH/Contents/Resources/resources/node/bin/node"
+echo "    bundled Node runtime present"
+
 echo "==> Signing every native binary inside the bundle"
 # Apple deprecated --deep; sign inner native binaries explicitly so each one
 # gets a hardened runtime + secure timestamp before we seal the envelope.
