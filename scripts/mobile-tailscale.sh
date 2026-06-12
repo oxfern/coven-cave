@@ -75,6 +75,31 @@ process.exit(res.status ?? 1);
 NODE
 }
 
+tailscale_capture() {
+  node - "$TAILSCALE_TIMEOUT_MS" "$@" <<'NODE'
+const { spawnSync } = require("node:child_process");
+
+const [timeoutMsRaw, ...args] = process.argv.slice(2);
+const timeout = Number(timeoutMsRaw);
+const res = spawnSync("tailscale", args, {
+  encoding: "utf8",
+  timeout: Number.isFinite(timeout) ? timeout : 8000,
+});
+
+if (res.error?.code === "ETIMEDOUT") {
+  console.error(`tailscale ${args.join(" ")} timed out`);
+  process.exit(124);
+}
+if (res.error) {
+  console.error(res.error.message);
+  process.exit(1);
+}
+if (res.stderr) process.stderr.write(res.stderr);
+if (res.stdout) process.stdout.write(res.stdout);
+process.exit(res.status ?? 1);
+NODE
+}
+
 masked_serve_status() {
   tailscale_cmd serve status 2>/dev/null |
     sed -E 's#https://[^ ]+#https://[tailscale-host-redacted]#g; s#coven_access_token=[^[:space:]&]+#coven_access_token=[redacted]#g' ||
@@ -120,13 +145,24 @@ start_with_tmux() {
     tmux kill-session -t "$TMUX_SESSION"
   fi
 
-  tmux new-session -d -s "$TMUX_SESSION" -c "$PWD" \
-    "bash -lc 'COVEN_CAVE_ACCESS_TOKEN=\"\$(cat \"$TOKEN_FILE\")\" exec pnpm exec next dev -H \"$HOST\" -p \"$PORT\" >>\"$LOG_FILE\" 2>&1'"
+  if [ "${CAVE_MOBILE_NATIVE:-0}" = "1" ]; then
+    # Explicitly unset token env vars so an inherited shell env can't re-enable token gating.
+    tmux new-session -d -s "$TMUX_SESSION" -c "$PWD" \
+      "bash -lc 'unset COVEN_CAVE_ACCESS_TOKEN COVEN_CAVE_AUTH_TOKEN; exec pnpm exec next dev -H \"$HOST\" -p \"$PORT\" >>\"$LOG_FILE\" 2>&1'"
+  else
+    tmux new-session -d -s "$TMUX_SESSION" -c "$PWD" \
+      "bash -lc 'COVEN_CAVE_ACCESS_TOKEN=\"\$(cat \"$TOKEN_FILE\")\" exec pnpm exec next dev -H \"$HOST\" -p \"$PORT\" >>\"$LOG_FILE\" 2>&1'"
+  fi
   tmux display-message -p -t "$TMUX_SESSION" '#{pane_pid}' >"$PID_FILE"
 }
 
 start_with_nohup() {
-  nohup env COVEN_CAVE_ACCESS_TOKEN="$ACCESS_TOKEN" pnpm exec next dev -H "$HOST" -p "$PORT" >"$LOG_FILE" 2>&1 </dev/null &
+  if [ "${CAVE_MOBILE_NATIVE:-0}" = "1" ]; then
+    # Explicitly unset token env vars so an inherited shell env can't re-enable token gating.
+    nohup env -u COVEN_CAVE_ACCESS_TOKEN -u COVEN_CAVE_AUTH_TOKEN pnpm exec next dev -H "$HOST" -p "$PORT" >"$LOG_FILE" 2>&1 </dev/null &
+  else
+    nohup env COVEN_CAVE_ACCESS_TOKEN="$ACCESS_TOKEN" pnpm exec next dev -H "$HOST" -p "$PORT" >"$LOG_FILE" 2>&1 </dev/null &
+  fi
   echo "$!" >"$PID_FILE"
 }
 
@@ -136,6 +172,15 @@ start_next_server() {
 
   if port_is_listening >/dev/null 2>&1; then
     ensure_state_dir
+    if [ "${CAVE_MOBILE_NATIVE:-0}" = "1" ]; then
+      # Refuse to reuse a server that may be token-gated from a prior non-native start.
+      if [ -n "${COVEN_CAVE_ACCESS_TOKEN:-}" ] || [ -s "$TOKEN_FILE" ]; then
+        echo "Error: port ${PORT} is already in use by a token-gated server. Run 'pnpm mobile:tailscale:stop' first." >&2
+        exit 1
+      fi
+      echo "CovenCave native mobile server is already listening on ${HOST}:${PORT}."
+      return 0
+    fi
     if [ -n "${COVEN_CAVE_ACCESS_TOKEN:-}" ] || [ -s "$TOKEN_FILE" ]; then
       load_or_create_token
       echo "CovenCave mobile server is already listening on ${HOST}:${PORT}."
@@ -145,7 +190,11 @@ start_next_server() {
     exit 1
   fi
 
-  load_or_create_token
+  if [ "${CAVE_MOBILE_NATIVE:-0}" != "1" ]; then
+    load_or_create_token
+  else
+    ensure_state_dir
+  fi
   : >"$LOG_FILE"
   echo "Starting Next server on ${HOST}:${PORT}"
   if [ "$USE_TMUX" = "1" ] && command -v tmux >/dev/null 2>&1; then
@@ -161,6 +210,49 @@ start_next_server() {
     tail -80 "$LOG_FILE" >&2 || true
     exit 1
   fi
+}
+
+serve_url_from_status() {
+  node - "$1" <<'NODE'
+const backendUrl = process.argv[2];
+let input = "";
+process.stdin.setEncoding("utf8");
+process.stdin.on("data", (chunk) => {
+  input += chunk;
+});
+process.stdin.on("end", () => {
+  let status;
+  try {
+    status = JSON.parse(input);
+  } catch {
+    console.error("invalid tailscale serve status JSON");
+    process.exit(1);
+  }
+
+  const web = status?.Web;
+  if (!web || typeof web !== "object") {
+    console.error("tailscale serve status has no Web section");
+    process.exit(1);
+  }
+
+  for (const [host, config] of Object.entries(web)) {
+    const handlers = config?.Handlers;
+    if (!handlers || typeof handlers !== "object") continue;
+
+    for (const [path, handler] of Object.entries(handlers)) {
+      if (handler?.Proxy !== backendUrl) continue;
+      const normalizedHost = host.endsWith(":443") ? host.slice(0, -4) : host;
+      const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+      const suffix = normalizedPath === "/" ? "/" : normalizedPath;
+      console.log(`https://${normalizedHost}${suffix}`);
+      return;
+    }
+  }
+
+  console.error(`tailscale serve URL not found for ${backendUrl}`);
+  process.exit(1);
+});
+NODE
 }
 
 create_invite() {
@@ -242,6 +334,25 @@ start_command() {
   masked_serve_status
 }
 
+native_command() {
+  ensure_tailscale
+  CAVE_MOBILE_NATIVE=1 start_next_server
+
+  TAILSCALE_BACKEND="$(backend_url)"
+  tailscale_cmd serve --bg "$TAILSCALE_BACKEND" >/dev/null
+
+  status_json="$(tailscale_capture serve status --json)"
+  CAVE_MOBILE_DEV_URL="$(printf '%s' "$status_json" | serve_url_from_status "$TAILSCALE_BACKEND")"
+  export CAVE_MOBILE_DEV_URL
+
+  echo "Launching CovenCave native iOS app through Tailscale Serve."
+  if [ "${CAVE_MOBILE_DEVICE:-0}" = "1" ]; then
+    pnpm exec tauri ios dev --device
+  else
+    pnpm exec tauri ios dev
+  fi
+}
+
 invite_command() {
   create_invite
   copy_invite_to_clipboard
@@ -290,11 +401,12 @@ stop_command() {
 case "$COMMAND" in
   start) start_command ;;
   invite) invite_command ;;
+  native) native_command ;;
   status) status_command ;;
   stop) stop_command ;;
   *)
-    echo "Usage: pnpm mobile:tailscale[:invite|:status|:stop]" >&2
-    echo "       bash scripts/mobile-tailscale.sh {start|invite|status|stop}" >&2
+    echo "Usage: pnpm mobile:tailscale[:invite|:native|:status|:stop]" >&2
+    echo "       bash scripts/mobile-tailscale.sh {start|invite|native|status|stop}" >&2
     exit 2
     ;;
 esac

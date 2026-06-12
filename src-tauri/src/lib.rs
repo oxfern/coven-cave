@@ -779,6 +779,47 @@ pub fn run() {
                     )?;
                 }
                 app.handle().plugin(tauri_plugin_notification::init())?;
+
+                // Resolve the Tailscale Serve URL.
+                // Priority: CAVE_MOBILE_DEV_URL env var -> tauri.conf.json devUrl -> localhost:3000
+                // Security: only https://*.ts.net and http(s)://localhost accepted.
+                let resolved_url: tauri::Url = {
+                    let from_env = std::env::var("CAVE_MOBILE_DEV_URL")
+                        .ok()
+                        .and_then(|s| tauri::Url::parse(&s).ok());
+
+                    let url = from_env
+                        .or_else(|| app.config().build.dev_url.clone())
+                        .unwrap_or_else(|| {
+                            tauri::Url::parse("http://localhost:3000")
+                                .expect("fallback url is valid")
+                        });
+
+                    let host = url.host_str().unwrap_or("");
+                    let scheme = url.scheme();
+                    let allowed = (scheme == "https"
+                        && (host.ends_with(".ts.net") || host == "localhost"))
+                        || (scheme == "http"
+                            && (host == "localhost" || host == "127.0.0.1"));
+
+                    if !allowed {
+                        panic!(
+                            "CAVE_MOBILE_DEV_URL must be https://<host>.ts.net, https://localhost, http://localhost, or http://127.0.0.1 - got: {}",
+                            url
+                        );
+                    }
+                    log::info!("[cave-mobile] webview URL: {}", url);
+                    url
+                };
+
+                tauri::WebviewWindowBuilder::new(
+                    app,
+                    "main",
+                    tauri::WebviewUrl::External(resolved_url),
+                )
+                .title("CovenCave")
+                .build()?;
+
                 Ok(())
             })
             .run(tauri::generate_context!())
