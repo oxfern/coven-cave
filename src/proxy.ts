@@ -12,6 +12,7 @@ import {
   sameOrigin,
   isAllowedRequestSource,
   bearerFromReferer,
+  shouldRequireMobileAccessCredential,
 } from "./proxy-helpers";
 import { isValidMobileAccessCredential } from "./lib/mobile-access-token.ts";
 
@@ -24,6 +25,7 @@ export {
   sameOrigin,
   isAllowedRequestSource,
   bearerFromReferer,
+  shouldRequireMobileAccessCredential,
 };
 
 function jsonError(status: number, error: string) {
@@ -50,8 +52,12 @@ function mobileAccessSuppliedTokens(req: NextRequest) {
   ].filter((token): token is string => Boolean(token));
 }
 
-async function mobileAccessVerification(req: NextRequest, expected: string) {
-  for (const token of mobileAccessSuppliedTokens(req)) {
+async function mobileAccessVerification(
+  req: NextRequest,
+  expected: string,
+  suppliedTokens = mobileAccessSuppliedTokens(req),
+) {
+  for (const token of suppliedTokens) {
     const result = await isValidMobileAccessCredential({
       supplied: token,
       expectedSecret: expected,
@@ -65,8 +71,13 @@ async function mobileAccessGate(req: NextRequest) {
   const expected = configuredMobileAccessToken();
   if (!expected) return null;
 
+  const suppliedTokens = mobileAccessSuppliedTokens(req);
+  if (!shouldRequireMobileAccessCredential(req.headers.get("host"), suppliedTokens.length > 0)) {
+    return null;
+  }
+
   const queryToken = req.nextUrl.searchParams.get(ACCESS_TOKEN_QUERY_PARAM);
-  const verification = await mobileAccessVerification(req, expected);
+  const verification = await mobileAccessVerification(req, expected, suppliedTokens);
   if (!verification) {
     return jsonError(401, "unauthorized");
   }

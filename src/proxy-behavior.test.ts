@@ -20,6 +20,7 @@ import {
   sameOrigin,
   isAllowedRequestSource,
   bearerFromReferer,
+  shouldRequireMobileAccessCredential,
   timingSafeEqualString,
 } from "./proxy-helpers.ts";
 
@@ -126,6 +127,28 @@ assert.equal(
   isAllowedRequestSource("http://localhost:3000", expected, false),
   true,
   "normal same-origin browser dev mode remains allowed",
+);
+
+// ─── shouldRequireMobileAccessCredential ──────────────────────────────────
+assert.equal(
+  shouldRequireMobileAccessCredential("localhost:3000", false),
+  false,
+  "loopback startup should not require a mobile invite just because a token exists",
+);
+assert.equal(
+  shouldRequireMobileAccessCredential("127.0.0.1:3000", false),
+  false,
+  "new local installs inheriting COVEN_CAVE_ACCESS_TOKEN must still load",
+);
+assert.equal(
+  shouldRequireMobileAccessCredential("cave.tailnet.example.ts.net", false),
+  true,
+  "non-loopback mobile entrypoints still require a valid invite",
+);
+assert.equal(
+  shouldRequireMobileAccessCredential("localhost:3000", true),
+  true,
+  "supplied credentials should still be verified and redirected on loopback",
 );
 
 // ─── bearerFromReferer ─────────────────────────────────────────────────────

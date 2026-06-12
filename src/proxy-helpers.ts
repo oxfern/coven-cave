@@ -59,6 +59,13 @@ export function isAllowedRequestSource(
   return mobileAccessAuthenticated || sameOrigin(value, expectedOrigin);
 }
 
+export function shouldRequireMobileAccessCredential(
+  host: string | null,
+  hasSuppliedCredential: boolean,
+) {
+  return hasSuppliedCredential || !isLoopbackHost(host);
+}
+
 export function bearerFromReferer(value: string | null, expectedOrigin: string) {
   if (!value) return null;
   try {
