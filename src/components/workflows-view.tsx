@@ -16,6 +16,8 @@ import {
 } from "@/lib/workflow-draft";
 import {
   attachWorkflowToRole,
+  loadWorkflowLayout,
+  saveWorkflowLayout,
   deleteWorkflow,
   dryRunWorkflow,
   listWorkflowRoles,
@@ -52,6 +54,7 @@ export function WorkflowsView() {
   const [runsLoading, setRunsLoading] = useState(false);
   const [roles, setRoles] = useState<WorkflowRoleSummary[]>([]);
   const [engineUnavailable, setEngineUnavailable] = useState(false);
+  const [nodePositions, setNodePositions] = useState<Record<string, { x: number; y: number }> | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   // The draft is the single editing surface; selection changes re-seed it.
@@ -86,6 +89,16 @@ export function WorkflowsView() {
     } finally {
       setLoaded(true);
       setRefreshing(false);
+    }
+  }, []);
+
+  const loadLayout = useCallback(async (workflowId: string) => {
+    setNodePositions(null);
+    try {
+      const result = await loadWorkflowLayout(workflowId);
+      if (result.ok) setNodePositions(result.positions);
+    } catch {
+      // layout is a display preference; the layered default always works
     }
   }, []);
 
@@ -130,6 +143,7 @@ export function WorkflowsView() {
     setSelectedNodeId(null);
     setDraftState(initialWorkflowDraft(next));
     void loadRuns(next.id);
+    void loadLayout(next.id);
   }, [loadRuns, selectedWorkflowId, workflows]);
 
   const selectedDryRun = useMemo<WorkflowDryRunPlan | undefined>(() => {
@@ -139,8 +153,8 @@ export function WorkflowsView() {
 
   const selectedGraph = useMemo(() => {
     if (!draft) return null;
-    return workflowToGraph(draft, selectedDryRun);
-  }, [draft, selectedDryRun]);
+    return workflowToGraph(draft, selectedDryRun, nodePositions);
+  }, [draft, nodePositions, selectedDryRun]);
 
   const selectedNode = useMemo(
     () => selectedGraph?.nodes.find((node) => node.id === selectedNodeId) ?? null,
@@ -178,6 +192,7 @@ export function WorkflowsView() {
     setDraftState(initialWorkflowDraft(workflow));
     setEngineUnavailable(false);
     void loadRuns(workflow.id);
+    void loadLayout(workflow.id);
   };
 
   const runValidate = async (workflow: WorkflowSummary) => {
@@ -355,6 +370,12 @@ export function WorkflowsView() {
     showNotice(attach ? `Attached to role ${role.name}.` : `Detached from role ${role.name}.`);
   };
 
+  const handleSavePositions = (positions: Record<string, { x: number; y: number }>) => {
+    if (!draft) return;
+    setNodePositions(positions);
+    void saveWorkflowLayout(draft.id, positions).catch(() => undefined);
+  };
+
   const handleSchedule = async (fireAt: string, recurrence: WorkflowScheduleRecurrence) => {
     if (!draft) return;
     const result = await scheduleWorkflow({ workflow: draft, fireAt, recurrence });
@@ -383,6 +404,7 @@ export function WorkflowsView() {
       roles={roles}
       engineUnavailable={engineUnavailable}
       notice={notice}
+      savedPositions={nodePositions}
       onRefresh={() => void load(true)}
       onSelectWorkflow={selectWorkflow}
       onSelectNode={(node) => setSelectedNodeId(node.id)}
@@ -398,6 +420,7 @@ export function WorkflowsView() {
       onUpdateMeta={(patch) => dispatchDraft({ type: "update-meta", patch })}
       onRemoveStep={(id) => dispatchDraft({ type: "remove-step", id })}
       onConnect={(source, target) => dispatchDraft({ type: "connect", source, target })}
+      onSavePositions={handleSavePositions}
       onDisconnect={(source, target) => dispatchDraft({ type: "disconnect", source, target })}
       onCreate={(input) => void handleCreate(input)}
       onDuplicate={(workflow) => void handleDuplicate(workflow)}

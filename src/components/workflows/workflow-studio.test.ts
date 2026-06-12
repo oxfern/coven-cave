@@ -101,6 +101,13 @@ assert.match(canvas, /zoomable[\s\S]{0,120}pannable[\s\S]{0,120}position="bottom
 assert.match(canvas, /initialWidth:\s*WORKFLOW_NODE_WIDTH[\s\S]{0,80}initialHeight:\s*WORKFLOW_NODE_HEIGHT/, "Flow nodes should expose dimensions so the minimap can draw the actual workflow");
 assert.match(css, /\.workflow-minimap-toggle/, "Workflow CSS should style the minimap toggle");
 
+// Draggable nodes: local node state + drag-stop persistence to the sidecar.
+assert.match(canvas, /nodesDraggable/, "Canvas nodes must be draggable");
+assert.match(canvas, /applyNodeChanges/, "Canvas applies node changes to local state so drags stick");
+assert.match(canvas, /onNodeDragStop=\{handleNodeDragStop\}/, "Drag stop persists node positions");
+assert.match(canvas, /savedPositions/, "Canvas seeds from saved sidecar positions");
+assert.match(studio, /onSavePositions/, "Studio threads position persistence");
+
 assert.match(inspector, /onUpdateStep/, "Inspector should edit step fields");
 assert.match(inspector, /onUpdateMeta/, "Inspector should edit workflow metadata");
 assert.match(inspector, /workflow-field/, "Inspector should render editable fields");

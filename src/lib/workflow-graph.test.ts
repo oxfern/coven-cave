@@ -63,6 +63,18 @@ assert.deepEqual(
   assert.ok(pos.get("brief")!.x > pos.get("synthesize")!.x, "the sink is the right-most column");
 }
 
+// Saved sidecar positions override the computed layout; unsaved steps keep
+// their layered defaults.
+{
+  const positioned = workflowToGraph(dependencyWorkflow, undefined, {
+    intake: { x: 500, y: 444 },
+  });
+  const intake = positioned.nodes.find((node) => node.id === "intake")!;
+  const research = positioned.nodes.find((node) => node.id === "research")!;
+  assert.deepEqual(intake.position, { x: 500, y: 444 }, "saved positions win");
+  assert.equal(research.position.x, 320, "steps without saved positions keep the layered default");
+}
+
 // A cyclic requires graph must not hang or throw during layout.
 {
   const cyclic = workflowToGraph({

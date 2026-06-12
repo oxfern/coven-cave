@@ -219,6 +219,28 @@ export async function recordWorkflowRun(
   );
 }
 
+export type WorkflowNodePositionsMap = Record<string, { x: number; y: number }>;
+
+/** Saved cave-only canvas positions for a workflow. */
+export async function loadWorkflowLayout(
+  id: string,
+  fetchImpl: FetchLike = fetch,
+): Promise<{ ok: boolean; positions: WorkflowNodePositionsMap | null; error?: string }> {
+  const res = await fetchImpl(`/api/workflows/layout?id=${encodeURIComponent(id)}`, {
+    cache: "no-store",
+  });
+  return res.json() as Promise<{ ok: boolean; positions: WorkflowNodePositionsMap | null; error?: string }>;
+}
+
+/** Persist dragged node positions to the workflow's cave sidecar. */
+export async function saveWorkflowLayout(
+  id: string,
+  positions: WorkflowNodePositionsMap,
+  fetchImpl: FetchLike = fetch,
+): Promise<{ ok: boolean; error?: string }> {
+  return postJson<{ ok: boolean; error?: string }>("/api/workflows/layout", { id, positions }, fetchImpl);
+}
+
 /** Roles flattened to what the attachments panel needs. */
 export async function listWorkflowRoles(
   fetchImpl: FetchLike = fetch,

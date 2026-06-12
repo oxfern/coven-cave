@@ -446,6 +446,63 @@ export async function deleteLocalWorkflow(body: {
   return { ok: true };
 }
 
+export type WorkflowLayout = Record<string, { x: number; y: number }>;
+
+/**
+ * Cave-only canvas layout sidecar (`<id>.cave.json` beside the manifest).
+ * Node positions are display preference, never workflow semantics — the
+ * canonical manifest stays byte-identical when nodes are dragged.
+ */
+function layoutFileName(id: string): string | null {
+  const file = workflowFileName(id);
+  return file ? file.replace(/\.yaml$/, ".cave.json") : null;
+}
+
+/** Saved node positions for a workflow, or null when none exist. */
+export async function loadWorkflowLayout(id: string): Promise<WorkflowLayout | null> {
+  const file = layoutFileName(id);
+  if (!file) return null;
+  try {
+    const text = await readFile(path.join(workflowsDir(), file), "utf8");
+    const parsed = JSON.parse(text) as { positions?: WorkflowLayout };
+    if (!parsed.positions || typeof parsed.positions !== "object") return null;
+    const positions: WorkflowLayout = {};
+    for (const [stepId, pos] of Object.entries(parsed.positions)) {
+      if (pos && typeof pos.x === "number" && typeof pos.y === "number") {
+        positions[stepId] = { x: pos.x, y: pos.y };
+      }
+    }
+    return Object.keys(positions).length > 0 ? positions : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Persist node positions to the workflow's cave sidecar. */
+export async function saveWorkflowLayout(
+  id: string,
+  positions: WorkflowLayout,
+): Promise<{ ok: boolean; error?: string }> {
+  const file = layoutFileName(id);
+  if (!file) {
+    return { ok: false, error: `Workflow id \`${id}\` is not a safe filename slug.` };
+  }
+  try {
+    await withWorkflowWriteLock(async () => {
+      const dir = workflowsDir();
+      await mkdir(dir, { recursive: true });
+      await writeFile(
+        path.join(dir, file),
+        JSON.stringify({ version: 1, positions }, null, 2),
+        "utf8",
+      );
+    });
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "layout write failed" };
+  }
+  return { ok: true };
+}
+
 /** Round-trip a coerced summary back to a manifest-shaped object for re-validation. */
 function toManifest(workflow: WorkflowSummary): Record<string, unknown> {
   return {

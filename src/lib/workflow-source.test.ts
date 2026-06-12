@@ -7,8 +7,10 @@ import {
   deleteLocalWorkflow,
   dryRunLocalWorkflowManifest,
   loadLocalWorkflowList,
+  loadWorkflowLayout,
   planDryRun,
   saveLocalWorkflow,
+  saveWorkflowLayout,
   validateManifest,
   workflowFileName,
 } from "./workflow-source.ts";
@@ -172,6 +174,20 @@ await (async () => {
 
     const missing = await deleteLocalWorkflow({ id: "never-existed" });
     assert.equal(missing.ok, false, "deleting an unknown workflow reports an error");
+
+    // Layout sidecar: cave-only node positions round-trip beside manifests.
+    const layoutSave = await saveWorkflowLayout("saved-flow", {
+      plan: { x: 40, y: 80 },
+      go: { x: 320, y: 80 },
+    });
+    assert.equal(layoutSave.ok, true, "layout sidecar saves");
+    const layout = await loadWorkflowLayout("saved-flow");
+    assert.deepEqual(layout?.plan, { x: 40, y: 80 }, "layout sidecar round-trips positions");
+    assert.equal(await loadWorkflowLayout("never-existed"), null, "missing sidecar reads as null");
+    const unsafeLayout = await saveWorkflowLayout("../evil", { a: { x: 0, y: 0 } });
+    assert.equal(unsafeLayout.ok, false, "unsafe layout ids are rejected");
+    const sidecar = await readFile(path.join(dir, "saved-flow.cave.json"), "utf8");
+    assert.match(sidecar, /"plan"/, "sidecar lives next to the manifest as <id>.cave.json");
   } finally {
     if (prev === undefined) delete process.env.COVEN_WORKFLOWS_DIR;
     else process.env.COVEN_WORKFLOWS_DIR = prev;

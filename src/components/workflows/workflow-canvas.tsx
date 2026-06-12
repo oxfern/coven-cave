@@ -3,6 +3,7 @@
 import "@xyflow/react/dist/style.css";
 
 import {
+  applyNodeChanges,
   Background,
   Controls,
   Handle,
@@ -13,13 +14,19 @@ import {
   type Connection,
   type Edge,
   type Node,
+  type NodeChange,
   type NodeMouseHandler,
   type NodeProps,
   type NodeTypes,
 } from "@xyflow/react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/lib/icon";
-import { workflowToGraph, type WorkflowGraphNode, type WorkflowGraphNodeData } from "@/lib/workflow-graph";
+import {
+  workflowToGraph,
+  type WorkflowGraphNode,
+  type WorkflowGraphNodeData,
+  type WorkflowNodePositions,
+} from "@/lib/workflow-graph";
 import type { WorkflowDryRunPlan, WorkflowSummary } from "@/lib/workflows";
 import type { WorkflowStudioActionState } from "./workflow-studio";
 
@@ -31,11 +38,13 @@ type WorkflowCanvasProps = {
   workflow: WorkflowSummary | null;
   action: WorkflowStudioActionState | null;
   selectedNode: WorkflowGraphNode | null;
+  savedPositions: WorkflowNodePositions | null;
   onSelectNode: (node: WorkflowGraphNode) => void;
   onClearNode: () => void;
   onConnect: (source: string, target: string) => void;
   onDisconnect: (source: string, target: string) => void;
   onRemoveStep: (id: string) => void;
+  onSavePositions: (positions: WorkflowNodePositions) => void;
 };
 
 export function WorkflowStepNode({ data, selected }: NodeProps<WorkflowFlowNode>) {
@@ -62,16 +71,6 @@ function dryRunFromAction(action: WorkflowStudioActionState | null): WorkflowDry
   return action.result as WorkflowDryRunPlan;
 }
 
-function toFlowNode(node: WorkflowGraphNode, selectedNode: WorkflowGraphNode | null): WorkflowFlowNode {
-  return {
-    ...node,
-    selected: selectedNode?.id === node.id,
-    initialWidth: WORKFLOW_NODE_WIDTH,
-    initialHeight: WORKFLOW_NODE_HEIGHT,
-    data: { ...node.data },
-  };
-}
-
 function workflowMiniMapNodeColor(node: Node): string {
   const data = node.data as Partial<WorkflowGraphNodeData> | undefined;
   if (data?.status === "blocked") return "#b95050";
@@ -88,19 +87,54 @@ export function WorkflowCanvas({
   workflow,
   action,
   selectedNode,
+  savedPositions,
   onSelectNode,
   onClearNode,
   onConnect,
   onDisconnect,
   onRemoveStep,
+  onSavePositions,
 }: WorkflowCanvasProps) {
   const [showMiniMap, setShowMiniMap] = useState(false);
   const graph = useMemo(() => {
-    if (!workflow) return { nodes: [] as WorkflowGraphNode[], edges: [] as Edge[] };
-    return workflowToGraph(workflow, dryRunFromAction(action));
-  }, [action, workflow]);
+    if (!workflow) return { nodes: [] as WorkflowGraphNode[], edges: [] };
+    return workflowToGraph(workflow, dryRunFromAction(action), savedPositions);
+  }, [action, savedPositions, workflow]);
 
-  const nodes = useMemo(() => graph.nodes.map((node) => toFlowNode(node, selectedNode)), [graph.nodes, selectedNode]);
+  // Nodes live in local state so drags are interactive — a fully-controlled
+  // graph snaps nodes back on the next render. The graph model stays the
+  // source of truth for structure; local state only owns positions while a
+  // workflow is mounted.
+  const [nodes, setNodes] = useState<WorkflowFlowNode[]>([]);
+  const nodesRef = useRef<WorkflowFlowNode[]>([]);
+  const mountedWorkflowId = useRef<string | null>(null);
+
+  useEffect(() => {
+    setNodes((current) => {
+      const sameWorkflow = mountedWorkflowId.current === (workflow?.id ?? null);
+      mountedWorkflowId.current = workflow?.id ?? null;
+      const livePositions = new Map(current.map((node) => [node.id, node.position]));
+      const next = graph.nodes.map(
+        (node): WorkflowFlowNode => ({
+          ...node,
+          // Structure edits (add/remove/rename/undo) keep in-flight drag
+          // positions for surviving nodes; switching workflows reseeds fully.
+          position: (sameWorkflow ? livePositions.get(node.id) : undefined) ?? node.position,
+          initialWidth: WORKFLOW_NODE_WIDTH,
+          initialHeight: WORKFLOW_NODE_HEIGHT,
+          data: { ...node.data },
+        }),
+      );
+      nodesRef.current = next;
+      return next;
+    });
+  }, [graph, workflow?.id]);
+
+  const renderNodes = useMemo(
+    () => nodes.map((node) => ({ ...node, selected: selectedNode?.id === node.id })),
+    [nodes, selectedNode],
+  );
+
   // Smoothstep + arrowheads so dependency direction reads on the dark canvas.
   const edges = useMemo<Edge[]>(
     () =>
@@ -111,6 +145,20 @@ export function WorkflowCanvas({
       })),
     [graph.edges],
   );
+
+  const handleNodesChange = (changes: NodeChange<WorkflowFlowNode>[]) => {
+    setNodes((current) => {
+      const next = applyNodeChanges(changes, current);
+      nodesRef.current = next;
+      return next;
+    });
+  };
+
+  const handleNodeDragStop = () => {
+    onSavePositions(
+      Object.fromEntries(nodesRef.current.map((node) => [node.id, node.position])),
+    );
+  };
 
   const handleNodeClick: NodeMouseHandler<WorkflowFlowNode> = (_event, node) => {
     onSelectNode({
@@ -161,10 +209,13 @@ export function WorkflowCanvas({
         <Icon name="ph:graph" width={14} />
       </button>
       <ReactFlow
-        nodes={nodes}
+        nodes={renderNodes}
         edges={edges}
         nodeTypes={nodeTypes}
         fitView
+        nodesDraggable
+        onNodesChange={handleNodesChange}
+        onNodeDragStop={handleNodeDragStop}
         onNodeClick={handleNodeClick}
         onPaneClick={onClearNode}
         onConnect={handleConnect}

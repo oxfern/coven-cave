@@ -4,7 +4,7 @@ import "@/styles/workflows.css";
 
 import { useState } from "react";
 import { Icon } from "@/lib/icon";
-import type { WorkflowGraphNode } from "@/lib/workflow-graph";
+import type { WorkflowGraphNode, WorkflowNodePositions } from "@/lib/workflow-graph";
 import type {
   WorkflowDryRunPlan,
   WorkflowPattern,
@@ -49,6 +49,7 @@ export type WorkflowStudioProps = {
   roles: WorkflowRoleSummary[];
   engineUnavailable: boolean;
   notice: string | null;
+  savedPositions: WorkflowNodePositions | null;
   onRefresh: () => void;
   onSelectWorkflow: (workflow: WorkflowSummary) => void;
   onSelectNode: (node: WorkflowGraphNode) => void;
@@ -64,6 +65,7 @@ export type WorkflowStudioProps = {
   onUpdateMeta: (patch: Partial<WorkflowSummary>) => void;
   onRemoveStep: (id: string) => void;
   onConnect: (source: string, target: string) => void;
+  onSavePositions: (positions: WorkflowNodePositions) => void;
   onDisconnect: (source: string, target: string) => void;
   onCreate: (input: { name: string; pattern: WorkflowPattern; familiar?: string }) => void;
   onDuplicate: (workflow: WorkflowSummary) => void;
@@ -134,11 +136,13 @@ export function WorkflowStudio(props: WorkflowStudioProps) {
           workflow={selectedWorkflow}
           action={action}
           selectedNode={selectedNode}
+          savedPositions={props.savedPositions}
           onSelectNode={props.onSelectNode}
           onClearNode={props.onClearNode}
           onConnect={props.onConnect}
           onDisconnect={props.onDisconnect}
           onRemoveStep={props.onRemoveStep}
+          onSavePositions={props.onSavePositions}
         />
         <WorkflowRunStrip
           workflow={selectedWorkflow}

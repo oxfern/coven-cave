@@ -41,6 +41,9 @@ assert.match(source, /scheduleWorkflow/, "Workflows view should schedule reminde
 assert.match(source, /confirmDiscard|Discard unsaved/, "Workflows view should guard unsaved drafts");
 assert.match(client, /\/api\/workflows\/save/, "Workflow client should call the save route");
 assert.match(client, /\/api\/workflows\/runs/, "Workflow client should call the runs route");
+assert.match(source, /loadWorkflowLayout/, "Workflows view loads saved canvas layout per selection");
+assert.match(source, /saveWorkflowLayout/, "Workflows view persists dragged positions");
+assert.match(client, /\/api\/workflows\/layout/, "Workflow client should call the layout route");
 assert.match(client, /\/api\/roles\/workflows/, "Workflow client should call the role-attach route");
 assert.match(client, /cave:\/\/workflows\//, "Scheduled reminders should deep-link back to the workflow");
 

@@ -108,7 +108,13 @@ function stepDepths(steps: WorkflowStepSummary[]): Map<string, number> {
   return depths;
 }
 
-export function workflowToGraph(workflow: WorkflowSummary, dryRun?: WorkflowDryRunPlan): WorkflowGraph {
+export type WorkflowNodePositions = Record<string, { x: number; y: number }>;
+
+export function workflowToGraph(
+  workflow: WorkflowSummary,
+  dryRun?: WorkflowDryRunPlan,
+  savedPositions?: WorkflowNodePositions | null,
+): WorkflowGraph {
   const steps = workflow.steps && workflow.steps.length > 0 ? workflow.steps : [fallbackStep(workflow)];
   // Layered layout: column = dependency depth (manifest order when no
   // dependencies are declared), lane = arrival order within the column.
@@ -120,10 +126,13 @@ export function workflowToGraph(workflow: WorkflowSummary, dryRun?: WorkflowDryR
     const depth = depths?.get(step.id) ?? index;
     const lane = laneCounts.get(depth) ?? 0;
     laneCounts.set(depth, lane + 1);
+    // Dragged positions (cave sidecar) win; the layered layout is the
+    // default for steps that have never been moved.
+    const saved = savedPositions?.[step.id];
     return {
       id: step.id,
       type: "workflowStep",
-      position: {
+      position: saved ?? {
         x: 80 + depth * 240,
         y: 80 + lane * 140,
       },
