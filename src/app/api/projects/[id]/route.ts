@@ -14,8 +14,20 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   }
 
   const patch: { name?: string; root?: string; color?: string } = {};
-  if (typeof body.name === "string") patch.name = body.name.trim();
-  if (typeof body.root === "string") patch.root = body.root.trim();
+  if (typeof body.name === "string") {
+    const trimmed = body.name.trim();
+    if (trimmed.length === 0) {
+      return NextResponse.json({ ok: false, error: "name cannot be empty" }, { status: 400 });
+    }
+    patch.name = trimmed;
+  }
+  if (typeof body.root === "string") {
+    const trimmed = body.root.trim();
+    if (trimmed.length === 0) {
+      return NextResponse.json({ ok: false, error: "root cannot be empty" }, { status: 400 });
+    }
+    patch.root = trimmed;
+  }
   if (typeof body.color === "string") patch.color = body.color;
   if (Object.keys(patch).length === 0) {
     return NextResponse.json({ ok: false, error: "nothing to update" }, { status: 400 });

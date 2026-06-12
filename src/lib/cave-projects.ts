@@ -17,14 +17,6 @@ type ProjectsFile = {
   projects: CaveProject[];
 };
 
-const DEFAULT_PROJECTS: Array<{ name: string; root: string }> = [
-  { name: "Coven Cave", root: "/Users/buns/Documents/GitHub/OpenCoven/coven-cave" },
-  { name: "Coven", root: "/Users/buns/Documents/GitHub/OpenCoven/coven" },
-  { name: "Coven Code", root: "/Users/buns/Documents/GitHub/OpenCoven/coven-code" },
-  { name: "CastCodes", root: "/Users/buns/Documents/GitHub/OpenCoven/cast-codes" },
-  { name: "Coven Docs", root: "/Users/buns/Documents/GitHub/OpenCoven/coven-docs" },
-];
-
 function projectsFilePath(): string {
   return (
     process.env.CAVE_PROJECTS_PATH_OVERRIDE ??
@@ -141,10 +133,8 @@ export function deleteProject(id: string): Promise<boolean> {
 }
 
 export async function seedDefaultProjectsIfEmpty(): Promise<void> {
-  if ((await loadProjects()).length > 0) return;
-  for (const project of DEFAULT_PROJECTS) {
-    await createProject(project);
-  }
+  // No-op: seeding with hard-coded developer paths makes no sense for other users.
+  // Projects are created via the UI or POST /api/projects.
 }
 
 export function projectForRoot(

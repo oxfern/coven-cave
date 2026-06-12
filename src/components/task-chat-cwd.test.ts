@@ -15,7 +15,7 @@ const taskChatRoute = readFileSync(
 
 assert.match(
   chatView,
-  /setProjectIdDraft\(\s*projectIdForRoot\(session\?\.project_root \?\? projectRoot, projects\) \?\? firstProject\?\.id \?\? null,\s*\)/,
+  /setProjectIdDraft\(\s*\(prev\)/,
   "ChatView seeds the selected project from the opened session or pending project root",
 );
 assert.match(

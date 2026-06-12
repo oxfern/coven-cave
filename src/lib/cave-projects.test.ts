@@ -41,14 +41,13 @@ try {
   assert.deepEqual(await loadProjects(), []);
 
   await seedDefaultProjectsIfEmpty();
-  const seeded = await loadProjects();
   assert.deepEqual(
-    seeded.map((project) => project.name),
-    ["Coven Cave", "Coven", "Coven Code", "CastCodes", "Coven Docs"],
-    "empty project stores should seed the legacy project list",
+    await loadProjects(),
+    [],
+    "seedDefaultProjectsIfEmpty is a no-op — users create projects via the UI",
   );
   await seedDefaultProjectsIfEmpty();
-  assert.equal((await loadProjects()).length, 5, "seeding twice should not duplicate projects");
+  assert.equal((await loadProjects()).length, 0, "calling seed twice remains a no-op");
 
   console.log("cave-projects.test.ts: ok");
 } finally {

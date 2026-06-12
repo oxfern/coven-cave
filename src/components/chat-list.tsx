@@ -277,14 +277,16 @@ export function ChatList({ familiar, familiars = [], sessions, daemonRunning, on
     if (unreadsOnly) rows = rows.filter((s) => s.status === "running");
     if (search.trim()) {
       const q = search.toLowerCase();
-      rows = rows.filter(
-        (s) =>
-          (s.title ?? "").toLowerCase().includes(q) ||
-          (s.project_root ?? "").toLowerCase().includes(q) ||
-          (projectIdForRoot(s.project_root, projects)
-            ? projects.find((project) => project.id === projectIdForRoot(s.project_root, projects))?.name.toLowerCase().includes(q)
-            : false)
-      );
+      rows = rows.filter((s) => {
+        if ((s.title ?? "").toLowerCase().includes(q)) return true;
+        if ((s.project_root ?? "").toLowerCase().includes(q)) return true;
+        const pid = projectIdForRoot(s.project_root, projects);
+        if (pid) {
+          const projectName = projects.find((p) => p.id === pid)?.name ?? "";
+          if (projectName.toLowerCase().includes(q)) return true;
+        }
+        return false;
+      });
     }
     return rows;
   }, [mine, projects, search, unreadsOnly]);

@@ -2466,13 +2466,23 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
   // Disarm a pending delete confirmation and sync the selected project when
   // switching sessions. Drop staged file mentions because they are scoped to
   // the previous session/root.
+  // Sync draft when the session/root changes. Also initialise the draft the
+  // first time projects load (when it is still null). Do NOT overwrite a
+  // user-set draft just because the projects list was re-fetched (e.g. after a
+  // rename or create), which would discard an in-session selection.
   useEffect(() => {
     setConfirmDelete(false);
-    setProjectIdDraft(
-      projectIdForRoot(session?.project_root ?? projectRoot, projects) ?? firstProject?.id ?? null,
-    );
+    setProjectIdDraft((prev) => {
+      const resolved =
+        projectIdForRoot(session?.project_root ?? projectRoot, projects) ??
+        firstProject?.id ??
+        null;
+      // Initialise when unset, or always resync on session switch.
+      return prev === null ? resolved : resolved ?? prev;
+    });
     setMentionedFiles([]);
-  }, [firstProject?.id, projects, sessionId, session?.project_root, projectRoot]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId, session?.project_root, projectRoot, firstProject?.id]);
 
   const deleteChat = async () => {
     if (!sessionId || deleting) return;

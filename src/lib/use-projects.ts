@@ -30,9 +30,14 @@ export function useProjects(): ProjectsState {
 
     try {
       const res = await fetch("/api/projects", { signal: controller.signal });
-      const data = await res.json();
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as { ok?: boolean; projects?: CaveProject[]; error?: string };
       if (!controller.signal.aborted) {
-        setProjects(Array.isArray(data.projects) ? data.projects : []);
+        if (data.ok === false) {
+          setError(data.error ?? "Failed to load projects");
+        } else {
+          setProjects(Array.isArray(data.projects) ? data.projects : []);
+        }
       }
     } catch (err) {
       if (!controller.signal.aborted) {
