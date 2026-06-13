@@ -3064,7 +3064,7 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
               }
               {...mentionAriaOverrides}
             />
-            <div className="flex items-center justify-between px-3 pb-2.5">
+            <div className="cave-composer-controls flex items-center justify-between px-3 pb-2.5">
               <div className="flex items-center gap-1 text-[var(--text-muted)]">
                 <input
                   ref={fileInputRef}
