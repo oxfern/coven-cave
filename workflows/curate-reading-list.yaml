@@ -1,0 +1,53 @@
+id: curate-reading-list
+version: 0.1.0
+name: Curate Reading List
+summary: Triage library items, remove noise, prioritize what matters, and produce a useful reading queue.
+familiar: sage
+pattern: classify-and-act
+tags:
+  - library
+  - curation
+limits:
+  max_agents: 4
+  timeout_s: 1800
+  cost_ceiling_usd: 4
+permissions:
+  - file.read
+  - file.write
+  - web.read
+visibility:
+  coven_cave: true
+steps:
+  - id: load-library
+    kind: agent
+    name: Load library context
+    uses: sage
+    summary: Read current bookmarks, reading statuses, collections, and active project needs.
+  - id: classify-items
+    kind: agent
+    name: Classify items
+    uses: sage
+    summary: Mark items as active, later, duplicate, stale, done, or reject.
+    requires:
+      - load-library
+  - id: prioritize-queue
+    kind: agent
+    name: Prioritize queue
+    uses: sage
+    summary: Rank active items by relevance, source quality, time sensitivity, and synthesis value.
+    requires:
+      - classify-items
+  - id: prune-gate
+    kind: human-gate
+    name: Deletion approval
+    uses: valentina
+    summary: Hold before deleting, pruning, or externally changing library state.
+    requires:
+      - prioritize-queue
+  - id: update-list
+    kind: tool
+    name: Update reading list
+    uses: cave.output
+    summary: Save the curated list with rationale, tags, and next reading actions.
+    requires:
+      - prune-gate

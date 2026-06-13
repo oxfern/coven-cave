@@ -1,0 +1,59 @@
+id: tag-and-organize
+version: 0.1.0
+name: Tag And Organize
+summary: Normalize library metadata, tags, titles, collections, and retrieval paths without creating tag noise.
+familiar: sage
+pattern: classify-and-act
+tags:
+  - library
+  - organization
+limits:
+  max_agents: 4
+  timeout_s: 1800
+  cost_ceiling_usd: 4
+permissions:
+  - file.read
+  - file.write
+visibility:
+  coven_cave: true
+steps:
+  - id: scan-items
+    kind: agent
+    name: Scan items
+    uses: sage
+    summary: Read target library entries, current tags, collections, titles, and statuses.
+  - id: normalize-metadata
+    kind: agent
+    name: Normalize metadata
+    uses: sage
+    summary: Standardize titles, source names, status fields, and collection placement.
+    requires:
+      - scan-items
+  - id: choose-tags
+    kind: agent
+    name: Choose tags
+    uses: sage
+    summary: Apply fewer precise tags optimized for retrieval, not decoration.
+    requires:
+      - normalize-metadata
+  - id: conflict-check
+    kind: agent
+    name: Conflict check
+    uses: sage
+    summary: Detect duplicate entries, dead links, ambiguous categories, and destructive edits.
+    requires:
+      - choose-tags
+  - id: deletion-gate
+    kind: human-gate
+    name: Delete or prune approval
+    uses: valentina
+    summary: Hold before deleting entries, pruning records, or externally modifying sources.
+    requires:
+      - conflict-check
+  - id: write-library
+    kind: tool
+    name: Write library update
+    uses: cave.output
+    summary: Save metadata updates and a short rationale for future retrieval.
+    requires:
+      - deletion-gate

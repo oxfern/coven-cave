@@ -1,0 +1,53 @@
+id: strategy-map
+version: 0.1.0
+name: Strategy Map
+summary: Clarify goals, compare routes, recommend direction, and turn strategy into next moves.
+familiar: astra
+pattern: generate-and-filter
+tags:
+  - strategy
+  - planning
+limits:
+  max_agents: 4
+  timeout_s: 1800
+  cost_ceiling_usd: 4
+permissions:
+  - memory.read
+  - file.read
+  - file.write
+visibility:
+  coven_cave: true
+steps:
+  - id: clarify-goal
+    kind: agent
+    name: Clarify goal
+    uses: astra
+    summary: State the desired outcome, constraints, timing, and decision owner.
+  - id: map-options
+    kind: agent
+    name: Map options
+    uses: astra
+    summary: Generate viable routes and name what each route optimizes.
+    requires:
+      - clarify-goal
+  - id: compare-tradeoffs
+    kind: agent
+    name: Compare tradeoffs
+    uses: astra
+    summary: Evaluate cost, risk, reversibility, dependency load, and uncertainty.
+    requires:
+      - map-options
+  - id: recommend-route
+    kind: agent
+    name: Recommend route
+    uses: astra
+    summary: Choose the best path when evidence is enough or state what is missing.
+    requires:
+      - compare-tradeoffs
+  - id: next-moves
+    kind: tool
+    name: Next moves
+    uses: cave.output
+    summary: Emit owners, lane handoffs, stopping points, and immediate next steps.
+    requires:
+      - recommend-route

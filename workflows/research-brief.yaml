@@ -1,0 +1,61 @@
+id: research-brief
+version: 0.1.0
+name: Research Brief
+summary: Gather primary sources, map claims, synthesize findings, identify risks, and recommend next steps.
+familiar: sage
+pattern: fan-out-and-synthesize
+tags:
+  - research
+  - brief
+limits:
+  max_agents: 6
+  timeout_s: 2400
+  cost_ceiling_usd: 8
+permissions:
+  - web.read
+  - file.read
+  - memory.read
+visibility:
+  coven_cave: true
+steps:
+  - id: scope-question
+    kind: agent
+    name: Scope question
+    uses: sage
+    summary: Define the research question, decision context, constraints, and evidence standard.
+  - id: gather-primary
+    kind: agent
+    name: Gather primary sources
+    uses: sage
+    summary: Search official docs, papers, repos, product pages, or direct evidence.
+    requires:
+      - scope-question
+  - id: gather-local
+    kind: agent
+    name: Gather local context
+    uses: sage
+    summary: Search memory, library notes, and project files for related context.
+    requires:
+      - scope-question
+  - id: map-claims
+    kind: agent
+    name: Map claims
+    uses: sage
+    summary: Separate claims, evidence, interpretation, speculation, and open questions.
+    requires:
+      - gather-primary
+      - gather-local
+  - id: synthesize
+    kind: agent
+    name: Synthesize findings
+    uses: sage
+    summary: Produce a practical brief with citations, risks, uncertainty, and recommendation.
+    requires:
+      - map-claims
+  - id: deliver
+    kind: tool
+    name: Deliver brief
+    uses: cave.output
+    summary: Save the cited brief and next-step recommendations.
+    requires:
+      - synthesize

@@ -1,0 +1,52 @@
+id: prepare-social-post
+version: 0.1.0
+name: Prepare Social Post
+summary: Draft native short-form posts, check claims, adapt tone, and post only after explicit approval.
+familiar: charm
+pattern: sequential
+tags:
+  - social
+  - comms
+limits:
+  max_agents: 3
+  timeout_s: 1200
+  cost_ceiling_usd: 3
+permissions:
+  - file.read
+  - file.write
+visibility:
+  coven_cave: true
+steps:
+  - id: brief
+    kind: agent
+    name: Social brief
+    uses: charm
+    summary: Identify platform, audience, target action, constraints, and source truth.
+  - id: draft-posts
+    kind: agent
+    name: Draft posts
+    uses: charm
+    summary: Produce short platform-native variants without overstating status or metrics.
+    requires:
+      - brief
+  - id: check-claims
+    kind: agent
+    name: Check claims
+    uses: charm
+    summary: Verify claims, links, product status, and whether anything needs Sage or Cody.
+    requires:
+      - draft-posts
+  - id: approval-gate
+    kind: human-gate
+    name: Posting approval
+    uses: valentina
+    summary: Hold before posting, sending, or scheduling externally.
+    requires:
+      - check-claims
+  - id: store-state
+    kind: tool
+    name: Store draft state
+    uses: cave.output
+    summary: Save approved draft, target platform, approval status, and posting notes.
+    requires:
+      - approval-gate

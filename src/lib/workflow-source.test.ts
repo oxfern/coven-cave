@@ -293,4 +293,66 @@ await (async () => {
   }
 })();
 
+// The production role workflows are backed by real multi-step manifests, not
+// fallback single-node placeholders.
+await (async () => {
+  const covenHome = await mkdtemp(path.join(tmpdir(), "cave-home-"));
+  const prevCovenHome = process.env.COVEN_HOME;
+  const prevWorkflowsDir = process.env.COVEN_WORKFLOWS_DIR;
+  delete process.env.COVEN_WORKFLOWS_DIR;
+  process.env.COVEN_HOME = covenHome;
+  const workflowIds = [
+    "annotate-document",
+    "archive-memory",
+    "bug-diagnosis",
+    "coordination-router",
+    "coven-orchestration",
+    "curate-reading-list",
+    "devrel-response",
+    "draft-copy",
+    "prepare-social-post",
+    "research-brief",
+    "retrospective-synthesis",
+    "review-diff",
+    "scoped-implementation",
+    "strategy-map",
+    "synthesize-sources",
+    "system-architecture-review",
+    "tag-and-organize",
+  ];
+  try {
+    const roleDir = path.join(covenHome, "roles", "familiars", "sage", "workflow-auditor");
+    await mkdir(roleDir, { recursive: true });
+    await writeFile(
+      path.join(roleDir, "ROLE.md"),
+      [
+        "---",
+        'name: "Workflow Auditor"',
+        "familiar: sage",
+        "---",
+        "",
+        "workflows:",
+        ...workflowIds.map((id) => `- ${id}`),
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const list = await loadLocalWorkflowList();
+    for (const id of workflowIds) {
+      const workflow = list.workflows.find((entry) => entry.id === id);
+      assert.ok(workflow, `${id} is discoverable`);
+      assert.equal(workflow.validation_state, "valid", `${id} has a valid manifest`);
+      assert.ok((workflow.steps?.length ?? 0) >= 3, `${id} has a multi-step execution graph`);
+      assert.notEqual(workflow.summary, "Declared by a role, but no workflow manifest exists yet.", `${id} is not a placeholder`);
+    }
+  } finally {
+    if (prevCovenHome === undefined) delete process.env.COVEN_HOME;
+    else process.env.COVEN_HOME = prevCovenHome;
+    if (prevWorkflowsDir === undefined) delete process.env.COVEN_WORKFLOWS_DIR;
+    else process.env.COVEN_WORKFLOWS_DIR = prevWorkflowsDir;
+    await rm(covenHome, { recursive: true, force: true });
+  }
+})();
+
 console.log("workflow-source.test.ts: ok");
