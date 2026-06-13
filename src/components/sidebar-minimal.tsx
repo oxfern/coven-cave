@@ -228,6 +228,7 @@ export function SidebarMinimal(props: SidebarMinimalProps) {
           hands off to the left-edge rail, which reopens the panel. */}
       {onToggleSidebar ? (
         <div className="sidebar-header">
+          <span className="sidebar-title">Coven Cave</span>
           <button
             type="button"
             className="sidebar-toggle"

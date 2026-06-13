@@ -1362,17 +1362,6 @@ export function Workspace() {
             <button
               type="button"
               className="agent-trigger-rail__toggle"
-              aria-label="Open browser panel"
-              title="Browser"
-              onClick={() => openCompanionTab("browser")}
-            >
-              <span className="edge-rail-chip">
-                <Icon name="ph:globe" width={14} />
-              </span>
-            </button>
-            <button
-              type="button"
-              className="agent-trigger-rail__toggle"
               aria-label="Toggle Salem"
               title="Toggle Salem (⌘J)"
               onClick={() => openCompanionTab("salem")}
