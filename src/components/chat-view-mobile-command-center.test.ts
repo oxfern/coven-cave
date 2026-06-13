@@ -67,6 +67,18 @@ assert.match(
 
 assert.match(
   source,
+  /className="cave-composer-controls flex items-center justify-between/,
+  "Composer controls should expose a mobile overlay hook",
+);
+
+assert.match(
+  styles,
+  /@media \(max-width: 767px\) \{[\s\S]*\.cave-composer-panel\s*\{[\s\S]*position\s*:\s*relative[\s\S]*\.cave-composer-controls\s*\{[\s\S]*position\s*:\s*absolute/,
+  "Mobile composer controls should overlay the composer panel instead of adding a second full row",
+);
+
+assert.match(
+  source,
   /className="cave-scroll-bottom-button sticky bottom-4/,
   "Scroll-to-bottom FAB should expose a mobile touch-target hook",
 );
