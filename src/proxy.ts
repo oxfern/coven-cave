@@ -133,16 +133,17 @@ export async function proxy(req: NextRequest) {
   // 127.0.0.1. The token equality check below is the only thing
   // legitimately optional in browser-dev mode.
   const expectedOrigin = req.nextUrl.origin;
+  const requestHost = req.headers.get("host");
   const mobileAccessAuthenticated = mobileAccessToken
     ? Boolean(await mobileAccessVerification(req, mobileAccessToken))
     : false;
-  if (!isAllowedApiHost(req.headers.get("host"), mobileAccessAuthenticated)) {
+  if (!isAllowedApiHost(requestHost, mobileAccessAuthenticated)) {
     return jsonError(403, "forbidden host");
   }
-  if (!isAllowedRequestSource(req.headers.get("origin"), expectedOrigin, mobileAccessAuthenticated)) {
+  if (!isAllowedRequestSource(req.headers.get("origin"), expectedOrigin, mobileAccessAuthenticated, requestHost)) {
     return jsonError(403, "forbidden origin");
   }
-  if (!isAllowedRequestSource(req.headers.get("referer"), expectedOrigin, mobileAccessAuthenticated)) {
+  if (!isAllowedRequestSource(req.headers.get("referer"), expectedOrigin, mobileAccessAuthenticated, requestHost)) {
     return jsonError(403, "forbidden referer");
   }
   if (!hasSafeContentType(req)) {

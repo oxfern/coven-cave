@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useShellBanners } from "@/lib/shell-banners";
+import { useIsTauriDesktop } from "@/lib/tauri-platform";
 
 const TOKEN_PARAM = "covenCaveToken";
 const STORAGE_KEY = "coven-cave:sidecar-auth-token";
@@ -11,16 +12,12 @@ const BANNER_ID = "sidecar-auth-failed";
 // hydrates; this surfaces missing-token failures in the shell after mount.
 export function SidecarAuthMonitor() {
   const { pushBanner, dismissBanner } = useShellBanners();
+  const isTauriDesktop = useIsTauriDesktop();
 
   useEffect(() => {
-    // No sidecar exists in plain-browser dev (next dev outside Tauri), so a
-    // missing token there is expected — skip the check to avoid noisy console
-    // errors and a permanently-pinned banner during web preview.
-    const inTauri =
-      typeof window !== "undefined" &&
-      // @ts-expect-error Tauri injects this at runtime
-      Boolean(window.__TAURI_INTERNALS__);
-    if (!inTauri) {
+    // Only desktop Tauri has a local sidecar. Browser dev and mobile Tauri use
+    // remote/webview paths, so a missing sidecar token is expected there.
+    if (!isTauriDesktop) {
       dismissBanner(BANNER_ID);
       return;
     }
@@ -47,7 +44,7 @@ export function SidecarAuthMonitor() {
     } else {
       dismissBanner(BANNER_ID);
     }
-  }, [pushBanner, dismissBanner]);
+  }, [pushBanner, dismissBanner, isTauriDesktop]);
 
   return null;
 }

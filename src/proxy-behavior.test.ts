@@ -55,7 +55,16 @@ assert.equal(
 // ─── isAllowedApiHost ──────────────────────────────────────────────────────
 assert.equal(isAllowedApiHost("localhost:3000", false), true);
 assert.equal(isAllowedApiHost("127.0.0.1:3000", false), true);
-assert.equal(isAllowedApiHost("cave.tailnet.example.ts.net", false), false);
+assert.equal(
+  isAllowedApiHost("cave.tailnet.example.ts.net", false),
+  true,
+  "native mobile uses Tailscale Serve without a browser invite token",
+);
+assert.equal(
+  isAllowedApiHost("cave.tailnet.example.ts.net.evil.com", false),
+  false,
+  "must not be fooled by suffix smuggling",
+);
 assert.equal(
   isAllowedApiHost("cave.tailnet.example.ts.net", true),
   true,
@@ -115,9 +124,43 @@ assert.equal(
   false,
   "non-loopback hostname must still be rejected",
 );
+assert.equal(
+  sameOrigin("https://cave.tailnet.example.ts.net", "http://cave.tailnet.example.ts.net"),
+  true,
+  "Tailscale Serve terminates HTTPS before proxying to the local HTTP backend",
+);
 
 // ─── isAllowedRequestSource ────────────────────────────────────────────────
 assert.equal(isAllowedRequestSource("https://tailnet.example.ts.net", expected, false), false);
+assert.equal(
+  isAllowedRequestSource(
+    "https://cave.tailnet.example.ts.net",
+    "http://cave.tailnet.example.ts.net",
+    false,
+  ),
+  true,
+  "native mobile Tailscale Serve origins should not require a browser invite token",
+);
+assert.equal(
+  isAllowedRequestSource(
+    "https://cave.tailnet.example.ts.net",
+    "http://127.0.0.1:3000",
+    false,
+    "cave.tailnet.example.ts.net",
+  ),
+  true,
+  "Tailscale Serve origins should match the forwarded Host even when Next sees a loopback URL",
+);
+assert.equal(
+  isAllowedRequestSource(
+    "https://other.tailnet.example.ts.net",
+    "http://127.0.0.1:3000",
+    false,
+    "cave.tailnet.example.ts.net",
+  ),
+  false,
+  "Tailscale Serve origin host must match the forwarded Host",
+);
 assert.equal(
   isAllowedRequestSource("https://tailnet.example.ts.net", expected, true),
   true,
