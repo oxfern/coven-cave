@@ -17,6 +17,7 @@ import {
 } from "@/lib/workflow-draft";
 import {
   attachWorkflowToRole,
+  isPublicTemplate,
   loadWorkflowLayout,
   saveWorkflowLayout,
   deleteWorkflow,
@@ -295,22 +296,46 @@ export function WorkflowsView() {
   };
 
   const runSave = async (workflow: WorkflowSummary) => {
+    // Templates are read-only. Saving an edit forks a *new* personal workflow
+    // under ~/.coven and leaves the repo template untouched. The fork takes a
+    // distinct id (`<id>-personal`): the runtime's library is public-wins on id
+    // collisions, so a same-id personal copy would be shadowed and invisible.
+    // A manifest is routed to ~/.coven unless `visibility.public === true`, so
+    // the fork clears that flag.
+    const forking = isPublicTemplate(workflow);
     setBusyId(`${workflow.id}:save`);
     try {
-      const result = await saveWorkflow(workflowToManifest(workflow));
+      let manifest = workflowToManifest(workflow);
+      if (forking) {
+        const forkId = uniqueId(`${slugifyWorkflowId(workflow.id)}-personal`);
+        const visibility = {
+          ...(manifest.visibility && typeof manifest.visibility === "object"
+            ? (manifest.visibility as Record<string, unknown>)
+            : {}),
+          public: false,
+          personal: true,
+        };
+        manifest = { ...manifest, id: forkId, visibility };
+      }
+      const result = await saveWorkflow(manifest);
       if (!result.ok) {
         showNotice(result.error ?? "save failed");
         return;
       }
+      const saved = result.workflow ?? workflow;
       if (result.validation) {
-        setAction({ id: workflow.id, kind: "validate", result: result.validation });
+        setAction({ id: saved.id, kind: "validate", result: result.validation });
       }
-      if (result.workflow) {
-        setDraftState(initialWorkflowDraft(result.workflow));
-        setSelectedWorkflowId(result.workflow.id);
-      }
-      showNotice("Workflow saved.");
-      void load(true);
+      // Refresh the list BEFORE re-selecting: a fork lands under a new id, and
+      // the selection effect would otherwise run against the stale list, fail to
+      // find the new id, and fall back to workflows[0] (the template). Awaiting
+      // load first means the fork exists when we select it. (handleDuplicate
+      // uses the same ordering.)
+      await load(true);
+      setSelectedWorkflowId(saved.id);
+      setDraftState(initialWorkflowDraft(saved));
+      showNotice(forking ? `Forked to a personal copy: ${saved.id} — the template stays untouched.` : "Workflow saved.");
+      if (forking) void loadRuns(saved.id);
     } finally {
       setBusyId(null);
     }
@@ -367,6 +392,10 @@ export function WorkflowsView() {
   };
 
   const handleDelete = async (workflow: WorkflowSummary) => {
+    if (isPublicTemplate(workflow)) {
+      showNotice("Templates are read-only — duplicate to make an editable copy.");
+      return;
+    }
     if (!window.confirm(`Delete workflow \`${workflow.id}\`? The manifest file is removed.`)) return;
     const result = await deleteWorkflow(
       workflow.path ? { path: workflow.path } : { id: workflow.id },

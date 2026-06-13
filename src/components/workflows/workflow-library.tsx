@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Icon } from "@/lib/icon";
-import type { WorkflowSummary } from "@/lib/workflows";
+import { isPersonalWorkflow, isPublicTemplate, type WorkflowSummary } from "@/lib/workflows";
 
 type WorkflowLibraryProps = {
   workflows: WorkflowSummary[];
@@ -60,6 +60,49 @@ export function WorkflowLibrary({
     if (!trimmed) return workflows;
     return workflows.filter((workflow) => matchesQuery(workflow, trimmed));
   }, [query, workflows]);
+
+  const groups = useMemo(() => {
+    const personal: WorkflowSummary[] = [];
+    const templates: WorkflowSummary[] = [];
+    for (const workflow of visible) {
+      (isPersonalWorkflow(workflow) ? personal : templates).push(workflow);
+    }
+    return { personal, templates };
+  }, [visible]);
+
+  const renderItem = (workflow: WorkflowSummary) => {
+    const active = selectedWorkflow?.id === workflow.id;
+    const validationState = workflow.validation_state ?? "unknown";
+    const personal = isPersonalWorkflow(workflow);
+    return (
+      <button
+        key={`${workflow.id}:${workflow.path ?? ""}`}
+        type="button"
+        className={`workflow-library-item${active ? " is-active" : ""}`}
+        onClick={() => onSelectWorkflow(workflow)}
+      >
+        <span className="workflow-library-item-title">
+          <span className="workflow-library-item-name">{workflow.name ?? workflow.id}</span>
+          {active && dirty && <span className="workflow-dirty-dot" title="Unsaved changes" />}
+          <span
+            className={`workflow-origin-dot workflow-origin-dot-${personal ? "personal" : "public"}`}
+            title={
+              personal
+                ? "Personal — private to you (~/.coven/workflows)"
+                : "Template — shared in the repo (workflows/)"
+            }
+            aria-label={personal ? "Personal workflow" : "Public template"}
+          />
+        </span>
+        <span className="workflow-library-item-meta">
+          <span className={`workflow-health workflow-health-${validationState}`} />
+          {validationLabels[validationState]} · v{workflow.version}
+          {workflow.pattern ? ` · ${workflow.pattern}` : ""}
+        </span>
+        {workflow.summary && <span className="workflow-library-item-summary">{workflow.summary}</span>}
+      </button>
+    );
+  };
 
   return (
     <aside className="workflow-library" aria-label="Workflow library">
@@ -119,47 +162,57 @@ export function WorkflowLibrary({
           {visible.length === 0 && (
             <div className="workflow-library-state">No workflows match “{query.trim()}”.</div>
           )}
-          {visible.map((workflow) => {
-            const active = selectedWorkflow?.id === workflow.id;
-            const validationState = workflow.validation_state ?? "unknown";
-            return (
-              <button
-                key={`${workflow.id}:${workflow.path ?? ""}`}
-                type="button"
-                className={`workflow-library-item${active ? " is-active" : ""}`}
-                onClick={() => onSelectWorkflow(workflow)}
-              >
-                <span className="workflow-library-item-title">
-                  {workflow.name ?? workflow.id}
-                  {active && dirty && <span className="workflow-dirty-dot" title="Unsaved changes" />}
-                </span>
-                <span className="workflow-library-item-meta">
-                  <span className={`workflow-health workflow-health-${validationState}`} />
-                  {validationLabels[validationState]} · v{workflow.version}
-                  {workflow.pattern ? ` · ${workflow.pattern}` : ""}
-                </span>
-                {workflow.summary && <span className="workflow-library-item-summary">{workflow.summary}</span>}
-              </button>
-            );
-          })}
+          {groups.personal.length > 0 && (
+            <section className="workflow-library-group" aria-label="Personal workflows">
+              <p className="workflow-library-group-heading">
+                <span className="workflow-origin-dot workflow-origin-dot-personal" aria-hidden />
+                Personal
+                <span className="workflow-library-group-count">{groups.personal.length}</span>
+              </p>
+              {groups.personal.map(renderItem)}
+            </section>
+          )}
+          {groups.templates.length > 0 && (
+            <section className="workflow-library-group" aria-label="Public templates">
+              <p className="workflow-library-group-heading">
+                <span className="workflow-origin-dot workflow-origin-dot-public" aria-hidden />
+                Templates
+                <span className="workflow-library-group-count">{groups.templates.length}</span>
+              </p>
+              {groups.templates.map(renderItem)}
+            </section>
+          )}
         </div>
       )}
 
       {selectedWorkflow && (
         <div className="workflow-library-footer">
-          <button type="button" onClick={() => onDuplicate(selectedWorkflow)} title="Duplicate selected workflow">
-            <Icon name="ph:copy" width={13} />
-            Duplicate
-          </button>
-          <button
-            type="button"
-            className="workflow-danger-button"
-            onClick={() => onDelete(selectedWorkflow)}
-            title="Delete selected workflow"
-          >
-            <Icon name="ph:trash" width={13} />
-            Delete
-          </button>
+          {isPublicTemplate(selectedWorkflow) && (
+            <p className="workflow-library-footer-note" title="Templates live in the repo (workflows/). Editing and saving forks a personal copy to ~/.coven; the template itself stays untouched.">
+              <Icon name="ph:lock-simple" width={12} />
+              Read-only template — edits fork a personal copy
+            </p>
+          )}
+          <div className="workflow-library-footer-actions">
+            <button type="button" onClick={() => onDuplicate(selectedWorkflow)} title="Duplicate selected workflow">
+              <Icon name="ph:copy" width={13} />
+              Duplicate
+            </button>
+            <button
+              type="button"
+              className="workflow-danger-button"
+              disabled={isPublicTemplate(selectedWorkflow)}
+              onClick={() => onDelete(selectedWorkflow)}
+              title={
+                isPublicTemplate(selectedWorkflow)
+                  ? "Templates are read-only — duplicate to make an editable copy"
+                  : "Delete selected workflow"
+              }
+            >
+              <Icon name="ph:trash" width={13} />
+              Delete
+            </button>
+          </div>
         </div>
       )}
     </aside>

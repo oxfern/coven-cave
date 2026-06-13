@@ -67,6 +67,25 @@ function compactPath(path: string): string {
   return `${first}/…/${last.join("/")}`;
 }
 
+function fileBase(p: string): string {
+  const segments = p.split("/").filter(Boolean);
+  return segments[segments.length - 1] ?? p;
+}
+
+/** Directory portion of a full path, collapsed to ~ and ellipsized. "" when at root. */
+function fileDir(fullPath: string): string {
+  const base = fileBase(fullPath);
+  const parent = fullPath.slice(0, Math.max(0, fullPath.length - base.length)).replace(/\/$/, "");
+  return parent ? compactPath(parent) : "";
+}
+
+function formatBytes(n: number | undefined): string {
+  if (!n || n < 0 || !Number.isFinite(n)) return "";
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(n < 10 * 1024 ? 1 : 0)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 function memoryMatches(entry: CovenMemoryEntry | FileMemoryEntry, query: string): boolean {
   if (!query) return true;
   if ("familiar_id" in entry) {
@@ -97,7 +116,16 @@ export function AgentsMemoryView({ familiars, activeFamiliar, onOpenMemoryFile, 
   const [query, setQuery] = useState("");
   const [familiarFilter, setFamiliarFilter] = useState<string>(activeFamiliar?.id ?? familiars[0]?.id ?? "");
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
+  const [sourceFilter, setSourceFilter] = useState<"all" | FileMemoryEntry["sourceKind"]>("all");
+  const [sortMode, setSortMode] = useState<"recent" | "name" | "size">("recent");
+  const [lastLoadedAt, setLastLoadedAt] = useState<string | null>(null);
   const effectiveLimit = limit ?? Infinity;
+  const fullView = effectiveLimit === Infinity;
+  // Incremental render caps for the full view (rail/compact use `limit` instead).
+  const FILE_PAGE = 80;
+  const FAMILIAR_PAGE = 80;
+  const [fileLimit, setFileLimit] = useState(FILE_PAGE);
+  const [familiarLimit, setFamiliarLimit] = useState(FAMILIAR_PAGE);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
 
@@ -122,6 +150,7 @@ export function AgentsMemoryView({ familiars, activeFamiliar, onOpenMemoryFile, 
       setError(err instanceof Error ? err.message : "memory unavailable");
     } finally {
       setLoaded(true);
+      setLastLoadedAt(new Date().toISOString());
     }
   }, []);
 
@@ -147,13 +176,21 @@ export function AgentsMemoryView({ familiars, activeFamiliar, onOpenMemoryFile, 
     [covenEntries, familiarFilter, q],
   );
 
-  const visibleFiles = useMemo(
-    () =>
-      fileEntries
-        .filter((entry) => memoryMatches(entry, q))
-        .sort((a, b) => (a.modified < b.modified ? 1 : -1)),
-    [fileEntries, q],
-  );
+  const visibleFiles = useMemo(() => {
+    const cmp: Record<typeof sortMode, (a: FileMemoryEntry, b: FileMemoryEntry) => number> = {
+      recent: (a, b) => (a.modified < b.modified ? 1 : a.modified > b.modified ? -1 : 0),
+      name: (a, b) => fileBase(a.relPath).localeCompare(fileBase(b.relPath)),
+      size: (a, b) => (b.size ?? 0) - (a.size ?? 0),
+    };
+    return fileEntries
+      .filter((entry) => sourceFilter === "all" || entry.sourceKind === sourceFilter)
+      .filter((entry) => memoryMatches(entry, q))
+      .sort(cmp[sortMode]);
+  }, [fileEntries, q, sourceFilter, sortMode]);
+
+  // Reset pagination whenever the result set changes underneath the user.
+  useEffect(() => { setFileLimit(FILE_PAGE); }, [q, sourceFilter, familiarFilter]);
+  useEffect(() => { setFamiliarLimit(FAMILIAR_PAGE); }, [q, familiarFilter]);
 
   const familiarsWithMemory = useMemo(() => {
     const ids = new Set(covenEntries.map((entry) => entry.familiar_id));
@@ -193,6 +230,20 @@ export function AgentsMemoryView({ familiars, activeFamiliar, onOpenMemoryFile, 
     return [selectedFamiliar, ...options];
   }, [familiars, familiarsWithMemory, selectedFamiliar]);
 
+  // When the active familiar has no memories, the familiar column collapses so the
+  // (typically much larger) memory-files list claims the freed width instead of
+  // leaving a half-empty grid track. The drawer still gets its own track when open.
+  const hasFamiliar = visibleCoven.length > 0;
+  const contentClass = compact
+    ? "flex flex-col gap-4 overflow-y-auto p-4"
+    : hasFamiliar
+      ? selectedRowId
+        ? "grid gap-4 overflow-y-auto p-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(280px,360px)]"
+        : "grid gap-4 overflow-y-auto p-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
+      : selectedRowId
+        ? "grid gap-4 overflow-y-auto p-4 xl:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]"
+        : "grid gap-4 overflow-y-auto p-4";
+
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-[var(--bg-base)]">
       <div className={`shrink-0 border-b border-[var(--border-hairline)] ${compact ? "px-3 py-2" : "px-4 py-3"}`}>
@@ -207,22 +258,41 @@ export function AgentsMemoryView({ familiars, activeFamiliar, onOpenMemoryFile, 
                 Focused recall for one agent at a time, with local memory files kept in the list surface.
               </p>
             </div>
-            <button type="button" onClick={() => void load()} className="focus-ring inline-flex h-7 items-center gap-1.5 rounded-md border border-[var(--border-hairline)] px-2.5 text-[11px] text-[var(--text-secondary)] hover:bg-[var(--bg-raised)]">
-              <Icon name="ph:arrows-clockwise" width={12} />
-              Refresh
-            </button>
+            <div className="flex items-center gap-2.5">
+              {lastLoadedAt ? (
+                <span className="text-[10px] text-[var(--text-muted)]" title={`Last refreshed ${new Date(lastLoadedAt).toLocaleString()}`}>
+                  Updated {age(lastLoadedAt)}
+                </span>
+              ) : null}
+              <button type="button" onClick={() => void load()} className="focus-ring inline-flex h-7 items-center gap-1.5 rounded-md border border-[var(--border-hairline)] px-2.5 text-[11px] text-[var(--text-secondary)] hover:bg-[var(--bg-raised)]">
+                <Icon name="ph:arrows-clockwise" width={12} />
+                Refresh
+              </button>
+            </div>
           </div>
         )}
 
         {compact ? null : (
           <div
             data-testid="memory-stats-inline"
-            className="mt-3 flex flex-wrap items-baseline gap-x-5 gap-y-1 text-[11px] text-[var(--text-secondary)]"
+            className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[11px] text-[var(--text-secondary)]"
           >
-            <span><span className="text-[var(--text-muted)]">Agent memories</span> <span className="ml-1 font-semibold text-[var(--text-primary)]">{visibleCoven.length}</span></span>
-            <span><span className="text-[var(--text-muted)]">Coven origin</span> <span className="ml-1 font-semibold text-[var(--text-primary)]">{fileSourceCounts.covenOrigin}</span></span>
-            <span><span className="text-[var(--text-muted)]">External harnesses</span> <span className="ml-1 font-semibold text-[var(--text-primary)]">{fileSourceCounts.externalHarnesses}</span></span>
-            <span><span className="text-[var(--text-muted)]">Runtime memory</span> <span className="ml-1 font-semibold text-[var(--text-primary)]">{fileSourceCounts.runtimeMemory}</span></span>
+            <span className="inline-flex items-baseline gap-1 px-1"><span className="text-[var(--text-muted)]">Agent memories</span> <span className="font-semibold text-[var(--text-primary)]">{visibleCoven.length}</span></span>
+            <span aria-hidden className="text-[var(--border-strong)]">·</span>
+            <span className="mr-0.5 text-[10px] uppercase tracking-wider text-[var(--text-muted)]">Files</span>
+            <SourceFilterChip label="Coven origin" count={fileSourceCounts.covenOrigin} active={sourceFilter === "coven-origin"} onClick={() => setSourceFilter((s) => (s === "coven-origin" ? "all" : "coven-origin"))} />
+            <SourceFilterChip label="External harnesses" count={fileSourceCounts.externalHarnesses} active={sourceFilter === "external-harness"} onClick={() => setSourceFilter((s) => (s === "external-harness" ? "all" : "external-harness"))} />
+            <SourceFilterChip label="Runtime memory" count={fileSourceCounts.runtimeMemory} active={sourceFilter === "runtime"} onClick={() => setSourceFilter((s) => (s === "runtime" ? "all" : "runtime"))} />
+            {sourceFilter !== "all" ? (
+              <button
+                type="button"
+                onClick={() => setSourceFilter("all")}
+                className="focus-ring ml-0.5 inline-flex h-6 items-center gap-1 rounded-md px-1.5 text-[10px] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+              >
+                <Icon name="ph:x-bold" width={9} />
+                Clear filter
+              </button>
+            ) : null}
           </div>
         )}
 
@@ -230,16 +300,30 @@ export function AgentsMemoryView({ familiars, activeFamiliar, onOpenMemoryFile, 
           <div className={`relative ${compact ? "min-w-0" : "min-w-[220px]"} flex-1`}>
             <Icon name="ph:magnifying-glass" width={12} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
             <input
+              type="search"
+              aria-label={lockToFamiliar && selectedFamiliar?.display_name ? `Search ${selectedFamiliar.display_name}'s memory` : "Search memory"}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
+              onKeyDown={(event) => { if (event.key === "Escape" && query) { event.preventDefault(); setQuery(""); } }}
               placeholder={lockToFamiliar && selectedFamiliar?.display_name ? `Search ${selectedFamiliar.display_name}'s memory...` : "Search memory..."}
-              className="focus-ring h-8 w-full rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/40 pl-7 pr-3 text-[12px] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--accent-presence)]"
+              className="focus-ring h-8 w-full rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/40 pl-7 pr-8 text-[12px] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--accent-presence)] [&::-webkit-search-cancel-button]:appearance-none"
             />
+            {query ? (
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                aria-label="Clear search"
+                className="focus-ring absolute right-1.5 top-1/2 inline-flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]"
+              >
+                <Icon name="ph:x-bold" width={10} />
+              </button>
+            ) : null}
           </div>
           {lockToFamiliar ? null : (
             <select
               value={familiarFilter}
               onChange={(event) => setFamiliarFilter(event.target.value)}
+              aria-label="Filter memory by familiar"
               className="focus-ring h-8 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/40 px-2 text-[12px] text-[var(--text-secondary)] focus:border-[var(--accent-presence)]"
             >
               {familiarOptions.map((familiar) => (
@@ -251,7 +335,7 @@ export function AgentsMemoryView({ familiars, activeFamiliar, onOpenMemoryFile, 
         {error ? <div className="mt-2 text-[11px] text-[var(--color-warning)]">{error}</div> : null}
       </div>
 
-      <div className={`min-h-0 flex-1 ${compact ? "flex flex-col gap-4 overflow-y-auto p-4" : selectedRowId ? "grid gap-4 overflow-y-auto p-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(280px,360px)]" : "grid gap-4 overflow-y-auto p-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"}`}>
+      <div className={`min-h-0 flex-1 ${contentClass}`}>
         {compact && loaded && !error && visibleCoven.length === 0 && visibleFiles.length === 0 ? (
           <div className="grid place-items-center rounded-lg border border-dashed border-[var(--border-hairline)] bg-[var(--bg-raised)]/25 px-4 py-10 text-center">
             <Icon name="ph:brain" width={22} className="text-[var(--text-muted)]" />
@@ -264,6 +348,26 @@ export function AgentsMemoryView({ familiars, activeFamiliar, onOpenMemoryFile, 
           </div>
         ) : (
           <>
+        {!compact && !hasFamiliar ? (
+          <div className="xl:col-[1/-1] flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-dashed border-[var(--border-hairline)] bg-[var(--bg-raised)]/20 px-3.5 py-2.5 text-[11px] leading-5">
+            <Icon name="ph:brain" width={14} className="shrink-0 text-[var(--text-muted)]" />
+            {loaded ? (
+              error ? (
+                <span className="text-[var(--color-warning)]">Couldn’t load familiar memories. See the error above and try again.</span>
+              ) : query ? (
+                <span className="text-[var(--text-muted)]">No familiar memories match “{query.trim()}”.</span>
+              ) : (
+                <span className="text-[var(--text-muted)]">
+                  <span className="font-medium text-[var(--text-secondary)]">No familiar memories yet for {selectedFamiliar?.display_name ?? "this familiar"}.</span>{" "}
+                  They’re saved during chats; harness-written memory files appear in the list below.
+                </span>
+              )
+            ) : (
+              <span className="text-[var(--text-muted)]">Loading memories…</span>
+            )}
+          </div>
+        ) : null}
+        {compact || hasFamiliar ? (
         <section className="min-h-0">
           <div className="mb-2 flex items-center justify-between">
             <h3 className="text-[11px] font-semibold uppercase tracking-widest text-[var(--text-secondary)]">Familiar memory</h3>
@@ -274,8 +378,9 @@ export function AgentsMemoryView({ familiars, activeFamiliar, onOpenMemoryFile, 
               {loaded ? (error ? "Couldn’t load familiar memories. See the error above and try again." : "No familiar memories match this view.") : "Loading memories..."}
             </div>
           ) : (
+            <>
             <div className="grid gap-2 md:grid-cols-2">
-              {visibleCoven.slice(0, effectiveLimit === Infinity ? 80 : effectiveLimit).map((entry) => {
+              {visibleCoven.slice(0, fullView ? familiarLimit : effectiveLimit).map((entry) => {
                 const familiar = familiarById.get(entry.familiar_id);
                 return (
                   <article
@@ -322,20 +427,55 @@ export function AgentsMemoryView({ familiars, activeFamiliar, onOpenMemoryFile, 
                 );
               })}
             </div>
+            {fullView && visibleCoven.length > familiarLimit ? (
+              <button
+                type="button"
+                onClick={() => setFamiliarLimit((n) => n + FAMILIAR_PAGE)}
+                className="focus-ring mt-2 inline-flex h-7 items-center gap-1 rounded-md border border-[var(--border-hairline)] px-2.5 text-[11px] text-[var(--text-secondary)] hover:bg-[var(--bg-raised)] hover:text-[var(--text-primary)]"
+              >
+                <Icon name="ph:caret-down" width={11} />
+                Show more · {familiarLimit} of {visibleCoven.length}
+              </button>
+            ) : null}
+            </>
           )}
         </section>
+        ) : null}
 
         <section className="min-h-0">
-          <div className="mb-2 flex items-center justify-between">
+          <div className="mb-2 flex items-center justify-between gap-2">
             <h3 className="text-[11px] font-semibold uppercase tracking-widest text-[var(--text-secondary)]">Memory files</h3>
-            <span className="text-[10px] text-[var(--text-muted)]">{visibleFiles.length} visible</span>
+            <div className="flex items-center gap-2">
+              {compact ? null : (
+                <label className="flex items-center gap-1 text-[10px] text-[var(--text-muted)]">
+                  <span className="sr-only">Sort memory files</span>
+                  <Icon name="ph:caret-up-down" width={11} aria-hidden />
+                  <select
+                    value={sortMode}
+                    onChange={(event) => setSortMode(event.target.value as typeof sortMode)}
+                    aria-label="Sort memory files"
+                    className="focus-ring rounded border border-[var(--border-hairline)] bg-[var(--bg-raised)]/40 py-0.5 pl-1 pr-4 text-[10px] text-[var(--text-secondary)]"
+                  >
+                    <option value="recent">Recent</option>
+                    <option value="name">Name</option>
+                    <option value="size">Size</option>
+                  </select>
+                </label>
+              )}
+              <span className="text-[10px] text-[var(--text-muted)]">
+                {fullView && visibleFiles.length > fileLimit
+                  ? `${fileLimit} of ${visibleFiles.length}`
+                  : `${visibleFiles.length} visible`}
+              </span>
+            </div>
           </div>
           <MemoryFilesList
             entries={visibleFiles}
             onOpen={onOpenMemoryFile}
             loaded={loaded}
             error={error}
-            limit={effectiveLimit === Infinity ? 160 : effectiveLimit}
+            limit={fullView ? fileLimit : effectiveLimit}
+            onShowMore={fullView ? () => setFileLimit((n) => n + FILE_PAGE) : undefined}
             activeFamiliarId={familiarFilter}
             onSelect={compact ? undefined : (rowId) => setSelectedRowId(rowId)}
             selectedRowId={compact ? null : selectedRowId}
@@ -393,12 +533,14 @@ export function AgentsMemoryView({ familiars, activeFamiliar, onOpenMemoryFile, 
                     <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] text-[var(--text-muted)]">
                       <span className="rounded bg-[var(--bg-elevated)] px-1.5 py-0.5 text-[var(--text-secondary)]">{entry.sourceKindLabel}</span>
                       <span className="rounded bg-[var(--bg-elevated)] px-1.5 py-0.5">{entry.rootLabel}</span>
+                      {formatBytes(entry.size) ? <span className="rounded bg-[var(--bg-elevated)] px-1.5 py-0.5">{formatBytes(entry.size)}</span> : null}
                       <span className="rounded bg-[var(--bg-elevated)] px-1.5 py-0.5">{age(entry.modified)}</span>
                     </div>
                     <div className="mt-3 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-elevated)]/40 px-2.5 py-2">
                       <div className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-secondary)]">Path</div>
                       <code className="mt-1 block break-all font-mono text-[11px] leading-4 text-[var(--text-primary)]">{compactPath(entry.fullPath)}</code>
                     </div>
+                    <MemoryFilePreview path={entry.fullPath} />
                     <div className="mt-3 flex flex-wrap items-center gap-1.5">
                       <button
                         type="button"
@@ -486,6 +628,8 @@ type MemoryFilesListProps = {
   activeFamiliarId?: string | null;
   onSelect?: (rowId: string) => void;
   selectedRowId?: string | null;
+  /** When set and entries exceed `limit`, render a footer button that reveals more. */
+  onShowMore?: () => void;
 };
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -603,6 +747,82 @@ function ExpandMemoryButton({
   );
 }
 
+function MemoryFilePreview({ path }: { path: string }) {
+  const [text, setText] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setText(null);
+    setError(null);
+    void (async () => {
+      try {
+        const res = await fetch(`/api/memory/file?path=${encodeURIComponent(path)}`, { cache: "no-store" });
+        const json = await res.json();
+        if (cancelled) return;
+        if (json.ok) setText(typeof json.text === "string" ? json.text : "");
+        else setError(json.error ?? "Failed to load preview");
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load preview");
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [path]);
+
+  const MAX_LINES = 40;
+  const lines = text?.split("\n") ?? [];
+  const clipped = lines.length > MAX_LINES;
+  const preview = clipped ? lines.slice(0, MAX_LINES).join("\n") : text ?? "";
+
+  return (
+    <div className="mt-3">
+      <div className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-secondary)]">Preview</div>
+      <div className="mt-1 max-h-[280px] overflow-auto rounded-md border border-[var(--border-hairline)] bg-[var(--bg-elevated)]/40 p-2">
+        {error ? (
+          <p className="text-[11px] text-[var(--color-warning)]">{error}</p>
+        ) : text === null ? (
+          <p className="text-[11px] text-[var(--text-muted)]">Loading preview…</p>
+        ) : preview.trim() === "" ? (
+          <p className="text-[11px] text-[var(--text-muted)]">Empty file.</p>
+        ) : (
+          <pre className="whitespace-pre-wrap break-words font-mono text-[10px] leading-4 text-[var(--text-secondary)]">{preview}</pre>
+        )}
+      </div>
+      {clipped ? (
+        <p className="mt-1 text-[10px] text-[var(--text-muted)]">Showing first {MAX_LINES} lines — Expand for the full file.</p>
+      ) : null}
+    </div>
+  );
+}
+
+function SourceFilterChip({
+  label,
+  count,
+  active,
+  onClick,
+}: {
+  label: string;
+  count: number;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`focus-ring inline-flex h-6 items-center gap-1 rounded-md border px-1.5 text-[11px] transition-colors ${
+        active
+          ? "border-[var(--accent-presence)] bg-[var(--accent-presence)]/12 text-[var(--text-primary)]"
+          : "border-transparent text-[var(--text-secondary)] hover:border-[var(--border-hairline)] hover:bg-[var(--bg-raised)]/50"
+      }`}
+    >
+      <span className="text-[var(--text-muted)]">{label}</span>
+      <span className="font-semibold text-[var(--text-primary)]">{count}</span>
+    </button>
+  );
+}
+
 export function MemoryFilesList({
   entries,
   onOpen,
@@ -614,8 +834,10 @@ export function MemoryFilesList({
   activeFamiliarId,
   onSelect,
   selectedRowId,
+  onShowMore,
 }: MemoryFilesListProps) {
   const sliced = entries.slice(0, limit ?? entries.length);
+  const hidden = entries.length - sliced.length;
   return (
     <div
       className={[
@@ -633,7 +855,11 @@ export function MemoryFilesList({
         </div>
       ) : (
         <ul className={listClassName ?? "max-h-[640px] divide-y divide-[var(--border-hairline)] overflow-y-auto"}>
-          {sliced.map((entry) => (
+          {sliced.map((entry) => {
+            const base = fileBase(entry.relPath);
+            const dir = fileDir(entry.fullPath);
+            const size = formatBytes(entry.size);
+            return (
             <li
               key={entry.fullPath}
               className={`flex min-w-0 items-stretch gap-1 px-1 ${selectedRowId === `file:${entry.fullPath}` ? "bg-[var(--bg-raised)]/60" : "hover:bg-[var(--bg-raised)]"}`}
@@ -645,9 +871,11 @@ export function MemoryFilesList({
               >
                 <Icon name="ph:file-text" width={13} className="mt-0.5 shrink-0 text-[var(--text-muted)]" />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[12px] text-[var(--text-primary)]">{entry.relPath}</span>
+                  <span className="block truncate text-[12px] font-medium text-[var(--text-primary)]" title={entry.relPath}>{base}</span>
                   <span className="mt-0.5 block truncate font-mono text-[10px] text-[var(--text-muted)]">
-                    {entry.sourceKindLabel} · {entry.rootLabel} · {compactPath(entry.fullPath)}
+                    {entry.sourceKindLabel}
+                    {dir ? <> · {dir}</> : null}
+                    {size ? <> · {size}</> : null}
                   </span>
                   {(entry.harnessId || entry.runtimeId || entry.origin || (entry.familiarId && entry.familiarId !== activeFamiliarId)) ? (
                     <span className="mt-1 flex flex-wrap gap-1 text-[10px] text-[var(--text-muted)]">
@@ -664,9 +892,20 @@ export function MemoryFilesList({
                 <ExpandMemoryButton path={entry.fullPath} title={entry.relPath} variant="compact" />
               </div>
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
+      {onShowMore && hidden > 0 ? (
+        <button
+          type="button"
+          onClick={onShowMore}
+          className="focus-ring flex w-full items-center justify-center gap-1.5 border-t border-[var(--border-hairline)] px-3 py-2 text-[11px] text-[var(--text-secondary)] hover:bg-[var(--bg-raised)] hover:text-[var(--text-primary)]"
+        >
+          <Icon name="ph:caret-down" width={11} />
+          Show {Math.min(hidden, 80)} more · {sliced.length} of {entries.length}
+        </button>
+      ) : null}
     </div>
   );
 }
