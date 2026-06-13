@@ -86,10 +86,12 @@ assert.match(
   /edge-rail-chip[\s\S]{0,80}ph:cat/,
   "right agent rail toggle renders its icon inside the pressable chip",
 );
-assert.match(
+// The right rail is Salem-only — the browser globe tab was retired; the
+// Browser surface is still reachable via the nav (⌘7).
+assert.doesNotMatch(
   workspace,
-  /edge-rail-chip[\s\S]{0,80}ph:globe/,
-  "right agent rail exposes a browser tab inside the pressable chip",
+  /agent-trigger-rail__toggle[\s\S]{0,160}ph:globe/,
+  "right agent rail no longer exposes the browser globe tab",
 );
 assert.match(
   css,
