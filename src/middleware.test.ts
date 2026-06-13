@@ -27,7 +27,7 @@ assert.match(source, /unsupported content-type/, "middleware should reject unsaf
 // the bypass ran first and silently let non-loopback callers through during
 // `pnpm dev` if anything ever bound the dev server outside 127.0.0.1.
 {
-  const hostIdx = source.indexOf('isAllowedApiHost(req.headers.get("host"), mobileAccessAuthenticated)');
+  const hostIdx = source.indexOf("isAllowedApiHost(requestHost, mobileAccessAuthenticated)");
   const originIdx = source.indexOf('isAllowedRequestSource(req.headers.get("origin")');
   const refererIdx = source.indexOf('isAllowedRequestSource(req.headers.get("referer")');
   const contentTypeIdx = source.indexOf("unsupported content-type");
