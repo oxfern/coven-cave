@@ -44,8 +44,30 @@ export type WorkflowSummary = {
     coven_code?: boolean;
     coven_cave?: boolean;
   };
+  /**
+   * Where the manifest lives, derived from its on-disk location — not stored in
+   * the YAML. `public` manifests are repo templates under `workflows/`;
+   * `personal` manifests are private to the user under `~/.coven/workflows/`.
+   * The Workflow Studio groups the library by this so the two never blur.
+   */
   storage?: "public" | "personal";
 };
+
+/** A workflow whose manifest lives in the user's private Coven home (`~/.coven`). */
+export function isPersonalWorkflow(workflow: WorkflowSummary): boolean {
+  return workflow.storage === "personal";
+}
+
+/**
+ * A shared repo template (lives under `workflows/`). Templates are read-only in
+ * the Cave: deleting is blocked, and saving an edit *forks* a personal copy
+ * under `~/.coven` rather than mutating the repo file. `storage` is only set
+ * once the runtime has resolved the manifest's origin; an unknown origin is
+ * treated as editable so behavior is unchanged until the runtime lands.
+ */
+export function isPublicTemplate(workflow: WorkflowSummary): boolean {
+  return workflow.storage === "public";
+}
 
 export type WorkflowValidationTier = "schema" | "semantic" | "preflight";
 

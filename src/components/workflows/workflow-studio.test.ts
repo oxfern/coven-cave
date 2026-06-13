@@ -67,6 +67,15 @@ assert.match(
   "WorkflowManifestPreview should keep the sidecar boundary visible",
 );
 assert.match(css, /\.workflow-studio-shell/, "workflow CSS should style the studio shell");
+assert.match(css, /\.workflow-studio-shell \{[\s\S]{0,700}padding:\s*16px 16px 16px 0/, "Studio shell drops left padding so the library hugs the app nav (no blank band)");
+{
+  // The collapsed left library rail keeps its hairline divider but drops the
+  // background fill so the toggle blends with the canvas.
+  const collapsedLeft = css.match(/\.workflow-studio-shell\.is-left-collapsed > \.workflow-studio-library-panel \{[\s\S]*?\}/);
+  assert.ok(collapsedLeft, "Collapsed left library rail rule should exist");
+  assert.ok(/border-right/.test(collapsedLeft[0]), "Collapsed left rail keeps its hairline divider");
+  assert.ok(!/background/.test(collapsedLeft[0]), "Collapsed left rail should have no background fill");
+}
 assert.match(css, /@media \(max-width: 860px\)/, "workflow CSS should include mobile studio layout");
 assert.match(
   css,
@@ -166,6 +175,24 @@ assert.match(library, /Duplicate/, "Library should offer duplicate");
 assert.match(library, /Delete/, "Library should offer delete");
 assert.match(library, /onCreateRequest/, "Library should offer new-workflow creation");
 assert.match(library, /workflow-dirty-dot/, "Library should mark unsaved drafts");
+
+// Personal vs public split: the library groups by manifest origin so private
+// (~/.coven) workflows never blur into shared repo templates.
+assert.match(library, /isPersonalWorkflow\(workflow\)/, "Library should classify workflows by storage origin");
+assert.match(library, /groups\.personal[\s\S]{0,400}Personal[\s\S]{0,400}groups\.templates[\s\S]{0,400}Templates/, "Library should render Personal then Templates groups");
+assert.match(library, /workflow-origin-dot-personal/, "Personal rows should carry a personal origin badge");
+assert.match(library, /workflow-origin-dot-public/, "Template rows should carry a public origin badge");
+assert.match(css, /\.workflow-library-group-heading/, "CSS should style the origin group headings");
+assert.match(css, /\.workflow-origin-dot-personal/, "CSS should style the personal origin badge");
+assert.match(css, /\.workflow-origin-dot-public/, "CSS should style the public origin badge");
+
+// Read-only templates: delete is blocked and saving forks a personal copy.
+assert.match(library, /disabled=\{isPublicTemplate\(selectedWorkflow\)\}/, "Delete should be disabled for read-only templates");
+assert.match(library, /Read-only template/, "Library footer should flag read-only templates");
+assert.match(css, /\.workflow-library-footer-note/, "CSS should style the read-only template note");
+assert.match(css, /\.workflow-library-footer button:disabled/, "CSS should dim disabled footer buttons");
+assert.match(runStrip, /isPublicTemplate\(workflow\)/, "Run strip should detect read-only templates");
+assert.match(runStrip, /Fork & Save/, "Save button should read 'Fork & Save' for templates");
 
 assert.match(manifestPreview, /workflowToYaml/, "Manifest preview should render live canonical YAML");
 
