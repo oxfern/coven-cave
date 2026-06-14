@@ -16,16 +16,25 @@ assert.match(projectsView, /onUpdateRoot=\{updateRoot\}/, "ProjectsView should w
 assert.match(projectsView, /onDelete=\{deleteProject\}/, "ProjectsView should wire deletion");
 assert.match(projectsView, /onNewChat\?\.?\(project\.root\)/, "Project rows should start chats with the selected project root");
 assert.match(projectsView, /chatCounts\.get\(normalizeProjectRoot\(project\.root\)\)/, "Project rows should count chats by normalized project root");
-assert.match(projectsView, /Loading projects\.\.\./, "ProjectsView should expose loading feedback");
+assert.match(projectsView, /import \{ EmptyState \} from "@\/components\/ui\/empty-state"/, "uses EmptyState primitive");
+assert.match(projectsView, /import \{ ErrorState \} from "@\/components\/ui\/error-state"/, "uses ErrorState primitive");
+assert.match(projectsView, /import \{ SkeletonRows \} from "@\/components\/ui\/skeleton"/, "uses SkeletonRows for first load");
+assert.match(projectsView, /<SkeletonRows/, "first load renders skeleton rows");
+assert.match(projectsView, /<EmptyState/, "empty state renders EmptyState");
+assert.match(projectsView, /<ErrorState/, "error renders ErrorState");
+assert.doesNotMatch(projectsView, /Loading projects\.\.\./, "bare loading text replaced by skeletons");
+assert.match(projectsView, /error && projects\.length === 0 \?/, "full-screen error only when there is no list to fall back to");
 
-assert.match(workspaceMode, /\| "projects"/, "WorkspaceMode should include projects");
-assert.match(workspace, /import \{ ProjectsView \} from "@\/components\/projects-view"/, "Workspace should import ProjectsView");
-assert.match(workspace, /projects: "Projects"/, "Workspace h1 title map should cover projects mode");
-assert.match(workspace, /case "\/projects":[\s\S]*?setMode\("projects"\)/, "/projects slash command should open the Projects workspace");
-assert.match(workspace, /mode === "projects" \? \([\s\S]*?<ProjectsView[\s\S]*?sessions=\{sessions\}/, "Workspace should render ProjectsView for projects mode");
+const chatTabEvents = readFileSync(new URL("../lib/chat-tab-events.ts", import.meta.url), "utf8");
 
-assert.match(sidebar, /\| "projects"/, "Sidebar mode union should include projects");
-assert.match(sidebar, /\{ id: "projects", label: "Projects", iconName: "ph:folders-bold", group: "tools"/, "Sidebar should expose Projects in Tools");
+assert.doesNotMatch(workspaceMode, /\| "projects"/, "projects is no longer a top-level workspace mode");
+assert.doesNotMatch(workspace, /import \{ ProjectsView \} from "@\/components\/projects-view"/, "workspace no longer renders ProjectsView directly");
+assert.doesNotMatch(workspace, /mode === "projects" \?/, "workspace has no projects render branch");
+assert.match(chatTabEvents, /CHAT_OPEN_PROJECTS_EVENT/, "reroute event exists");
+assert.match(workspace, /case "\/projects":[\s\S]*?setMode\("chat"\)[\s\S]*?CHAT_OPEN_PROJECTS_EVENT/, "/projects reroutes: setMode(chat) + chat-open-projects event");
+
+assert.match(sidebar, /\{ id: "projects", label: "Projects", iconName: "ph:folders-bold", group: "tools"/, "Sidebar keeps the Projects Tools entry");
+assert.match(sidebar, /CHAT_OPEN_PROJECTS_EVENT/, "Sidebar Projects entry reroutes into the chat tab");
 
 for (const icon of [
   "ph:folders-bold",
@@ -33,9 +42,17 @@ for (const icon of [
   "ph:folder-simple-dashed",
   "ph:chat-circle-dots-bold",
   "ph:trash-bold",
-  "ph:circle-notch-bold",
+  "ph:pencil-simple-bold",
 ]) {
   assert.match(iconSource, new RegExp(`"${icon}"`), `${icon} should be in the icon allowlist`);
 }
+
+// Row actions must stay keyboard-reachable (focus-within), never display:none.
+assert.match(projectsView, /group-hover:opacity-100/, "row actions reveal on hover");
+assert.match(projectsView, /group-focus-within:opacity-100/, "row actions also reveal on keyboard focus");
+assert.match(projectsView, /aria-label=\{`New chat in /, "new-chat action is labeled per project");
+assert.match(projectsView, /aria-label=\{`Rename \$\{project\.name\}`\}/, "rename action labeled per project");
+assert.match(projectsView, /aria-label=\{`Delete \$\{project\.name\}`\}/, "delete action labeled per project");
+assert.match(projectsView, /motion-reduce:transition-none/, "reveal respects reduced motion");
 
 console.log("projects-view.test.ts: ok");

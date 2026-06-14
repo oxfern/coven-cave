@@ -40,7 +40,7 @@ import { LibraryView } from "@/components/library-view";
 import { CapabilitiesViewSurface } from "@/components/capabilities-view";
 import { PluginsView } from "@/components/plugins-view";
 import { WorkflowsView } from "@/components/workflows-view";
-import { ProjectsView } from "@/components/projects-view";
+import { CHAT_OPEN_PROJECTS_EVENT } from "@/lib/chat-tab-events";
 import { HomeComposer } from "@/components/home-composer";
 import { ChatSurface, type RightPanelKind } from "@/components/chat-surface";
 import { SalemChatPanel } from "@/components/salem/salem-widget";
@@ -81,7 +81,6 @@ const WORKSPACE_MODE_TITLES: Record<WorkspaceMode, string> = {
   roles: "Roles",
   workflows: "Workflows",
   capabilities: "Capabilities",
-  projects: "Projects",
 };
 
 // Chat deep links (CHAT-D9-01): `#chat-<sessionId>` re-enters a specific
@@ -328,7 +327,11 @@ export function Workspace() {
     setActiveId(id);
     if (!id) return;
     const last = getLastSurface(id);
-    if (last) setMode(last as WorkspaceMode);
+    // Guard against retired/unknown persisted modes (e.g. the removed
+    // "projects" standalone surface). Only restore if the stored string is
+    // still a valid WorkspaceMode; otherwise fall back to the default.
+    const VALID_MODES = new Set<string>(Object.keys(WORKSPACE_MODE_TITLES));
+    if (last && VALID_MODES.has(last)) setMode(last as WorkspaceMode);
   }, []);
 
   const selectFamiliar = useCallback((id: string) => {
@@ -720,7 +723,7 @@ export function Workspace() {
 
   useEffect(() => {
     const SURFACE_ORDER: WorkspaceMode[] = [
-      "home", "chat", "board", "calendar", "inbox", "library", "browser", "terminal", "projects",
+      "home", "chat", "board", "calendar", "inbox", "library", "browser", "terminal",
     ];
 
     const onKey = (e: KeyboardEvent) => {
@@ -729,6 +732,13 @@ export function Workspace() {
 
       // ⌘1..⌘9 -> sidebar surface
       if (meta && !alt && /^[1-9]$/.test(e.key)) {
+        // ⌘9 -> Projects tab inside chat surface (no SURFACE_ORDER lookup needed)
+        if (e.key === "9") {
+          e.preventDefault();
+          setMode("chat");
+          window.setTimeout(() => window.dispatchEvent(new CustomEvent(CHAT_OPEN_PROJECTS_EVENT)), 0);
+          return;
+        }
         const idx = parseInt(e.key, 10) - 1;
         const target = SURFACE_ORDER[idx];
         if (target) {
@@ -970,7 +980,8 @@ export function Workspace() {
         setMode("terminal");
         return true;
       case "/projects":
-        setMode("projects");
+        setMode("chat");
+        window.setTimeout(() => window.dispatchEvent(new CustomEvent(CHAT_OPEN_PROJECTS_EVENT)), 0);
         return true;
       case "/library":
         setMode("library");
@@ -1323,13 +1334,6 @@ export function Workspace() {
       <WorkflowsView
         initialWorkflowId={workflowDeepLink}
         onDeepLinkConsumed={() => setWorkflowDeepLink(null)}
-      />
-    ) : mode === "projects" ? (
-      <ProjectsView
-        sessions={sessions}
-        onNewChat={(projectRoot) => {
-          startAgentChat(activeId, projectRoot);
-        }}
       />
     ) : mode === "capabilities" ? (
       <CapabilitiesViewSurface activeHarness={active?.harness ?? null} />
