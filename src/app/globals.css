@@ -3088,35 +3088,40 @@ select {
 }
 
 /* ────────────────────────────────────────────────
-   Familiar avatar rail — leftmost 52px zone
-   (Phase 1, shell-ia-redesign)
+   Familiar dock — horizontal scope strip in the left sidebar
+   (replaces the FamiliarScopeSelect dropdown)
    ──────────────────────────────────────────────── */
 
-.familiar-avatar-rail {
-  width: 52px;
+.familiar-dock { width: 100%; }
+.familiar-dock__row {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  padding: 12px 0;
-  gap: 12px;
-  background: var(--bg-panel);
-  border-right: 1px solid var(--border-hairline);
-  user-select: none;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
 }
-
-.familiar-avatar-rail__list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  overflow-y: auto;
-  flex: 1;
-  min-height: 0;
-  width: 100%;
+.familiar-dock__all {
+  display: inline-flex;
   align-items: center;
-  scrollbar-width: thin;
+  gap: 5px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border-hairline);
+  background: var(--bg-raised);
+  color: var(--text-secondary);
+  font-size: 12px;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
 }
-
-.familiar-avatar-rail__avatar {
+.familiar-dock__all--active {
+  background: var(--accent-presence);
+  border-color: var(--accent-presence);
+  color: #fff;
+}
+.familiar-dock__sortable { display: inline-flex; flex-shrink: 0; }
+.familiar-dock__avatar {
   position: relative;
   width: 32px;
   height: 32px;
@@ -3125,184 +3130,74 @@ select {
   background: var(--bg-raised);
   display: grid;
   place-items: center;
+  flex-shrink: 0;
   cursor: pointer;
   transition: transform var(--duration-fast) var(--ease-standard);
 }
-
-.familiar-avatar-rail__avatar:hover {
-  transform: scale(1.06);
+.familiar-dock__avatar:hover { transform: scale(1.06); }
+.familiar-dock__avatar--active {
+  box-shadow: 0 0 0 2px var(--familiar-accent, var(--accent-presence)), 0 0 0 4px var(--bg-panel);
 }
-
-.familiar-avatar-rail__avatar--active::before {
-  content: "";
-  position: absolute;
-  left: -10px;
-  top: 6px;
-  bottom: 6px;
-  width: 3px;
-  border-radius: 3px;
-  background: var(--familiar-accent, var(--accent-presence));
-}
-
-.familiar-avatar-rail__presence {
-  position: absolute;
-  right: -1px;
-  bottom: -1px;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
+.familiar-dock__presence {
+  position: absolute; right: -1px; bottom: -1px;
+  width: 10px; height: 10px; border-radius: 50%;
   border: 2px solid var(--bg-panel);
 }
-
-.familiar-avatar-rail__unread {
-  position: absolute;
-  right: -2px;
-  top: -2px;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--color-danger);
-  border: 2px solid var(--bg-panel);
+.familiar-dock__unread {
+  position: absolute; right: -2px; top: -2px;
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--color-danger); border: 2px solid var(--bg-panel);
 }
-
-.familiar-avatar-rail__item {
+.familiar-dock__overflow,
+.familiar-dock__add {
   position: relative;
-  display: flex;
-  justify-content: center;
-  width: 100%;
-}
-
-.familiar-avatar-rail__edit {
-  position: absolute;
-  top: -3px;
-  right: 4px;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 120ms ease;
-  display: grid;
-  place-items: center;
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
-  background: var(--bg-raised);
-  color: var(--text-secondary);
-  border: 1px solid var(--border-hairline);
-  cursor: pointer;
-  z-index: 1;
-}
-
-.familiar-avatar-rail__item:hover .familiar-avatar-rail__edit,
-.familiar-avatar-rail__item:focus-within .familiar-avatar-rail__edit {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-/* Pointer-less devices (touch) can't hover — keep the customize affordance
- * visible at rest so it's actually reachable. */
-@media (hover: none) {
-  .familiar-avatar-rail__edit {
-    opacity: 0.7;
-    pointer-events: auto;
-  }
-}
-
-.familiar-avatar-rail__edit:hover {
-  color: var(--text-primary);
-  background: color-mix(in oklch, var(--familiar-accent, var(--accent-presence)) 18%, var(--bg-raised));
-}
-
-.familiar-avatar-rail__edit:focus-visible {
-  opacity: 1;
-  pointer-events: auto;
-  outline: var(--ring-width) solid var(--ring-focus);
-  outline-offset: 1px;
-}
-.familiar-avatar-rail__list > li[data-dragging="true"] {
-  opacity: 0.4;
-}
-.familiar-avatar-rail__list > li[data-drop-target="true"] {
-  box-shadow: inset 0 2px 0 0 var(--familiar-accent, var(--accent-presence));
-}
-
-.familiar-avatar-rail__add-wrap {
-  position: relative;
-  display: flex;
-  justify-content: center;
-  width: 100%;
-}
-
-.familiar-avatar-rail__add-menu {
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  margin-bottom: 6px;
-  min-width: 168px;
-  background: var(--bg-base);
-  border: 1px solid var(--border-hairline);
-  border-radius: 8px;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.28);
-  padding: 4px;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  z-index: 40;
-}
-
-.familiar-avatar-rail__add-menu-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  font-size: 12px;
-  color: var(--text-primary);
-  background: transparent;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  text-align: left;
-  width: 100%;
-}
-
-.familiar-avatar-rail__add-menu-item:hover {
-  background: var(--bg-raised);
-}
-
-.familiar-avatar-rail__add,
-.familiar-avatar-rail__toggle {
-  width: 26px;
-  height: 26px;
+  display: grid; place-items: center;
+  width: 30px; height: 30px;
   border-radius: 50%;
-  background: transparent;
+  flex-shrink: 0;
+  cursor: pointer;
   color: var(--text-muted);
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  transition: color var(--duration-fast) var(--ease-standard),
-              background var(--duration-fast) var(--ease-standard),
-              border-color var(--duration-fast) var(--ease-standard);
 }
-
-.familiar-avatar-rail__add {
-  border: 1px dashed var(--border-strong);
+.familiar-dock__overflow { background: var(--bg-raised); border: 1px solid var(--border-hairline); }
+.familiar-dock__add { background: transparent; border: 1px dashed var(--border-strong); }
+.familiar-dock__overflow-badge {
+  position: absolute; top: -3px; right: -3px;
+  min-width: 14px; height: 14px; padding: 0 3px;
+  border-radius: 999px;
+  background: var(--bg-elevated); border: 2px solid var(--bg-panel);
+  font-size: 9px; line-height: 1; display: grid; place-items: center;
+  color: var(--text-secondary);
 }
-
-.familiar-avatar-rail__toggle {
-  border: 1px solid var(--border-hairline);
-  margin-top: auto;
+/* Popover */
+.familiar-dock__pop { display: flex; flex-direction: column; }
+.familiar-dock__pop-search {
+  width: 100%; height: 32px; padding: 0 10px;
+  border: 0; border-bottom: 1px solid var(--border-hairline);
+  background: transparent; color: var(--text-primary); font-size: 12.5px; outline: none;
 }
-
-.familiar-avatar-rail__add:hover,
-.familiar-avatar-rail__toggle:hover {
-  color: var(--text-primary);
-  background: var(--bg-hover);
-  border-color: var(--border-strong);
+.familiar-dock__pop-row { display: flex; align-items: center; }
+.familiar-dock__pop-row:hover,
+.familiar-dock__pop-row--active { background: var(--bg-raised); }
+.familiar-dock__pop-pick {
+  flex: 1; display: flex; align-items: center; gap: 9px;
+  padding: 7px 10px; background: transparent; border: 0; cursor: pointer; min-width: 0;
 }
-
-.familiar-avatar-rail__add:focus-visible,
-.familiar-avatar-rail__toggle:focus-visible {
-  outline: var(--ring-width) solid var(--ring-focus);
-  outline-offset: 2px;
+.familiar-dock__pop-name { color: var(--text-primary); font-size: 13px; }
+.familiar-dock__pop-role { color: var(--text-muted); font-size: 10.5px; }
+.familiar-dock__pop-unread { margin-left: auto; width: 8px; height: 8px; border-radius: 50%; background: var(--color-danger); }
+.familiar-dock__pop-gear { padding: 7px 10px; background: transparent; border: 0; color: var(--text-muted); cursor: pointer; }
+.familiar-dock__pop-foot { display: flex; gap: 6px; padding: 8px 10px; }
+.familiar-dock__pop-btn {
+  flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  padding: 6px 0; border-radius: 7px;
+  border: 1px solid var(--border-hairline); background: var(--bg-raised);
+  color: var(--text-secondary); font-size: 11.5px; cursor: pointer;
+}
+.familiar-dock__pop-btn--pri { background: var(--accent-presence); border-color: var(--accent-presence); color: #fff; }
+.familiar-dock__done {
+  height: 30px; padding: 0 10px; border-radius: 7px; flex-shrink: 0;
+  border: 1px solid var(--accent-presence); background: transparent;
+  color: var(--accent-presence); font-size: 12px; cursor: pointer;
 }
 
 /* ────────────────────────────────────────────────
@@ -4498,33 +4393,6 @@ button:active > .edge-rail-chip {
     padding-bottom: 0;
   }
 
-  /* Avatar rail → horizontal top strip with scrolling avatars. */
-  .familiar-avatar-rail {
-    width: 100%;
-    height: auto;
-    flex-direction: row;
-    padding: 8px 12px 8px calc(12px + var(--sai-left));
-    gap: 10px;
-    border-right: none;
-    border-bottom: 1px solid var(--border-hairline);
-  }
-  .familiar-avatar-rail__list {
-    flex-direction: row;
-    align-items: center;
-    overflow-x: auto;
-    overflow-y: hidden;
-    width: auto;
-    flex: 1;
-  }
-  /* Vertical accent line on the active avatar becomes a horizontal one. */
-  .familiar-avatar-rail__avatar--active::before {
-    left: 50% !important;
-    top: auto !important;
-    bottom: -4px !important;
-    transform: translateX(-50%) !important;
-    width: 14px !important;
-    height: 2px !important;
-  }
   /* Drawer panels: fixed-position overlays that slide in from the side.
      They stay mounted so their content state survives across opens
      (which is why we don't use display:none + remount). Width is capped
