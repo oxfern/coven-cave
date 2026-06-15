@@ -57,8 +57,8 @@ assert.equal(isAllowedApiHost("localhost:3000", false), true);
 assert.equal(isAllowedApiHost("127.0.0.1:3000", false), true);
 assert.equal(
   isAllowedApiHost("cave.tailnet.example.ts.net", false),
-  true,
-  "native mobile uses Tailscale Serve without a browser invite token",
+  false,
+  "Tailscale Serve hosts require a verified mobile invite token",
 );
 assert.equal(
   isAllowedApiHost("cave.tailnet.example.ts.net.evil.com", false),
@@ -126,8 +126,8 @@ assert.equal(
 );
 assert.equal(
   sameOrigin("https://cave.tailnet.example.ts.net", "http://cave.tailnet.example.ts.net"),
-  true,
-  "Tailscale Serve terminates HTTPS before proxying to the local HTTP backend",
+  false,
+  "Tailscale Serve HTTPS/HTTP mismatch no longer allowed without mobile credential",
 );
 
 // ─── isAllowedRequestSource ────────────────────────────────────────────────
@@ -138,8 +138,8 @@ assert.equal(
     "http://cave.tailnet.example.ts.net",
     false,
   ),
-  true,
-  "native mobile Tailscale Serve origins should not require a browser invite token",
+  false,
+  "Tailscale Serve HTTPS to HTTP same-origin normalization requires mobile credential",
 );
 assert.equal(
   isAllowedRequestSource(
@@ -148,8 +148,8 @@ assert.equal(
     false,
     "cave.tailnet.example.ts.net",
   ),
-  true,
-  "Tailscale Serve origins should match the forwarded Host even when Next sees a loopback URL",
+  false,
+  "Tailscale Serve forwarded Host matching must not bypass mobile invite authentication",
 );
 assert.equal(
   isAllowedRequestSource(
@@ -158,8 +158,8 @@ assert.equal(
     false,
     "cave.tailnet.example.ts.net:8443",
   ),
-  true,
-  "Tailscale Serve origins should allow the same non-default HTTPS port as the forwarded Host",
+  false,
+  "Tailscale Serve non-default HTTPS port without mobile credential must be rejected",
 );
 assert.equal(
   isAllowedRequestSource(
