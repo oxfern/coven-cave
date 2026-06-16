@@ -16,6 +16,7 @@ import { useFamiliarImages } from "@/lib/cave-familiar-images";
 import { useFamiliarOverrides } from "@/lib/cave-familiar-overrides";
 import { resolveFamiliar } from "@/lib/familiar-resolve";
 import { FamiliarAvatar } from "@/components/familiar-avatar";
+import { FamiliarInlineCard } from "@/components/familiar-inline-card";
 import type { ChatLinkedContext } from "@/lib/chat-linked-context";
 import {
   MAX_ATTACHMENT_IMAGE_BYTES,
@@ -1377,6 +1378,9 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
   const [error, setError] = useState<string | null>(null);
   const [lastFailedSend, setLastFailedSend] = useState<FailedSend | null>(null);
   const [voiceCallOpen, setVoiceCallOpen] = useState(false);
+  const [expandedAvatarTurnId, setExpandedAvatarTurnId] = useState<string | null>(null);
+  const expandedAvatarTurnIdRef = useRef<string | null>(null);
+  expandedAvatarTurnIdRef.current = expandedAvatarTurnId;
   // Two-step delete, matching the Chats-page rows: the trash icon only ARMS
   // the inline Cancel/Delete confirm; only the explicit Delete commits.
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -1637,6 +1641,9 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
         // the user is finding inside this chat.
         e.stopPropagation();
         openFind();
+      }
+      if (e.key === "Escape" && expandedAvatarTurnIdRef.current) {
+        setExpandedAvatarTurnId(null);
       }
     },
     [openFind],
@@ -3017,6 +3024,8 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
                     onRegenerate={regenerateFor(t)}
                     onReply={replyFor(t)}
                     onOpenUrl={onOpenUrl}
+                    expanded={expandedAvatarTurnId === t.id}
+                    onToggleAvatar={() => setExpandedAvatarTurnId((cur) => (cur === t.id ? null : t.id))}
                   />
                 );
               }
@@ -3050,6 +3059,8 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
                         onRegenerate={regenerateFor(t)}
                         onReply={replyFor(t)}
                         onOpenUrl={onOpenUrl}
+                        expanded={expandedAvatarTurnId === t.id}
+                        onToggleAvatar={() => setExpandedAvatarTurnId((cur) => (cur === t.id ? null : t.id))}
                       />
                     );
                   })}
@@ -3432,6 +3443,8 @@ function TurnRow({
   onRegenerate,
   onReply,
   onOpenUrl,
+  expanded = false,
+  onToggleAvatar,
 }: {
   turn: Turn;
   familiar: Familiar;
@@ -3447,6 +3460,8 @@ function TurnRow({
    *  stages this turn as the composer's quoted reply target. */
   onReply?: () => void;
   onOpenUrl?: (url: string) => void;
+  expanded?: boolean;
+  onToggleAvatar?: () => void;
 }) {
   // CHAT-D13-01: tool activity stays visible while a turn streams (watching
   // tools run IS the live feedback), then hides once the response has fully
@@ -3455,6 +3470,37 @@ function TurnRow({
   // collapses tools on its own because the settled default is hidden.
   const [showToolsOverride, setShowToolsOverride] = useState<boolean | null>(null);
   const showTools = turn.pending ? true : (showToolsOverride ?? false);
+
+  // Click-away dismissal for the inline familiar card. Hooks are placed here
+  // (before any early return) so React's rules-of-hooks are never violated.
+  const avatarWrapRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!expanded) return;
+    const onDown = (e: PointerEvent) => {
+      if (avatarWrapRef.current && !avatarWrapRef.current.contains(e.target as Node)) {
+        onToggleAvatar?.();
+      }
+    };
+    window.addEventListener("pointerdown", onDown);
+    return () => window.removeEventListener("pointerdown", onDown);
+  }, [expanded, onToggleAvatar]);
+
+  // Focus management for the inline familiar card.
+  // When the card opens, move focus to its close button; when it closes,
+  // return focus to the avatar button that triggered it.
+  const avatarBtnRef = useRef<HTMLButtonElement | null>(null);
+  const wasAvatarExpandedRef = useRef(false);
+  useEffect(() => {
+    if (expanded && !wasAvatarExpandedRef.current) {
+      // opened → focus the card's first focusable (close button)
+      const closeBtn = avatarWrapRef.current?.querySelector<HTMLElement>(".familiar-inline-card__close");
+      closeBtn?.focus();
+    } else if (!expanded && wasAvatarExpandedRef.current) {
+      // closed → return focus to the avatar button
+      avatarBtnRef.current?.focus();
+    }
+    wasAvatarExpandedRef.current = expanded;
+  }, [expanded]);
 
   if (turn.role === "system" || turn.role === "user") {
     return (
@@ -3529,9 +3575,26 @@ function TurnRow({
       className={`cave-linear-turn cave-linear-turn--assistant${found ? " cave-turn-found" : ""}`}
     >
       <div className="cave-linear-turn-content text-[14px] leading-relaxed text-[var(--text-primary)] group/turn">
-        {/* Avatar + right column */}
-        <div className="cave-linear-turn-avatar" aria-hidden>
-          <FamiliarIcon familiar={familiar} size="lg" />
+        {/* Avatar (interactive) + right column */}
+        <div className="cave-linear-turn-avatar" ref={avatarWrapRef}>
+          <button
+            ref={avatarBtnRef}
+            type="button"
+            className="cave-linear-turn-avatar-btn"
+            aria-expanded={expanded}
+            aria-controls={`familiar-card-${turn.id}`}
+            aria-label={`Show ${familiar.display_name}'s details`}
+            onClick={onToggleAvatar}
+          >
+            <FamiliarIcon familiar={familiar} size="lg" />
+          </button>
+          {expanded ? (
+            <FamiliarInlineCard
+              familiar={familiar}
+              cardId={`familiar-card-${turn.id}`}
+              onClose={() => onToggleAvatar?.()}
+            />
+          ) : null}
         </div>
         <div className="cave-linear-turn-right">
           <div className="cave-linear-turn-meta">
