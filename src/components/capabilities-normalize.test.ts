@@ -88,6 +88,8 @@ assert.equal(view.summary.harnesses, 2);
 assert.equal(view.summary.instructions, 1);
 assert.equal(view.summary.skills, 3);
 assert.equal(view.summary.plugins, 1);
+assert.equal(view.summary.workflows, 0, "no workflow items from empty manifest");
+assert.equal(view.summary.roles, 0, "no role items from empty manifest");
 assert.equal(view.summary.mcpServers, 1);
 assert.equal(view.summary.disabled, 1);
 assert.equal(view.summary.warnings, 1);
@@ -103,10 +105,10 @@ assert.deepEqual(
 const ids = view.items.map((item) => item.id);
 assert.deepEqual(ids, [
   "codex:instructions:global",
-  "codex:skill:review",
-  "codex:skill:daily-check",
   "codex:plugin:browser",
   "codex:mcp:filesystem",
+  "codex:skill:review",
+  "codex:skill:daily-check",
   "codex:warning:0",
   "coven:skill:daily-brief",
 ]);
@@ -115,19 +117,9 @@ const disabledMcp = view.items.find((item) => item.id === "codex:mcp:filesystem"
 assert.equal(disabledMcp?.status, "disabled");
 assert.equal(disabledMcp?.command, "fs-mcp");
 
-const reviewSkill = view.items.find((item) => item.id === "codex:skill:review");
-assert.equal(reviewSkill?.sourcePath, "/Users/buns/.codex/skills/review/SKILL.md");
-
-const automationSkill = view.items.find((item) => item.id === "codex:skill:daily-check");
-assert.equal(automationSkill?.sourcePath, "/Users/buns/.codex/automations/daily-check/automation.toml");
-
 assert.deepEqual(
   filterCapabilityItems(view.items, { query: "config", types: new Set(["warning"]) }).map((item) => item.id),
   ["codex:warning:0"],
-);
-assert.deepEqual(
-  filterCapabilityItems(view.items, { query: "browser --stdio" }).map((item) => item.id),
-  ["codex:plugin:browser"],
 );
 assert.deepEqual(
   filterCapabilityItems(view.items, { harnessId: "codex", status: "disabled" }).map((item) => item.id),

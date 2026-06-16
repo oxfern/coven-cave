@@ -103,8 +103,7 @@ export function FamiliarStudioBrainTab({ familiar }: Props) {
     if (!manifest) return 0;
     return (
       (manifest.global_instructions.present ? 1 : 0) +
-      manifest.skills.length +
-      manifest.plugins.length
+      manifest.skills.length
     );
   }, [manifest]);
 
@@ -139,7 +138,7 @@ export function FamiliarStudioBrainTab({ familiar }: Props) {
   return (
     <div className="familiar-studio-brain">
       <label className="familiar-studio-brain__row">
-        <span className="familiar-studio-brain__label">Harness</span>
+        <span className="familiar-studio-brain__label">Runtime</span>
         <div className="familiar-studio-brain__control">
           <select
             value={draftHarness}
@@ -311,13 +310,7 @@ export function FamiliarStudioBrainTab({ familiar }: Props) {
                     {manifest.skills.length > 3 ? ` +${manifest.skills.length - 3} more` : ""}</>
                 )}
               </p>
-              <p className="familiar-studio-brain__capabilities-line">
-                <strong>Plugins:</strong> {manifest.plugins.length}
-                {manifest.plugins.length > 0 && (
-                  <> · {manifest.plugins.slice(0, 3).map((p) => p.name).join(", ")}
-                    {manifest.plugins.length > 3 ? ` +${manifest.plugins.length - 3} more` : ""}</>
-                )}
-              </p>
+              {/* Skills are building blocks of Workflows — see the Workflows tab in Capabilities */}
               {manifest.warnings.length > 0 && (
                 <p className="familiar-studio-brain__capabilities-line familiar-studio-brain__capabilities-line--warn">
                   {manifest.warnings.length} parse warning

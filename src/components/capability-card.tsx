@@ -11,15 +11,22 @@ export type GlobalInstructions = {
 export type HarnessCapSkill = {
   id: string;
   name: string;
+  source?: string;
+  harness_id?: string;
   description?: string;
+  version?: string;
+  tags?: string[];
   path: string;
 };
 
-export type HarnessCapPlugin = {
+export type HarnessPlugin = {
   id: string;
   name: string;
+  source?: string;
+  harness_id?: string;
   kind: string;
   enabled: boolean;
+  transport?: string;
   command?: string;
   args?: string[];
 };
@@ -35,7 +42,7 @@ export type HarnessCapabilityManifest = {
   scanned_at: string;
   global_instructions: GlobalInstructions;
   skills: HarnessCapSkill[];
-  plugins: HarnessCapPlugin[];
+  plugins: HarnessPlugin[];
   warnings: CapWarning[];
 };
 
@@ -57,7 +64,7 @@ export function CapabilitiesView({
       <div className="rounded-lg border border-border bg-card px-4 py-6 sm:px-5">
         <p className="mb-3 text-[13px] text-muted-foreground">
           {error === "daemon offline"
-            ? "Coven daemon is offline — harness capabilities require a running daemon."
+            ? "Coven daemon is offline — runtime capabilities require a running daemon."
             : `Could not load capabilities: ${error}`}
         </p>
         <button
@@ -73,7 +80,7 @@ export function CapabilitiesView({
   if (items.length === 0) {
     return (
       <p className="rounded-lg border border-border px-4 py-6 text-center text-[13px] text-muted-foreground">
-        No harness capabilities found. Start the daemon or add a local harness to see its instructions, skills, and plugins.
+        No runtime capabilities found. Start the daemon or add a local runtime to see its instructions, skills, and plugins.
       </p>
     );
   }
@@ -126,8 +133,7 @@ function HarnessCapabilityCard({ manifest }: { manifest: HarnessCapabilityManife
   const initial = label[0]?.toUpperCase() ?? "?";
   const totalItems =
     (manifest.global_instructions.present ? 1 : 0) +
-    manifest.skills.length +
-    manifest.plugins.length;
+    manifest.skills.length;
 
   return (
     <div className="min-w-0 rounded-xl border border-border bg-card">
@@ -193,38 +199,16 @@ function HarnessCapabilityCard({ manifest }: { manifest: HarnessCapabilityManife
           </div>
         ) : null}
 
-        {manifest.plugins.length > 0 ? (
-          <div className="px-4 py-3">
-            <p className="mb-2 text-[11px] font-medium uppercase tracking-widest text-[var(--text-secondary)]">
-              Plugins · {manifest.plugins.length}
+        {manifest.skills && manifest.skills.length > 0 && (
+          <div className="px-4 py-2">
+            <p className="text-[11px] text-muted-foreground">
+              Skills · {manifest.skills.length}
+              {" — "}
+              {manifest.skills.slice(0, 3).map((s) => s.name).join(", ")}
+              {manifest.skills.length > 3 ? ` +${manifest.skills.length - 3} more` : ""}
             </p>
-            <ul className="space-y-1.5">
-              {manifest.plugins.map((plugin) => (
-                <li key={plugin.id} className="flex items-start gap-2">
-                  <Icon name="ph:plug" className="mt-0.5 shrink-0 text-muted-foreground" width="0.75rem" />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="min-w-0 break-words text-[12px] text-foreground">{plugin.name}</p>
-                      <span className="rounded-full bg-muted px-1.5 py-px text-[9px] uppercase tracking-wide text-muted-foreground">
-                        {plugin.kind}
-                      </span>
-                      {!plugin.enabled && (
-                        <span className="rounded-full bg-muted px-1.5 py-px text-[9px] text-muted-foreground">
-                          disabled
-                        </span>
-                      )}
-                    </div>
-                    {plugin.command && (
-                      <p className="break-all font-mono text-[11px] text-muted-foreground sm:truncate">
-                        {plugin.command} {plugin.args?.join(" ")}
-                      </p>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
           </div>
-        ) : null}
+        )}
 
         {manifest.warnings.length > 0 ? (
           <div className="px-4 py-3">

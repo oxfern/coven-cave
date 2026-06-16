@@ -8,7 +8,7 @@ export type CovenSkill = {
   tags?: string[];
 };
 
-export type CapabilityType = "instructions" | "skill" | "plugin" | "mcp" | "warning";
+export type CapabilityType = "instructions" | "skill" | "plugin" | "workflow" | "role" | "mcp" | "warning";
 export type CapabilityStatus = "available" | "enabled" | "disabled" | "warning";
 
 export type CapabilityMapItem = {
@@ -42,6 +42,8 @@ export type CapabilitySummary = {
   instructions: number;
   skills: number;
   plugins: number;
+  workflows: number;
+  roles: number;
   mcpServers: number;
   disabled: number;
   warnings: number;
@@ -114,28 +116,6 @@ export function normalizeCapabilities({
       });
     }
 
-    for (const skill of manifest.skills) {
-      const skillMeta = skill as typeof skill & {
-        source?: string;
-        tags?: string[];
-        version?: string;
-      };
-      manifestItems.push({
-        id: `${manifest.harness_id}:skill:${skill.id}`,
-        type: "skill",
-        harnessId: manifest.harness_id,
-        harnessLabel: label,
-        label: skill.name,
-        status: "available",
-        description: skill.description,
-        sourcePath: skillSourcePath(skill.path),
-        tags: skillMeta.tags,
-        version: skillMeta.version,
-        kind: skillMeta.source,
-        scannedAt: manifest.scanned_at,
-      });
-    }
-
     for (const plugin of manifest.plugins) {
       const type = plugin.kind?.toLowerCase() === "mcp" ? "mcp" : "plugin";
       manifestItems.push({
@@ -148,6 +128,23 @@ export function normalizeCapabilities({
         description: plugin.kind,
         command: [plugin.command, ...(plugin.args ?? [])].filter(Boolean).join(" ") || undefined,
         kind: plugin.kind,
+        scannedAt: manifest.scanned_at,
+      });
+    }
+
+    for (const skill of manifest.skills) {
+      manifestItems.push({
+        id: `${manifest.harness_id}:skill:${skill.id}`,
+        type: "skill",
+        harnessId: manifest.harness_id,
+        harnessLabel: label,
+        label: skill.name,
+        status: "available",
+        description: skill.description,
+        sourcePath: skillSourcePath(skill.path),
+        tags: skill.tags,
+        version: skill.version,
+        kind: skill.source,
         scannedAt: manifest.scanned_at,
       });
     }
@@ -175,7 +172,7 @@ export function normalizeCapabilities({
         manifest.skills.length +
         manifest.plugins.length,
       warningCount: manifest.warnings.length,
-      disabledCount: manifest.plugins.filter((plugin) => !plugin.enabled).length,
+      disabledCount: manifest.plugins.filter((plugin) => !plugin.enabled && plugin.kind?.toLowerCase() === "mcp").length,
       scannedAt: manifest.scanned_at,
     });
     items.push(...manifestItems);
@@ -200,6 +197,8 @@ export function normalizeCapabilities({
     instructions: items.filter((item) => item.type === "instructions").length,
     skills: items.filter((item) => item.type === "skill").length,
     plugins: items.filter((item) => item.type === "plugin").length,
+    workflows: items.filter((item) => item.type === "workflow").length,
+    roles: items.filter((item) => item.type === "role").length,
     mcpServers: items.filter((item) => item.type === "mcp").length,
     disabled: items.filter((item) => item.status === "disabled").length,
     warnings: items.filter((item) => item.status === "warning").length,
