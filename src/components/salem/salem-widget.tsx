@@ -1,33 +1,19 @@
 "use client";
 
 import { useState, useRef, useEffect, type FormEvent } from "react";
-import dynamic from "next/dynamic";
 import { Icon } from "@/lib/icon";
 import type { SalemPreloadContext } from "./salem-context";
 import { MarkdownBlock } from "@/components/message-bubble";
 import { useIsCoarsePointer } from "@/lib/use-viewport";
 import { SalemPathfinderCard } from "./salem-pathfinder-card";
 import type { SalemPathfinderCard as SalemPathfinderCardData } from "@/lib/salem/pathfinder-types";
-
-// Salem's 3D cat avatar shows up in two places — the floating perch
-// (88px) and the chat panel (40px). Dynamic-import so Three.js doesn't
-// land in the initial bundle for users who never open Salem. SSR off
-// because WebGL needs a real canvas. The loading placeholder is the
-// same size as the rendered canvas so layout doesn't shift.
-const SalemCat3D = dynamic(
-  () => import("./salem-cat-3d").then((m) => m.SalemCat3D),
-  {
-    ssr: false,
-    loading: () => null,
-  },
-);
+// Salem's 2D cat avatar (floating perch 88px + chat panel 40px). Replaced the
+// former Three.js scene to drop the heavy WebGL `three` dependency.
+import { SalemCat } from "./salem-cat";
 
 type Message = { role: "user" | "salem"; text: string };
 
 type SalemMood = "idle" | "thinking" | "happy" | "listening";
-type SalemWidgetProps = {
-  retreat?: boolean;
-};
 
 const GREETING = "I'm Salem, your Coven docs familiar. Yes, the black-cat-in-the-corner thing is intentional. I'm preloaded with Coven docs, tool context, guide skills, and Cave route awareness. Ask me about familiars, plugins, roles, the marketplace, or how Cave works.";
 
@@ -35,10 +21,9 @@ function openSalemPanel() {
   window.dispatchEvent(new CustomEvent("cave:salem-open"));
 }
 
-export function SalemWidget({ retreat = false }: SalemWidgetProps) {
+export function SalemWidget() {
   const [mood, setMood] = useState<SalemMood>("idle");
   const [docked, setDocked] = useState(false);
-  const [edgeRetreat, setEdgeRetreat] = useState(false);
 
   useEffect(() => {
     const dock = () => setDocked(true);
@@ -51,25 +36,6 @@ export function SalemWidget({ retreat = false }: SalemWidgetProps) {
     };
   }, []);
 
-  useEffect(() => {
-    const onPointerMove = ({ clientX }: PointerEvent) => {
-      if (clientX >= window.innerWidth - 2) {
-        setEdgeRetreat(true);
-      } else if (clientX < window.innerWidth - 96) {
-        setEdgeRetreat(false);
-      }
-    };
-    const onPointerLeave = ({ clientX }: PointerEvent) => {
-      if (clientX >= window.innerWidth - 2) setEdgeRetreat(true);
-    };
-    window.addEventListener("pointermove", onPointerMove);
-    window.addEventListener("pointerleave", onPointerLeave);
-    return () => {
-      window.removeEventListener("pointermove", onPointerMove);
-      window.removeEventListener("pointerleave", onPointerLeave);
-    };
-  }, []);
-
   const open = () => {
     setDocked(true);
     openSalemPanel();
@@ -79,21 +45,10 @@ export function SalemWidget({ retreat = false }: SalemWidgetProps) {
 
   if (docked) return null;
 
-  const retreating = retreat || edgeRetreat;
-
   return (
-    <button
-      type="button"
-      className={`salem-perch${retreating ? " salem-perch--retreating" : ""}`}
-      onClick={open}
-      aria-label="Open Salem docs familiar"
-      aria-hidden={retreating ? true : undefined}
-      tabIndex={retreating ? -1 : undefined}
-    >
-      <SalemCat3D mood={mood} size={88} />
-      <span className="salem-perch__label" aria-hidden>
-        <Icon name="ph:chat-circle-dots-fill" width={13} />
-      </span>
+    <button type="button" className="salem-perch" onClick={open} aria-label="Open Salem docs familiar">
+      <SalemCat mood={mood} size={88} />
+      <span className="salem-perch__label">Salem</span>
     </button>
   );
 }
@@ -229,7 +184,7 @@ export function SalemChatPanel() {
       {/* Header */}
       <div className="salem-panel__header">
         <div className="salem-panel__header-identity">
-          <SalemCat3D mood={mood} size={40} />
+          <SalemCat mood={mood} size={40} />
           <div>
             <div className="salem-panel__name">Salem</div>
             <div className="salem-panel__subtitle">
