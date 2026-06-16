@@ -6,7 +6,6 @@ import type { Familiar } from "@/lib/types";
 import type { InboxItem } from "@/lib/cave-inbox";
 import { SyntaxBlock, MarkdownBlock } from "@/components/message-bubble";
 import { EvalLoopPanel } from "@/components/eval-loop-panel";
-import { MemoryInspectorPanel } from "@/components/memory-inspector-panel";
 import { VaultPanel } from "@/components/vault-panel";
 import { SnoozeMenu } from "@/components/snooze-menu";
 import { Icon, type IconName } from "@/lib/icon";
@@ -50,6 +49,8 @@ type Props = {
   onInboxItemChanged?: () => void | Promise<void>;
   /** When true, drop the tab nav and outer border so the pane fits in 296px rail. */
   compact?: boolean;
+  /** When set, the Memory tab shows an "Open full memory →" footer button. */
+  onOpenFullView?: () => void;
 };
 
 const TAB_LABEL: Record<Tab, string> = {
@@ -115,6 +116,7 @@ export function InspectorPane({
   onOpenInboxItem,
   onInboxItemChanged,
   compact = false,
+  onOpenFullView,
 }: Props) {
   const [tab, setTab] = useState<Tab>("memory");
   const tablistRef = useRef<HTMLElement | null>(null);
@@ -210,7 +212,7 @@ export function InspectorPane({
           tab === "memory" ? "overflow-hidden" : "overflow-y-auto"
         }`}
       >
-        {tab === "memory" ? <MemoryTab familiar={familiar} /> : null}
+        {tab === "memory" ? <MemoryTab familiar={familiar} onOpenFullView={onOpenFullView} /> : null}
         {tab === "familiar" ? <FamiliarCapabilityPanel familiar={familiar} /> : null}
         {tab === "inbox" ? (
           <InboxTab
@@ -584,8 +586,14 @@ type CovenMemoryEntry = {
   excerpt?: string;
 };
 
-function MemoryTab({ familiar }: { familiar: Familiar | null }) {
-  const [mode, setMode] = useState<"inspector" | "coven" | "files">("inspector");
+function MemoryTab({
+  familiar,
+  onOpenFullView,
+}: {
+  familiar: Familiar | null;
+  onOpenFullView?: () => void;
+}) {
+  const [mode, setMode] = useState<"coven" | "files">("coven");
   const [entries, setEntries] = useState<MemoryEntry[]>([]);
   const [covenEntries, setCovenEntries] = useState<CovenMemoryEntry[]>([]);
   const [covenLoaded, setCovenLoaded] = useState(false);
@@ -708,7 +716,7 @@ function MemoryTab({ familiar }: { familiar: Familiar | null }) {
   return (
     <div className="inspector-memory-tab-surface flex h-full min-h-0 flex-col bg-[var(--bg-base)]">
       <div className="flex items-end gap-0.5 border-b border-[var(--border-hairline)] px-2">
-        <Tabs<"inspector" | "coven" | "files">
+        <Tabs<"coven" | "files">
           bordered={false}
           size="sm"
           ariaLabel="Memory mode"
@@ -718,16 +726,14 @@ function MemoryTab({ familiar }: { familiar: Familiar | null }) {
             setMode(m);
           }}
           items={[
-            { id: "inspector", label: "Inspect" },
             { id: "coven", label: "Coven" },
             { id: "files", label: "Files" },
           ]}
         />
         <span className="ml-auto pb-1.5 text-[10px] text-[var(--text-muted)]">
-          {mode === "inspector" ? "read-only" : mode === "coven" ? covenFiltered.length : filtered.length}
+          {mode === "coven" ? covenFiltered.length : filtered.length}
         </span>
       </div>
-      {mode !== "inspector" ? (
       <div className="border-b border-[var(--border-hairline)] p-2">
         <input
           value={query}
@@ -736,13 +742,6 @@ function MemoryTab({ familiar }: { familiar: Familiar | null }) {
           className="w-full rounded-md border border-[var(--border-hairline)] bg-[var(--bg-base)] px-2 py-1 text-xs text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--accent-presence)]"
         />
       </div>
-      ) : null}
-
-      {mode === "inspector" ? (
-        <div className="min-h-0 flex-1 overflow-hidden">
-          <MemoryInspectorPanel familiar={familiar} />
-        </div>
-      ) : null}
 
       {mode === "coven" ? (
         <ul className="min-h-0 flex-1 overflow-y-auto p-2 text-xs">
@@ -831,6 +830,16 @@ function MemoryTab({ familiar }: { familiar: Familiar | null }) {
           </li>
         ) : null}
       </ul>
+      ) : null}
+
+      {onOpenFullView ? (
+        <button
+          type="button"
+          className="focus-ring rail-memory__open-full"
+          onClick={onOpenFullView}
+        >
+          Open full memory →
+        </button>
       ) : null}
     </div>
   );
@@ -1390,8 +1399,10 @@ function FamiliarCapabilityPanel({ familiar }: { familiar: Familiar | null }) {
 
 export function RailInspector({
   familiar,
+  onOpenFullView,
 }: {
   familiar: Familiar | null;
+  onOpenFullView?: () => void;
 }) {
   if (!familiar) {
     return (
@@ -1402,7 +1413,7 @@ export function RailInspector({
   }
   return (
     <div className="rail-inspector">
-      <InspectorPane familiar={familiar} compact={true} />
+      <InspectorPane familiar={familiar} compact={true} onOpenFullView={onOpenFullView} />
     </div>
   );
 }

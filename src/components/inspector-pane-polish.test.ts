@@ -40,7 +40,7 @@ test("InspectorEmpty helper is defined and used for the three no-familiar/error 
 test("memory inner mode toggle uses the shared Vercel-style Tabs (2px underline)", () => {
   // The memory mode strip now delegates to the shared <Tabs> component, which
   // owns the tablist role + 2px underline idiom.
-  assert.match(src, /<Tabs<"inspector" \| "coven" \| "files">/, "memory mode renders shared Tabs");
+  assert.match(src, /<Tabs<"coven" \| "files">/, "memory mode renders shared Tabs");
   assert.match(src, /ariaLabel="Memory mode"/, "memory mode tablist labelled");
   // Should no longer use the old pill background for active mode
   assert.doesNotMatch(
@@ -48,6 +48,14 @@ test("memory inner mode toggle uses the shared Vercel-style Tabs (2px underline)
     /mode === m\s*\n[\s\S]*?bg-\[color-mix\(in_oklch,var\(--accent-presence\)_15%,transparent\)\]/,
     "old pill background removed",
   );
+});
+
+test("Memory tab renders an 'Open full memory' footer when onOpenFullView is provided", () => {
+  // The rail's brain (Memory) tab threads onOpenFullView so it can jump to the
+  // full Agent Memory view, reusing the pinned .rail-memory__open-full button.
+  assert.match(src, /onOpenFullView\?: \(\) => void/, "MemoryTab/InspectorPane accept onOpenFullView");
+  assert.match(src, /onOpenFullView \? \(/, "footer button is conditional on the callback");
+  assert.match(src, /rail-memory__open-full[\s\S]*?Open full memory/, "renders the Open full memory button");
 });
 
 test("inbox card gets fired-state visual emphasis + hover affordance", () => {
