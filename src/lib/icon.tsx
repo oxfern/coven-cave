@@ -78,6 +78,7 @@ export const ICON_NAMES = [
   "ph:warning",
   "ph:warning-circle",
   "ph:paperclip",
+  "ph:paw-print-fill",
   "ph:plus",
   "ph:plus-bold",
   "ph:arrows-clockwise",

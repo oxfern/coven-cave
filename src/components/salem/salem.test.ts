@@ -27,6 +27,12 @@ assert.match(widget, /type SalemWidgetProps = \{[\s\S]*retreat\?: boolean[\s\S]*
 assert.match(widget, /cave:salem-open/, "launcher must request the shell right panel");
 assert.match(widget, /\/api\/salem/, "widget must call /api/salem");
 assert.match(widget, /salem-panel--rail/, "chat must render in the shell right panel");
+assert.match(
+  widget,
+  /className="salem-panel__send"[\s\S]*?<Icon name="ph:paw-print-fill"/,
+  "Salem chat send control must be an icon-only paw button",
+);
+assert.doesNotMatch(widget, /salem-panel__send-text|>SALEM</, "Salem chat send control must not render a clipped text label");
 assert.match(widget, /size=\{88\}/, "perch cat must be large enough to read on dark backgrounds");
 assert.match(widget, /clientX >= window\.innerWidth - 2/, "floating Salem must retreat when the pointer leaves through the right edge");
 assert.match(widget, /clientX < window\.innerWidth - 96/, "floating Salem must return when the pointer moves back from the right edge");

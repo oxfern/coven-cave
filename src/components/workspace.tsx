@@ -192,6 +192,7 @@ export function Workspace() {
   const [glyphPickerFor, setGlyphPickerFor] = useState<Familiar | null>(null);
   const [addChooserOpen, setAddChooserOpen] = useState(false);
   const [mobileHandoffOpen, setMobileHandoffOpen] = useState(false);
+  const [mobileHandoffCopyRequest, setMobileHandoffCopyRequest] = useState(0);
   const [addons, setAddons] = useState<{ github?: boolean; library?: boolean }>({});
   const responseNeededRef = useRef(responseNeeded);
   responseNeededRef.current = responseNeeded;
@@ -1261,6 +1262,12 @@ export function Workspace() {
     startFamiliarChat(activeId, projectRoot);
   }, [activeId, startFamiliarChat]);
 
+  const openSidebarMobileHandoff = useCallback(() => {
+    shellRef.current?.dismissNavMobile();
+    setMobileHandoffCopyRequest((value) => value + 1);
+    setMobileHandoffOpen(true);
+  }, []);
+
   const sidebar = (
     <SidebarMinimal
       mode={mode}
@@ -1275,6 +1282,7 @@ export function Workspace() {
         shellRef.current?.dismissNavMobile();
         nextRouter.push("/settings");
       }}
+      onOpenMobileHandoff={openSidebarMobileHandoff}
       onModeChange={(m) => {
         if (m === "browser") {
           setMode("browser");
@@ -1705,6 +1713,7 @@ export function Workspace() {
       <MobileHandoffModal
         open={mobileHandoffOpen}
         onClose={() => setMobileHandoffOpen(false)}
+        autoCopyRequest={mobileHandoffCopyRequest}
       />
     </FamiliarStudioProvider>
   );

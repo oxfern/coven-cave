@@ -315,9 +315,8 @@ export function SalemChatPanel() {
           inputMode="text"
           enterKeyHint="send"
         />
-        <button type="submit" className="salem-panel__send salem-panel__send--label" disabled={loading || !input.trim()} aria-label="Send">
-          <span className="salem-panel__send-text">SALEM</span>
-          <Icon name="ph:arrow-up" width={14} />
+        <button type="submit" className="salem-panel__send" disabled={loading || !input.trim()} aria-label="Send">
+          <Icon name="ph:paw-print-fill" width={16} aria-hidden />
         </button>
       </form>
     </section>

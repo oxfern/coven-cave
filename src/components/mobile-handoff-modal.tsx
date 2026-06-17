@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { copyText } from "@/lib/clipboard";
@@ -27,6 +27,7 @@ type HandoffResponse = HandoffReady | HandoffError;
 type Props = {
   open: boolean;
   onClose: () => void;
+  autoCopyRequest?: number;
 };
 
 function expiryLabel(expiresAtIso: string) {
@@ -41,16 +42,30 @@ function expiryLabel(expiresAtIso: string) {
   }
 }
 
-export function MobileHandoffModal({ open, onClose }: Props) {
+export function MobileHandoffModal({ open, onClose, autoCopyRequest = 0 }: Props) {
   const [handoff, setHandoff] = useState<HandoffReady | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState<"invite" | null>(null);
+  const lastAutoCopyRequestRef = useRef(0);
 
-  const start = useCallback(async () => {
+  const copyHandoffUrl = useCallback(async (nextHandoff: HandoffReady) => {
+    const url = nextHandoff.inviteUrl || nextHandoff.url;
+    if (!url) return;
+    try {
+      if (!(await copyText(url))) throw new Error("Clipboard unavailable");
+      setCopied("invite");
+    } catch (err) {
+      setCopied(null);
+      setError(err instanceof Error ? err.message : "Failed to copy URL.");
+    }
+  }, []);
+
+  const start = useCallback(async (copyRequest = 0) => {
     setLoading(true);
     setError(null);
     setCopied(null);
+    setHandoff(null);
     try {
       const res = await fetch("/api/mobile-handoff", {
         method: "POST",
@@ -64,29 +79,25 @@ export function MobileHandoffModal({ open, onClose }: Props) {
         return;
       }
       setHandoff(json);
+      if (copyRequest > 0 && copyRequest !== lastAutoCopyRequestRef.current) {
+        lastAutoCopyRequestRef.current = copyRequest;
+        await copyHandoffUrl(json);
+      }
     } catch (err) {
       setHandoff(null);
       setError(err instanceof Error ? err.message : "Mobile handoff failed.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [copyHandoffUrl]);
 
   useEffect(() => {
-    if (open) void start();
-  }, [open, start]);
+    if (open) void start(autoCopyRequest);
+  }, [autoCopyRequest, open, start]);
 
   const copyUrl = useCallback(async () => {
-    const url = handoff?.inviteUrl || handoff?.url;
-    if (!url) return;
-    try {
-      if (!(await copyText(url))) throw new Error("Clipboard unavailable");
-      setCopied("invite");
-    } catch (err) {
-      setCopied(null);
-      setError(err instanceof Error ? err.message : "Failed to copy URL.");
-    }
-  }, [handoff?.inviteUrl, handoff?.url]);
+    if (handoff) await copyHandoffUrl(handoff);
+  }, [copyHandoffUrl, handoff]);
 
   const resetServe = useCallback(async () => {
     setLoading(true);

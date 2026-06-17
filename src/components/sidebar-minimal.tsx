@@ -9,7 +9,7 @@
  *      Work  (Home / Familiars / Board / Calendar / Schedules)
  *      Knowledge (Library)
  *      Tools (Browser / Terminal / Roles / Workflows / Capabilities / GitHub)
- *   3. Footer: Settings
+ *   3. Footer: Notifications, mobile handoff, Settings
  */
 
 import React from "react";
@@ -47,6 +47,7 @@ export type SidebarMinimalProps = {
   activeSessionId?: string | null;
   onNewChat: () => void;
   onOpenSettings: () => void;
+  onOpenMobileHandoff: () => void;
   onModeChange: (mode: string) => void;
   onOpenSession: (id: string) => void;
   addons?: AddonsConfig;
@@ -185,6 +186,7 @@ export function SidebarMinimal(props: SidebarMinimalProps) {
     sessions,
     onNewChat,
     onOpenSettings,
+    onOpenMobileHandoff,
     onModeChange,
     addons,
     familiars,
@@ -319,18 +321,29 @@ export function SidebarMinimal(props: SidebarMinimalProps) {
             ) : null}
           </button>
         ) : null}
-        <button
-          type="button"
-          className="sidebar-foot-btn"
-          onClick={onOpenSettings}
-          aria-label="Settings"
-          title="Settings"
-        >
-          <span className="sidebar-foot-icon-cell" aria-hidden="true">
-            <Icon name="ph:gear-six" width={14} className="sidebar-foot-icon" />
-          </span>
-          <span className="sidebar-foot-label">Settings</span>
-        </button>
+        <div className="sidebar-foot-utility-row">
+          <button
+            type="button"
+            className="sidebar-foot-icon-btn"
+            onClick={onOpenMobileHandoff}
+            aria-label="Open on phone"
+            title="Open on phone"
+          >
+            <Icon name="ph:phone" width={14} className="sidebar-foot-icon" />
+          </button>
+          <button
+            type="button"
+            className="sidebar-foot-btn"
+            onClick={onOpenSettings}
+            aria-label="Settings"
+            title="Settings"
+          >
+            <span className="sidebar-foot-icon-cell" aria-hidden="true">
+              <Icon name="ph:gear-six" width={14} className="sidebar-foot-icon" />
+            </span>
+            <span className="sidebar-foot-label">Settings</span>
+          </button>
+        </div>
       </div>
     </nav>
   );

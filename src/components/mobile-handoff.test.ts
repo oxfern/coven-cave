@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 
 const topBar = await readFile(new URL("./top-bar.tsx", import.meta.url), "utf8");
 const workspace = await readFile(new URL("./workspace.tsx", import.meta.url), "utf8");
+const sidebar = await readFile(new URL("./sidebar-minimal.tsx", import.meta.url), "utf8");
 const modal = await readFile(new URL("./mobile-handoff-modal.tsx", import.meta.url), "utf8");
 const handoffRoute = await readFile(new URL("../app/api/mobile-handoff/route.ts", import.meta.url), "utf8");
 const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
@@ -13,11 +14,18 @@ const tauriLib = await readFile(new URL("../../src-tauri/src/lib.rs", import.met
 assert.match(topBar, /onOpenMobileHandoff/, "TopBar should accept a mobile handoff opener");
 assert.match(topBar, /ph:phone/, "TopBar should render a recognizable phone icon");
 assert.match(topBar, /top-bar__mobile-handoff/, "TopBar handoff button should have a stable desktop-only class");
+assert.match(sidebar, /onOpenMobileHandoff/, "Sidebar should accept a mobile handoff opener");
+assert.match(sidebar, /aria-label="Open on phone"/, "Sidebar should expose the phone handoff as an icon button");
+assert.match(sidebar, /ph:phone/, "Sidebar should render the phone handoff icon");
 assert.match(workspace, /MobileHandoffModal/, "Workspace should mount the mobile handoff modal");
+assert.match(workspace, /setMobileHandoffCopyRequest\(\(value\) => value \+ 1\)/, "Sidebar handoff trigger should request invite copy");
+assert.match(workspace, /autoCopyRequest=\{mobileHandoffCopyRequest\}/, "Workspace should pass sidebar copy intent into the modal");
 assert.match(modal, /\/api\/mobile-handoff/, "Modal should call the mobile handoff API");
 assert.match(modal, /dangerouslySetInnerHTML/, "Modal should render the QR SVG returned by the API");
 assert.match(modal, /expiresAtIso/, "Modal should display the invite expiry");
 assert.match(modal, /copyText\(/, "Modal should support copying the authenticated URL");
+assert.match(modal, /autoCopyRequest/, "Modal should accept an auto-copy request from sidebar handoff");
+assert.match(modal, /lastAutoCopyRequestRef/, "Modal should copy the invite only once per sidebar request");
 assert.match(modal, /Copy invite/, "Modal should make the invite link copyable");
 assert.match(modal, /handoff\?\.inviteUrl \|\| handoff\?\.url/, "Modal should prefer inviteUrl while supporting url fallback");
 assert.match(modal, /action: "reset"/, "Modal should expose explicit Tailscale Serve reset");
