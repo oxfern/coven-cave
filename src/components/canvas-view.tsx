@@ -607,7 +607,7 @@ function CanvasSurface({ familiars, activeFamiliarId, onOpenCard, onOpenUrl }: P
                     {CANVAS_TEMPLATES.map((t) => (
                       <PopoverItem
                         key={t.id}
-                        icon="ph:file-code"
+                        icon={t.icon}
                         onSelect={() => { createArtifact("", { template: t }); setTemplatesOpen(false); }}
                       >
                         {t.label}

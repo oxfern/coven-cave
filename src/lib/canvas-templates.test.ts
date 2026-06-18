@@ -13,6 +13,7 @@ for (const t of CANVAS_TEMPLATES) {
   assert.ok(typeof t.label === "string" && t.label.trim(), `${t.id} has a label`);
   assert.ok(typeof t.description === "string" && t.description.trim(), `${t.id} has a description`);
   assert.ok(t.kind === "html" || t.kind === "react", `${t.id} kind is html|react`);
+  assert.ok(typeof t.icon === "string" && t.icon.startsWith("ph:"), `${t.id} has a menu icon`);
   assert.ok(typeof t.code === "string" && t.code.length > 40, `${t.id} has real code`);
   // Renders through the preview pipeline without throwing, and survives the
   // storage clamp + sanitize round-trip a created artifact goes through.

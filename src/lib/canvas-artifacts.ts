@@ -4,6 +4,8 @@
 // preview, and persist it. Everything here is framework-/fs-free so it can be
 // unit-tested without a DOM, a daemon, or React Flow.
 
+import type { IconName } from "@/lib/icon";
+
 // An artifact is either a self-contained HTML document or a single React
 // component (transpiled + rendered by the sandbox runtime). Older records
 // (pre-React) have no `kind` and are treated as "html".
@@ -208,6 +210,8 @@ export type CanvasTemplate = {
   id: string;
   label: string;
   description: string;
+  /** Menu icon (a whitelisted Icon name). */
+  icon: IconName;
   kind: ArtifactKind;
   code: string;
 };
@@ -244,6 +248,7 @@ export const CANVAS_TEMPLATES: CanvasTemplate[] = [
     id: "landing",
     label: "Landing page",
     description: "Hero with headline, subcopy, and call-to-action buttons",
+    icon: "ph:rocket-launch-bold",
     kind: "html",
     code: TEMPLATE_DOC(
       "Landing",
@@ -263,6 +268,7 @@ export const CANVAS_TEMPLATES: CanvasTemplate[] = [
     id: "dashboard",
     label: "Dashboard",
     description: "Stat cards in a responsive grid",
+    icon: "ph:squares-four",
     kind: "html",
     code: TEMPLATE_DOC(
       "Dashboard",
@@ -288,6 +294,7 @@ export const CANVAS_TEMPLATES: CanvasTemplate[] = [
     id: "signin",
     label: "Sign-in form",
     description: "Centered card with email/password and submit",
+    icon: "ph:key",
     kind: "html",
     code: TEMPLATE_DOC(
       "Sign in",
@@ -308,6 +315,7 @@ export const CANVAS_TEMPLATES: CanvasTemplate[] = [
     id: "pricing",
     label: "Pricing tiers",
     description: "Three side-by-side plans with a highlighted tier",
+    icon: "ph:tag-bold",
     kind: "html",
     code: TEMPLATE_DOC(
       "Pricing",

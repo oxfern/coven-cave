@@ -16,6 +16,7 @@ assert.match(
   /CANVAS_TEMPLATES\.map\(\(t\) => \([\s\S]*?createArtifact\("", \{ template: t \}\)/,
   "each template creates an artifact from that template",
 );
+assert.match(src, /icon=\{t\.icon\}/, "each template item shows its own icon");
 
 // createArtifact applies the template's title/code/kind and skips generation.
 assert.match(src, /opts\?: \{ blank\?: boolean; template\?: CanvasTemplate \}/, "createArtifact accepts a template");
