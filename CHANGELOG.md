@@ -7,6 +7,14 @@ breaking config changes; patch releases stay additive.
 
 ## [Unreleased]
 
+## [0.0.102] - 2026-06-18
+
+Patch release: full-width chat composition polish and a desktop launch affordance after 0.0.101.
+
+### Fixed
+- **Chat** — conversation threads now span the full chat pane, and user message bubbles use the wider desktop pane while preserving right-aligned turn ownership (#917, #918).
+- **Shell** — desktop launches on the home screen now reopen the left nav even if a previous session persisted it collapsed (#919).
+
 ## [0.0.101] - 2026-06-18
 
 Patch release: mobile handoff diagnostics, model catalog cleanup, context-meter wiring, board and role polish, and the pending familiar-avatar/git-hooks/workflow WIP after 0.0.100.
