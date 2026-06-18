@@ -7,6 +7,26 @@ breaking config changes; patch releases stay additive.
 
 ## [Unreleased]
 
+## [0.0.101] - 2026-06-18
+
+Patch release: mobile handoff diagnostics, model catalog cleanup, context-meter wiring, board and role polish, and the pending familiar-avatar/git-hooks/workflow WIP after 0.0.100.
+
+### Added
+- **Chat** — context meter in the header is wired to model selection at send time (#911).
+- **Board** — added a Clear done action for completed cards (#910).
+- **Familiars** — landed the pending familiar-avatar route/test work alongside git hook coverage and workflow updates (#912).
+- **Mobile handoff** — invite links are shown directly in the modal, and dev-mode failures now explain that plain `pnpm dev` lacks the signed access token and point developers to `pnpm mobile:tailscale` or the packaged app (#907, #916).
+
+### Fixed
+- **Mobile handoff** — Tailscale Serve parsing is more tolerant, and the handoff control uses the mobile-phone icon (#905).
+- **Models** — cleaned up the Claude Fable 5 / Opus 4.8 catalog sequence so unsupported Fable 5 is removed and Opus 4.8 remains available (#908, #913, #915).
+- **Home** — model selector styling now matches the familiar dropdown pill, and the selector uses a native select so the menu is not clipped (#903, #904).
+- **Studio** — inline tab-strip height matches familiar-list rows (#902).
+- **Roles** — widened the role-card capability-label column so "Workflows" is not clipped (#914).
+
+### Polished
+- **Roles** — density pass on the role and capability map (#906).
+
 ## [0.0.100] - 2026-06-17
 
 Patch release: Salem perch proximity polish, companion rail alignment fixes, next-path chat suggestions, and mobile handoff quality-of-life updates after 0.0.99.
