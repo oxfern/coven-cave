@@ -86,6 +86,7 @@ export const SUITES = {
     "src/components/run-activity-strip.test.ts",
     "src/components/chat-view-lifecycle.test.ts",
     "src/components/chat-view-render-optimization.test.ts",
+    "src/components/chat-view-canvas-artifact.test.ts",
     "src/components/csv-import-modal.test.ts",
     "src/components/chat-response-metadata.test.ts",
     "src/components/daily-summary-notifications.test.ts",
@@ -119,8 +120,10 @@ export const SUITES = {
     "src/lib/canvas-templates.test.ts",
     "src/lib/canvas-react-harness.test.ts",
     "src/lib/canvas-generate.test.ts",
+    "src/lib/slash-commands.test.ts",
     "src/lib/cave-canvas.test.ts",
     "src/components/canvas-view.test.ts",
+    "src/components/chat-canvas-command.test.ts",
     "src/components/canvas-templates-ui.test.ts",
     "src/components/calendar-actions.test.ts",
     "src/components/calendar-keyboard.test.ts",
@@ -427,6 +430,7 @@ export const SUITES = {
     "src/components/chat-list-mobile-command-center.test.ts",
     "src/components/chat-list-mobile-rail-port.test.ts",
     "src/components/library-mobile-command-center.test.ts",
+    "src/components/chat-artifact-viewer.test.ts",
   ],
 };
 
@@ -438,6 +442,7 @@ const STRIP_TYPES_MJS = new Set([
 // Tests whose import graph reaches the "@/..." path alias and therefore need
 // the alias-resolving loader (`scripts/test-alias-register.mjs`).
 const ALIAS_LOADER = new Set([
+  "src/lib/slash-commands.test.ts",
   "src/lib/canvas-generate.test.ts",
   "src/lib/cave-canvas.test.ts",
   "src/lib/task-archive-nudge.test.ts",
