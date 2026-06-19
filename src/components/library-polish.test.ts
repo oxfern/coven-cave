@@ -328,3 +328,29 @@ assert.match(
   /\.library-reader-body\s*\{[\s\S]*?flex:\s*1;[\s\S]*?min-height:\s*0;[\s\S]*?overflow-y:\s*auto;/,
   "Reader modal body should keep long documents inside the modal scrollport",
 );
+
+assert.match(
+  libraryCss,
+  /\.library-rail-item\s*\{[\s\S]*?border:\s*1px solid transparent;[\s\S]*?border-radius:\s*6px;/,
+  "Library rail tabs should use compact Vercel-style radius at the base level",
+);
+assert.match(
+  libraryCss,
+  /\.library-rail-item--active\s*\{[\s\S]*?border-color:\s*var\(--border-hairline\);[\s\S]*?box-shadow:\s*inset 0 -2px 0 var\(--text-primary\);/,
+  "Active Library rail tabs should use a subtle border and bottom indicator at the base level",
+);
+assert.match(
+  libraryCss,
+  /@media \(max-width: 767px\) \{[\s\S]*?\.library-rail-item\s*\{[\s\S]*?border-radius:\s*6px;/,
+  "Mobile Library tabs should use compact Vercel-style radius instead of oversized pills",
+);
+assert.match(
+  libraryCss,
+  /@media \(max-width: 767px\) \{[\s\S]*?\.library-rail-item--active\s*\{[\s\S]*?box-shadow:\s*inset 0 -2px 0/,
+  "Active mobile Library tab should use a Vercel-style bottom indicator",
+);
+assert.doesNotMatch(
+  libraryCss,
+  /@media \(max-width: 767px\) \{[\s\S]*?\.library-rail-item\s*\{[^}]*border-radius:\s*999px;/,
+  "Mobile Library tabs must not render as oversized pill tabs",
+);

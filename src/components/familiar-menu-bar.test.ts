@@ -6,35 +6,62 @@ const source = readFileSync(new URL("./familiar-menu-bar.tsx", import.meta.url),
 const workspace = readFileSync(new URL("./workspace.tsx", import.meta.url), "utf8");
 const globals = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
 
-// The bar has exactly two jobs: chat with familiars (left) and view tasks
-// (right). It is a labelled landmark so screen readers can find it.
+// The bar provides desktop top chrome: chat with familiars, global
+// context-aware search, and view tasks/inbox. It is a labelled landmark so
+// screen readers can find it.
 assert.match(
   source,
   /<nav className="menu-bar" aria-label="Chat with familiars and view tasks">/,
   "renders a labelled menu-bar landmark",
 );
 
-// Left group — chat. Includes the full switcher plus a one-click avatar strip
-// where clicking an avatar starts a chat with that familiar.
+assert.match(
+  source,
+  /<form[\s\S]*className="menu-bar__search"[\s\S]*role="search"/,
+  "desktop menu bar should host the global top search form",
+);
+assert.match(
+  source,
+  /<input[\s\S]*type="search"[\s\S]*className="menu-bar__search-input"/,
+  "desktop menu bar search should be a real input",
+);
+assert.match(
+  source,
+  /value=\{searchQuery\}/,
+  "desktop menu bar search should be controlled by Workspace search state",
+);
+assert.match(
+  source,
+  /onSearchQueryChange\(e\.target\.value\)/,
+  "typing in desktop menu bar search should update the shared palette query",
+);
+assert.match(
+  source,
+  /onFocus=\{onOpenSearch\}/,
+  "focusing desktop menu bar search should open the context-aware palette",
+);
+
+// Left group — chat. The top panel should keep only the dropdown selector and
+// compose control; individual familiar bubbles live elsewhere.
 assert.match(
   source,
   /<FamiliarSwitcher[\s\S]*onSelectFamiliar=\{onSelectFamiliar\}/,
   "embeds the familiar switcher for scope/full list",
 );
-assert.match(
+assert.doesNotMatch(
   source,
-  /className="menu-bar__familiar focus-ring"[\s\S]*onClick=\{\(\) => onChatWithFamiliar\(f\.id\)\}/,
-  "clicking a familiar avatar starts a chat with that familiar",
+  /menu-bar__familiars|menu-bar__familiar|MAX_QUICK_CHAT|quickChat/,
+  "desktop top panel should not render quick familiar avatar bubbles",
 );
-assert.match(
+assert.doesNotMatch(
   source,
-  /aria-label=\{`Chat with \$\{f\.display_name\}`\}/,
-  "each avatar button names the familiar it chats with",
+  /computePresence\(|<FamiliarAvatar/,
+  "familiar presence/avatar bubbles should not be computed for the top panel",
 );
-assert.match(
-  source,
-  /computePresence\(\{/,
-  "avatars compute presence for the status dot",
+assert.doesNotMatch(
+  globals,
+  /\.menu-bar__(familiars|familiar|presence|familiar-unread)\b/,
+  "unused top-panel familiar bubble styles should be removed",
 );
 // The New chat button opens a quick-compose dropdown (a popover) rather than
 // starting a chat on the first click.
@@ -120,6 +147,21 @@ assert.match(
   workspace,
   /taskCount=\{boardTaskCount\}[\s\S]*inboxCount=\{inboxBadgeCount\}/,
   "the bar is fed the live board task count and inbox badge count",
+);
+assert.match(
+  workspace,
+  /<FamiliarMenuBar[\s\S]*searchQuery=\{topSearchQuery\}[\s\S]*onSearchQueryChange=\{\(query\) => \{[\s\S]*setTopSearchQuery\(query\);[\s\S]*setPaletteOpen\(true\);/,
+  "desktop menu bar search shares the same palette query/open wiring as mobile top bar",
+);
+assert.match(
+  workspace,
+  /salemSlot=\{<SalemChatPanel \/>\}/,
+  "Salem should remain available in the companion sidepanel",
+);
+assert.doesNotMatch(
+  workspace,
+  /SalemWidget|salemRetreating/,
+  "Workspace should not render a floating Salem perch",
 );
 
 // The board task count is polled from /api/board (open = not done).
