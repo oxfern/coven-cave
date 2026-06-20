@@ -3313,6 +3313,7 @@ button:active > .edge-rail-chip {
 .companion-rail {
   display: flex;
   flex-direction: column;
+  position: relative;
   height: 100%;
   min-height: 0;
   background: var(--bg-raised);
@@ -3567,6 +3568,89 @@ button:active > .edge-rail-chip {
   width: 100%;
   height: 100%;
   border: 0;
+}
+
+/* ── Collapsed video strip ──────────────────────────────────────────────
+   When the companion rail is collapsed to its peek width while the Video
+   pane is on, it becomes a thin sliver showing only the video, rotated 90°
+   so it runs top→bottom. The YouTube iframe stays mounted across the
+   collapse (CSS-only restyle, no remount) so playback continues. */
+
+/* Re-expand affordance — hidden until the rail is a strip, where it becomes a
+   full-area transparent overlay so tapping anywhere on the video expands the
+   panel (a caret hint sits at the top for discoverability). */
+.companion-rail__strip-expand {
+  display: none;
+}
+
+.companion-rail--video-strip {
+  overflow: hidden;
+}
+
+/* Drop the tab strip + the top (chat/memory/etc.) pane and its resizer;
+   the video pane fills the whole strip. The split panes are sized by
+   react-resizable-panels via inline `flex` on the id'd wrappers, so we
+   override those with `!important` (and hide the unused pane outright). */
+.companion-rail--video-strip .companion-rail__tabs,
+.companion-rail--video-strip .youtube-viewer__bar,
+.companion-rail--video-strip .youtube-viewer__error {
+  display: none;
+}
+
+.companion-rail--video-strip #companion-rail-main,
+.companion-rail--video-strip .companion-rail__resize {
+  display: none !important;
+}
+
+.companion-rail--video-strip .companion-rail__strip-expand {
+  display: flex;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 7px;
+  border: 0;
+  /* A soft top fade keeps the caret legible over a bright video; the rest of
+     the overlay stays transparent so the video shows through. */
+  background: linear-gradient(
+    to bottom,
+    color-mix(in oklch, var(--bg-base) 70%, transparent),
+    transparent 38px
+  );
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.companion-rail--video-strip .companion-rail__strip-expand:hover {
+  background: linear-gradient(
+    to bottom,
+    color-mix(in oklch, var(--bg-base) 80%, transparent),
+    color-mix(in oklch, var(--bg-base) 22%, transparent)
+  );
+}
+
+.companion-rail--video-strip #companion-rail-youtube {
+  flex: 1 1 auto !important;
+}
+
+/* Rotate the video to run top→bottom and fill the tall, narrow strip.
+   `container-type: size` lets the iframe size off the frame's box: its
+   pre-rotation width = frame height, height = frame width, so after a 90°
+   turn it covers the frame exactly. */
+.companion-rail--video-strip .youtube-viewer__frame {
+  container-type: size;
+}
+
+.companion-rail--video-strip .youtube-viewer__frame iframe {
+  inset: auto;
+  top: 50%;
+  left: 50%;
+  width: 100cqh;
+  height: 100cqw;
+  transform: translate(-50%, -50%) rotate(90deg);
+  transform-origin: center;
 }
 
 /* ────────────────────────────────────────────────
