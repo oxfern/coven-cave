@@ -6,6 +6,7 @@ const source = readFileSync(
   new URL("./familiar-studio-brain-tab.tsx", import.meta.url),
   "utf8",
 );
+const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
 
 assert.match(source, /export function FamiliarStudioBrainTab/);
 assert.match(source, /harness/);
@@ -45,6 +46,36 @@ assert.match(
   source,
   /familiar-studio-brain__capabilities/,
   "Brain tab should expose a per-familiar capabilities accordion",
+);
+assert.match(
+  source,
+  /familiar-studio-brain__workspace/,
+  "Brain tab should render a full-width workspace shell",
+);
+assert.match(
+  source,
+  /familiar-studio-brain__primary/,
+  "Brain tab should keep runtime, model, and prompt in the primary column",
+);
+assert.match(
+  source,
+  /familiar-studio-brain__sidecar/,
+  "Brain tab should move voice and capabilities into a sidecar column",
+);
+assert.match(
+  source,
+  /Runtime & model/,
+  "Brain tab should group runtime and model controls under a single section",
+);
+assert.match(
+  css,
+  /\.familiar-studio-brain__workspace\s*\{[\s\S]{0,220}grid-template-columns:\s*minmax\(0,\s*1fr\)\s*minmax\(260px,\s*320px\)/,
+  "Brain workspace CSS should use a full-width primary column plus a bounded sidecar",
+);
+assert.match(
+  css,
+  /@media \(max-width: 860px\)[\s\S]*\.familiar-studio-brain__workspace\s*\{[\s\S]{0,120}grid-template-columns:\s*1fr/,
+  "Brain workspace should collapse to one column on narrow surfaces",
 );
 
 console.log("familiar-studio-brain-tab.test.ts: ok");

@@ -68,8 +68,23 @@ assert.match(
 );
 assert.match(
   css,
+  /\.workflow-studio-library-panel,[\s\S]{0,220}\.workflow-studio-side\s*\{[\s\S]*align-self:\s*stretch;[\s\S]*height:\s*100%;/,
+  "Workflow side columns should stretch to the studio shell height",
+);
+assert.match(
+  css,
+  /\.workflow-studio-library-content,[\s\S]{0,180}\.workflow-studio-side-content\s*\{[\s\S]*display:\s*flex;[\s\S]*flex-direction:\s*column;/,
+  "Workflow side content wrappers should provide a full-height flex column for their panels",
+);
+assert.match(
+  css,
   /\.workflow-studio-side-content > \[role="tabpanel"\]\s*\{[\s\S]*display:\s*flex;[\s\S]*flex-direction:\s*column;/,
   "Workflow detail tab panels should fill the side panel instead of shrinking around their contents",
+);
+assert.match(
+  css,
+  /\.workflow-studio-side-content > \[role="tabpanel"\]\s*\{[\s\S]*flex:\s*1 1 auto;/,
+  "Workflow detail tab panels should grow through the full-height side content wrapper",
 );
 assert.match(
   css,
@@ -89,12 +104,13 @@ assert.match(
 assert.match(css, /\.workflow-studio-shell/, "workflow CSS should style the studio shell");
 assert.match(css, /\.workflow-studio-shell \{[\s\S]{0,700}padding:\s*16px 16px 16px 0/, "Studio shell drops left padding so the library hugs the app nav (no blank band)");
 {
-  // The collapsed left library rail keeps its hairline divider but drops the
-  // background fill so the toggle blends with the canvas.
+  // The collapsed left library rail should read as a dark divider strip in dark
+  // mode, with enough contrast for the text/icon affordance.
   const collapsedLeft = css.match(/\.workflow-studio-shell\.is-left-collapsed > \.workflow-studio-library-panel \{[\s\S]*?\}/);
   assert.ok(collapsedLeft, "Collapsed left library rail rule should exist");
   assert.ok(/border-right/.test(collapsedLeft[0]), "Collapsed left rail keeps its hairline divider");
-  assert.ok(!/background/.test(collapsedLeft[0]), "Collapsed left rail should have no background fill");
+  assert.ok(/background:\s*var\(--bg-panel\)/.test(collapsedLeft[0]), "Collapsed left rail uses a dark panel fill");
+  assert.ok(/color:\s*var\(--text-primary\)/.test(collapsedLeft[0]), "Collapsed left rail uses light text/icon color");
 }
 assert.match(css, /@media \(max-width: 860px\)/, "workflow CSS should include mobile studio layout");
 assert.doesNotMatch(

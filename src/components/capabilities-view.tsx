@@ -677,13 +677,13 @@ function CapabilityDetails({
         </button>
       </div>
 
-      <div className="divide-y divide-[var(--border-hairline)] border-t border-[var(--border-hairline)]">
-        {item.description ? <InspectorBlock label="Detail" value={item.description} clamp /> : null}
-        {item.warningMessage ? <InspectorBlock label="Warning" value={item.warningMessage} tone="warning" clamp /> : null}
-        {item.sourcePath ? <InspectorBlock label="Path" value={item.sourcePath} mono /> : null}
-        {item.command ? <InspectorBlock label="Command" value={item.command} mono /> : null}
-        {item.tags?.length ? <InspectorBlock label="Tags" value={item.tags.join(", ")} /> : null}
-        {item.scannedAt ? <InspectorBlock label="Scanned" value={new Date(item.scannedAt).toLocaleString()} /> : null}
+      <div className="capability-meta-row">
+        {item.description ? <InspectorMetaItem label="Detail" value={item.description} /> : null}
+        {item.warningMessage ? <InspectorMetaItem label="Warning" value={item.warningMessage} tone="warning" /> : null}
+        {item.sourcePath ? <InspectorMetaItem label="Path" value={item.sourcePath} mono /> : null}
+        {item.command ? <InspectorMetaItem label="Command" value={item.command} mono /> : null}
+        {item.tags?.length ? <InspectorMetaItem label="Tags" value={item.tags.join(", ")} /> : null}
+        {item.scannedAt ? <InspectorMetaItem label="Scanned" value={new Date(item.scannedAt).toLocaleString()} /> : null}
       </div>
 
       <div className="flex flex-wrap gap-1.5 border-t border-border pt-3">
@@ -994,6 +994,27 @@ function InspectorBlock({
           {value}
         </span>
       )}
+    </div>
+  );
+}
+
+function InspectorMetaItem({
+  label,
+  value,
+  mono,
+  tone,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+  tone?: "warning";
+}) {
+  return (
+    <div className="capability-meta-item" title={`${label}: ${value}`}>
+      <span className="capability-meta-label">{label}</span>
+      <span className={`capability-meta-value ${mono ? "font-mono" : ""} ${tone === "warning" ? "capability-meta-value--warning" : ""}`}>
+        {value}
+      </span>
     </div>
   );
 }

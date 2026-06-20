@@ -6,10 +6,11 @@ const source = readFileSync(new URL("./familiar-switcher.tsx", import.meta.url),
 const globals = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
 
 // Trigger is an account-style profile/avatar button: the active familiar's
-// avatar (or an "all" glyph) and a reply-needed dot — opening a dialog menu.
+// avatar (or an "all" glyph), optional visible name, and a reply-needed dot —
+// opening a dialog menu.
 assert.match(
   source,
-  /className="familiar-switcher__trigger focus-ring"[\s\S]*aria-haspopup="dialog"/,
+  /className=\{`familiar-switcher__trigger focus-ring\$\{labeled \? " familiar-switcher__trigger--labeled" : ""\}`\}[\s\S]*aria-haspopup="dialog"/,
   "renders a profile-style trigger that opens a dialog menu",
 );
 assert.match(
@@ -17,10 +18,15 @@ assert.match(
   /active \?\s*\(\s*<FamiliarAvatar familiar=\{active\} size="sm" \/>\s*\) : \(\s*<Icon name="ph:sparkle"/,
   "trigger shows the active familiar's avatar, falling back to an all-scope glyph",
 );
+assert.match(
+  source,
+  /labeled \? <span className="familiar-switcher__trigger-label">\{active \? active\.display_name : "All familiars"\}<\/span> : null/,
+  "labeled trigger shows the selected familiar name",
+);
 assert.doesNotMatch(
   source,
-  /familiar-switcher__trigger-label|familiar-switcher__caret/,
-  "trigger is avatar-only: no visible name label or dropdown caret",
+  /familiar-switcher__caret/,
+  "trigger does not add a dropdown caret",
 );
 assert.match(
   source,
@@ -85,6 +91,11 @@ assert.match(
   globals,
   /\.familiar-switcher__trigger\s*\{[\s\S]*?width:\s*28px;[\s\S]*?height:\s*28px;/,
   "desktop trigger should match the square top-bar icon button dimensions",
+);
+assert.match(
+  globals,
+  /\.familiar-switcher__trigger--labeled\s*\{[\s\S]*?width:\s*auto;[\s\S]*?max-width:\s*180px;/,
+  "labeled trigger expands to fit the familiar name while staying bounded",
 );
 assert.match(
   globals,

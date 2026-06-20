@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Icon, type IconName } from "@/lib/icon";
 import { FamiliarAvatar } from "@/components/familiar-avatar";
 import { useFamiliarImageUpload, FAMILIAR_IMAGE_ACCEPT } from "@/lib/familiar-image-upload";
@@ -15,7 +15,6 @@ import { useDaemonSyncStatus } from "@/lib/daemon-sync-status";
 import { useIsCoarsePointer } from "@/lib/use-viewport";
 import { FamiliarStudioIdentityTab } from "./familiar-studio-identity-tab";
 import { FamiliarStudioLookTab } from "./familiar-studio-look-tab";
-import { FamiliarStudioBrainTab } from "./familiar-studio-brain-tab";
 import { FamiliarStudioLifecycleTab } from "./familiar-studio-lifecycle-tab";
 import { FamiliarStudioMemoryTab } from "./familiar-studio-memory-tab";
 import { FamiliarStudioContractTab } from "./familiar-studio-contract-tab";
@@ -28,7 +27,6 @@ type Props = {
 const TABS: Array<{ id: FamiliarStudioTab; label: string; icon: IconName }> = [
   { id: "identity", label: "Identity", icon: "ph:user" },
   { id: "look", label: "Look", icon: "ph:paint-brush" },
-  { id: "brain", label: "Brain", icon: "ph:brain" },
   { id: "lifecycle", label: "Lifecycle", icon: "ph:arrows-clockwise" },
   { id: "memory", label: "Memory", icon: "ph:archive" },
   { id: "contract", label: "Contract", icon: "ph:seal-check" },
@@ -52,6 +50,11 @@ export function FamiliarStudio({ familiars }: Props) {
   );
   const drawerOpen = Boolean(activeFamiliarId || listView);
   const disableNonLifecycle = listView && !familiar;
+  const drawerActiveTab = activeTab === "brain" ? "identity" : activeTab;
+  const openBrainStudio = useCallback(() => {
+    setActiveTab("brain");
+    window.location.assign("/settings");
+  }, [setActiveTab]);
 
   // Roving tabindex over the tablist. Arrow keys move focus across enabled
   // tabs; Home/End jump to ends. We pair this with an effect below to also
@@ -140,7 +143,7 @@ export function FamiliarStudio({ familiars }: Props) {
       >
         {TABS.map((t) => {
           const disabled = disableNonLifecycle && t.id !== "lifecycle";
-          const selected = activeTab === t.id;
+          const selected = drawerActiveTab === t.id;
           return (
             <button
               key={t.id}
@@ -170,6 +173,15 @@ export function FamiliarStudio({ familiars }: Props) {
                 <HeaderName familiar={familiar} />
                 <span className="familiar-studio__role">{familiar.role}</span>
               </div>
+              <button
+                type="button"
+                className="familiar-studio__brain-link"
+                onClick={openBrainStudio}
+                title="Open Brain in full Familiar Studio"
+              >
+                <Icon name="ph:brain" width={13} aria-hidden />
+                <span>Open Brain Studio</span>
+              </button>
             </>
           ) : (
             <span className="familiar-studio__title">Manage familiars</span>
@@ -185,12 +197,12 @@ export function FamiliarStudio({ familiars }: Props) {
 
         <div
           role="tabpanel"
-          id={`familiar-studio-panel-${activeTab}`}
-          aria-labelledby={`familiar-studio-tab-${activeTab}`}
+          id={`familiar-studio-panel-${drawerActiveTab}`}
+          aria-labelledby={`familiar-studio-tab-${drawerActiveTab}`}
           className="familiar-studio__body"
         >
           {/* Tab body slots — wired in later tasks. */}
-          {activeTab === "identity" && familiar ? (
+          {drawerActiveTab === "identity" && familiar ? (
             <FamiliarStudioIdentityTab
               familiar={familiar}
               rawDaemonValues={{
@@ -201,17 +213,16 @@ export function FamiliarStudio({ familiars }: Props) {
               }}
             />
           ) : null}
-          {activeTab === "look" && familiar ? (
+          {drawerActiveTab === "look" && familiar ? (
             <FamiliarStudioLookTab familiar={familiar} allFamiliars={resolved} />
           ) : null}
-          {activeTab === "brain" && familiar ? <FamiliarStudioBrainTab familiar={familiar} /> : null}
-          {activeTab === "lifecycle" ? (
+          {drawerActiveTab === "lifecycle" ? (
             <FamiliarStudioLifecycleTab familiar={familiar} allResolved={resolved} />
           ) : null}
-          {activeTab === "memory" && familiar ? (
+          {drawerActiveTab === "memory" && familiar ? (
             <FamiliarStudioMemoryTab familiar={familiar} allFamiliars={familiars} />
           ) : null}
-          {activeTab === "contract" && familiar ? (
+          {drawerActiveTab === "contract" && familiar ? (
             <FamiliarStudioContractTab familiar={familiar} />
           ) : null}
         </div>

@@ -32,8 +32,7 @@ type Props = {
    *  left-edge sidebar home); the mobile top bar passes "bottom-end" since its
    *  trigger sits at the right edge. */
   placement?: "bottom-start" | "bottom-end" | "top-start" | "top-end";
-  /** Back-compat prop from the former labeled trigger. The trigger stays
-   *  avatar-only; callers can still pass this while older surfaces unwind. */
+  /** Shows the current familiar name beside the avatar on surfaces with room. */
   labeled?: boolean;
 };
 
@@ -51,6 +50,7 @@ export function FamiliarSwitcher({
   responseNeeded,
   onSelectFamiliar,
   placement = "bottom-start",
+  labeled = false,
 }: Props) {
   const { openFamiliarStudio, openFamiliarStudioListView } = useFamiliarStudio();
   const triggerRef = useRef<HTMLButtonElement | null>(null);
@@ -113,7 +113,7 @@ export function FamiliarSwitcher({
       <button
         ref={triggerRef}
         type="button"
-        className="familiar-switcher__trigger focus-ring"
+        className={`familiar-switcher__trigger focus-ring${labeled ? " familiar-switcher__trigger--labeled" : ""}`}
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="dialog"
         aria-expanded={open}
@@ -126,6 +126,7 @@ export function FamiliarSwitcher({
         ) : (
           <Icon name="ph:sparkle" width={14} aria-hidden />
         )}
+        {labeled ? <span className="familiar-switcher__trigger-label">{active ? active.display_name : "All familiars"}</span> : null}
         {anyNeedsReply ? <span className="familiar-switcher__unread" aria-hidden /> : null}
       </button>
 

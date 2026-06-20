@@ -119,6 +119,16 @@ assert.match(
   /className="capability-chips flex flex-wrap items-center gap-1\.5"/,
   "inspector chip row should be a center-aligned wrapping flex row hooked as .capability-chips",
 );
+assert.match(
+  globals,
+  /\.capability-meta-row\s*\{[\s\S]*grid-template-columns:\s*repeat\(auto-fit, minmax\(min\(100%, 12rem\), 1fr\)\);[\s\S]*border-top:\s*1px solid var\(--border-hairline\)/,
+  "inspector metadata should auto-fit into one compact row when width allows",
+);
+assert.match(
+  globals,
+  /\.capability-meta-value\s*\{[\s\S]*text-overflow:\s*ellipsis;[\s\S]*white-space:\s*nowrap;/,
+  "inspector metadata values should stay collapsed instead of expanding row height",
+);
 // Both static badges and the interactive harness chip render as centered pills.
 assert.match(
   source,
@@ -138,11 +148,13 @@ assert.match(
   "mobile chip-row buttons should reset the blanket min-height to stay compact pills",
 );
 
-// Long prose values (Detail/Warning) clamp to 3 lines with a Show more/less toggle.
+// Preview fallback prose still has a clamped reader, while inline inspector
+// metadata stays collapsed into compact one-line fields.
 assert.match(source, /function ClampedValue/, "inspector should have a ClampedValue component");
 assert.match(source, /line-clamp-3/, "clamped value collapses to 3 lines via line-clamp-3");
 assert.match(source, /expanded \? "block" : "line-clamp-3"/, "display must toggle (block when expanded) so the clamp actually applies");
 assert.match(source, /Show more|Show less/, "clamp exposes a Show more/Show less toggle");
-assert.match(source, /label="Detail" value=\{item\.description\} clamp/, "the Detail (description) row is clamped");
+assert.match(source, /<InspectorMetaItem label="Detail" value=\{item\.description\}/, "the Detail metadata field is collapsed into the inline meta row");
+assert.match(source, /<InspectorMetaItem label="Warning" value=\{item\.warningMessage\} tone="warning"/, "Warning metadata stays collapsed but keeps warning tone");
 
 console.log("capabilities-view-polish.test.ts OK");

@@ -174,6 +174,23 @@ export function LibraryView({ sessions, onOpenSession, onNewProjectChat }: Libra
     finally { setPreviewLoading(false); }
   }, []);
 
+  const handleRenameMoveDoc = useCallback(async (doc: LibraryDoc, patch: { title?: string; collection?: string }) => {
+    const res = await fetch("/api/library/doc", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id: doc.id, title: patch.title, collection: patch.collection }),
+    });
+    const json = await res.json() as { ok: boolean; doc?: LibraryDocBody; error?: string };
+    if (!res.ok || !json.ok || !json.doc) {
+      throw new Error(json.error ?? "Could not update file.");
+    }
+
+    await loadDocs(activeCollection);
+    if (selectedItem?.kind === "doc" && selectedItem.doc.id === doc.id) {
+      setSelectedItem({ kind: "doc", doc: json.doc });
+    }
+  }, [activeCollection, loadDocs, selectedItem]);
+
   // Open the quick-open palette and (re)fetch a global snapshot of everything
   // searchable: all docs (across collections) + every captured link. Fetched on
   // open so it reflects the latest library regardless of the current nav.
@@ -331,6 +348,9 @@ export function LibraryView({ sessions, onOpenSession, onNewProjectChat }: Libra
           onSearchChange={setSearchQuery}
           onSelect={handleSelectDoc}
           loading={loading}
+          collections={collections}
+          activeCollection={activeCollection}
+          onRenameMove={handleRenameMoveDoc}
           error={docsError}
           onRetry={() => void loadDocs(activeCollection)}
         />

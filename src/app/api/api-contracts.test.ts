@@ -65,7 +65,7 @@ const contracts: RouteContract[] = [
   { route: "/launch", methods: ["POST"], kind: "json", readsJson: true, invalidJson: "guarded" },
   { route: "/library/all", methods: ["GET"], kind: "json" },
   { route: "/library/bookmarks", methods: ["GET", "POST", "DELETE"], kind: "json", readsJson: true },
-  { route: "/library/doc", methods: ["GET"], kind: "json", pathGuard: true },
+  { route: "/library/doc", methods: ["GET", "PATCH"], kind: "json", readsJson: true, invalidJson: "guarded", pathGuard: true },
   { route: "/library/github", methods: ["GET", "POST", "DELETE"], kind: "json", readsJson: true },
   { route: "/library/pdf", methods: ["GET"], kind: "stream" },
   { route: "/library/reading", methods: ["GET", "POST", "PATCH", "DELETE"], kind: "json", readsJson: true },
@@ -320,6 +320,21 @@ for (const contract of contracts) {
     sessionsListSource,
     /"rev-parse", "--show-toplevel"[\s\S]*"rev-parse", "--git-common-dir"/,
     "/sessions/list: git context should detect worktree-backed roots",
+  );
+  assert.match(
+    sessionsListSource,
+    /"rev-parse", "--is-inside-work-tree"/,
+    "/sessions/list: git context should skip non-worktree roots before slower git probes",
+  );
+  assert.match(
+    sessionsListSource,
+    /let sessionsListCache:[\s\S]*let sessionsListInFlight:/,
+    "/sessions/list: repeated callers should share a short-lived cached response",
+  );
+  assert.match(
+    sessionsListSource,
+    /const inFlight = sessionsListInFlight\.get\(cacheKey\);[\s\S]*if \(inFlight\) return inFlight;/,
+    "/sessions/list: concurrent callers should await one in-flight session list computation",
   );
 }
 

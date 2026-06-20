@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { Icon } from "@/lib/icon";
-import type { LibraryDoc } from "@/lib/library-types";
+import type { LibraryCollection, LibraryDoc } from "@/lib/library-types";
 
 type Props = {
   docs: LibraryDoc[];
@@ -10,6 +11,9 @@ type Props = {
   onSearchChange: (q: string) => void;
   onSelect: (doc: LibraryDoc) => void;
   loading: boolean;
+  collections?: LibraryCollection[];
+  activeCollection?: string;
+  onRenameMove?: (doc: LibraryDoc, patch: { title?: string; collection?: string }) => Promise<void>;
   /** Error message from the last load attempt, if any. */
   error?: string | null;
   /** Triggered when the user clicks Retry in the error state. */
@@ -50,10 +54,57 @@ export function LibraryDocList({
   onSearchChange,
   onSelect,
   loading,
+  collections = [],
+  activeCollection = "all",
+  onRenameMove,
   error,
   onRetry,
 }: Props) {
   const filtered = filterDocs(docs, searchQuery);
+  const movableCollections = collections.filter((collection) => collection.id !== "all");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draftTitle, setDraftTitle] = useState("");
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<{ docId: string; message: string } | null>(null);
+
+  function startRename(doc: LibraryDoc) {
+    setEditingId(doc.id);
+    setDraftTitle(doc.title);
+    setActionError(null);
+  }
+
+  function cancelRename() {
+    setEditingId(null);
+    setDraftTitle("");
+  }
+
+  async function commitRename(doc: LibraryDoc) {
+    const title = draftTitle.trim();
+    if (!title || !onRenameMove) return;
+    setBusyId(doc.id);
+    setActionError(null);
+    try {
+      await onRenameMove(doc, { title });
+      cancelRename();
+    } catch (err) {
+      setActionError({ docId: doc.id, message: err instanceof Error ? err.message : "Could not rename file." });
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function moveDoc(doc: LibraryDoc, collection: string) {
+    if (!collection || !onRenameMove) return;
+    setBusyId(doc.id);
+    setActionError(null);
+    try {
+      await onRenameMove(doc, { collection });
+    } catch (err) {
+      setActionError({ docId: doc.id, message: err instanceof Error ? err.message : "Could not move file." });
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   return (
     <div className="library-doclist">
@@ -114,35 +165,117 @@ export function LibraryDocList({
             </p>
           </div>
         ) : (
-          filtered.map((doc) => (
-            <button
-              key={doc.id}
-              type="button"
-              className={`library-doclist-item${doc.id === selectedId ? " library-doclist-item--active" : ""}`}
-              onClick={() => onSelect(doc)}
-            >
-              <div className="library-doclist-item-header">
-                <span className="library-doclist-item-title">{doc.title}</span>
-                <span className="library-doclist-item-date">{relDate(doc.modifiedAt)}</span>
-              </div>
-              <div className="library-doclist-item-meta">
-                <Icon name="ph:robot" width={12} className="library-doclist-item-familiar shrink-0 text-[var(--text-muted)]" />
-                {doc.excerpt && (
-                  <span className="library-doclist-item-excerpt">{doc.excerpt}</span>
+          filtered.map((doc) => {
+            const isEditing = editingId === doc.id;
+            const isBusy = busyId === doc.id;
+            const moveValue = movableCollections.some((collection) => collection.id === doc.collection)
+              ? doc.collection
+              : "";
+            return (
+              <div
+                key={doc.id}
+                className={`library-doclist-item${doc.id === selectedId ? " library-doclist-item--active" : ""}`}
+              >
+                <button
+                  type="button"
+                  className="library-doclist-item-main"
+                  onClick={() => onSelect(doc)}
+                >
+                  <div className="library-doclist-item-header">
+                    <span className="library-doclist-item-title">{doc.title}</span>
+                    <span className="library-doclist-item-date">{relDate(doc.modifiedAt)}</span>
+                  </div>
+                  <div className="library-doclist-item-meta">
+                    <Icon name="ph:robot" width={12} className="library-doclist-item-familiar shrink-0 text-[var(--text-muted)]" />
+                    {doc.excerpt && (
+                      <span className="library-doclist-item-excerpt">{doc.excerpt}</span>
+                    )}
+                  </div>
+                  {doc.tags.length > 0 && (
+                    <div className="library-doclist-item-tags">
+                      {doc.tags.slice(0, 4).map((tag) => (
+                        <span key={tag} className="library-doclist-tag">
+                          {tag}
+                        </span>
+                      ))}
+                      {doc.tags.length > 4 && <span className="board-table-muted">+{doc.tags.length - 4}</span>}
+                    </div>
+                  )}
+                </button>
+                {onRenameMove && (
+                  <div className="library-doclist-item-actions">
+                    <button
+                      type="button"
+                      className="library-doclist-file-action"
+                      onClick={() => startRename(doc)}
+                      disabled={isBusy}
+                      aria-label={`Rename ${doc.title}`}
+                      title="Rename file"
+                    >
+                      <Icon name="ph:pencil-simple" width={12} />
+                    </button>
+                    <label className="library-doclist-move">
+                      <Icon name="ph:folder" width={12} aria-hidden />
+                      <select
+                        value={moveValue}
+                        onChange={(event) => { void moveDoc(doc, event.target.value); }}
+                        disabled={isBusy || movableCollections.length === 0}
+                        aria-label={`Move ${doc.title}`}
+                        title="Move file"
+                      >
+                        <option value="" disabled>{activeCollection === "all" ? "Move" : "Folder"}</option>
+                        {movableCollections.map((collection) => (
+                          <option key={collection.id} value={collection.id}>
+                            {collection.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                )}
+                {isEditing && (
+                  <form
+                    className="library-doclist-rename-form"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      void commitRename(doc);
+                    }}
+                  >
+                    <input
+                      className="library-doclist-rename-input"
+                      value={draftTitle}
+                      onChange={(event) => setDraftTitle(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Escape") cancelRename();
+                      }}
+                      aria-label={`New name for ${doc.title}`}
+                      autoFocus
+                    />
+                    <button
+                      type="submit"
+                      className="library-doclist-file-action library-doclist-file-action--primary"
+                      disabled={isBusy || !draftTitle.trim()}
+                      aria-label={`Save rename for ${doc.title}`}
+                    >
+                      <Icon name="ph:check" width={12} />
+                    </button>
+                    <button
+                      type="button"
+                      className="library-doclist-file-action"
+                      onClick={cancelRename}
+                      disabled={isBusy}
+                      aria-label={`Cancel rename for ${doc.title}`}
+                    >
+                      <Icon name="ph:x" width={12} />
+                    </button>
+                  </form>
+                )}
+                {actionError?.docId === doc.id && (
+                  <div className="library-doclist-action-error" role="alert">{actionError.message}</div>
                 )}
               </div>
-              {doc.tags.length > 0 && (
-                <div className="library-doclist-item-tags">
-                  {doc.tags.slice(0, 4).map((tag) => (
-                    <span key={tag} className="library-doclist-tag">
-                      {tag}
-                    </span>
-                  ))}
-                  {doc.tags.length > 4 && <span className="board-table-muted">+{doc.tags.length - 4}</span>}
-                </div>
-              )}
-            </button>
-          ))
+            );
+          })
         )}
       </div>
     </div>

@@ -51,8 +51,29 @@ assert.match(
 assert.match(source, /id: "contract"/, "Studio registers the Contract tab in TABS");
 assert.match(
   source,
-  /activeTab === "contract" && familiar \? \(\s*<FamiliarStudioContractTab familiar=\{familiar\} \/>/,
+  /drawerActiveTab === "contract" && familiar \? \(\s*<FamiliarStudioContractTab familiar=\{familiar\} \/>/,
   "Studio mounts the Contract tab body for the active familiar",
+);
+
+assert.doesNotMatch(
+  source,
+  /\{ id: "brain", label: "Brain"/,
+  "Drawer tabstrip should not expose Brain editing inside the right side panel",
+);
+assert.doesNotMatch(
+  source,
+  /<FamiliarStudioBrainTab familiar=\{familiar\}/,
+  "Drawer should not mount the Brain editor inside the right side panel",
+);
+assert.match(
+  source,
+  /Open Brain Studio/,
+  "Drawer should provide a clear action to open the full Brain Studio surface",
+);
+assert.match(
+  source,
+  /setActiveTab\("brain"\)[\s\S]*window\.location\.assign\("\/settings"\)/,
+  "Open Brain Studio should persist the Brain tab and leave the side panel for the full Settings surface",
 );
 
 console.log("familiar-studio.test.ts: ok");

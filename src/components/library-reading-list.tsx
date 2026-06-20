@@ -40,17 +40,6 @@ const STATUS_ORDER: Record<ReadingStatus, number> = {
   abandoned: 3,
 };
 
-function relTime(iso: string): string {
-  try {
-    const s = (Date.now() - new Date(iso).getTime()) / 1000;
-    if (s < 60) return `${Math.round(s)}s`;
-    if (s < 3600) return `${Math.round(s / 60)}m`;
-    if (s < 86400) return `${Math.round(s / 3600)}h`;
-    const d = Math.round(s / 86400);
-    return d < 30 ? `${d}d` : `${Math.round(d / 30)}mo`;
-  } catch { return ""; }
-}
-
 function sortItems(items: LibraryReadingItem[], key: SortKey, dir: SortDir): LibraryReadingItem[] {
   return [...items].sort((a, b) => {
     let cmp = 0;
@@ -210,7 +199,6 @@ type Props = {
 const COLS: { key: SortKey; label: string; className: string; width?: string }[] = [
   { key: "title",   label: "Title",  className: "library-reading-col-title" },
   { key: "status",  label: "Status", className: "library-reading-col-status", width: "196px" },
-  { key: "addedAt", label: "Added",  className: "library-reading-col-added",  width: "64px" },
 ];
 
 export function LibraryReadingList({ selectedId, onSelect, onDelete }: Props) {
@@ -393,7 +381,7 @@ export function LibraryReadingList({ selectedId, onSelect, onDelete }: Props) {
                 <React.Fragment key={key}>
                   {groupBy !== "none" && (
                     <tr className="board-table-group-row" onClick={() => toggleGroup(key)}>
-                      <td colSpan={6}>
+                      <td colSpan={5}>
                         <span className="board-table-group-caret">
                           <Icon name={collapsed.has(key) ? "ph:caret-right" : "ph:caret-down"} width={10} />
                         </span>
@@ -447,9 +435,6 @@ export function LibraryReadingList({ selectedId, onSelect, onDelete }: Props) {
                             );
                           })}
                         </div>
-                      </td>
-                      <td className="library-reading-col-added">
-                        <span className="board-table-muted">{relTime(item.addedAt)}</span>
                       </td>
                       <td className="library-reading-col-source" title={item.sourceType}>
                         <span className="board-table-muted library-source-type" aria-label={`Type: ${item.sourceType}`}>

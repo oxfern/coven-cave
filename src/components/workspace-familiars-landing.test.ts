@@ -102,6 +102,27 @@ assert.match(
   "Workspace wires the top-bar familiar switcher into nullable familiar scope state",
 );
 
+assert.match(
+  workspace,
+  /const \[activeId, setActiveId\] = useState<string \| null>\(null\)/,
+  "Workspace should SSR-render active familiar as null so server/client first render match",
+);
+assert.doesNotMatch(
+  workspace,
+  /useState<string \| null>\(\(\) => getActiveFamiliar\(\)\)/,
+  "Workspace must not read localStorage in the active familiar useState initializer",
+);
+assert.match(
+  workspace,
+  /setActiveId\(getActiveFamiliar\(\)\);[\s\S]*setActiveFamiliarHydrated\(true\);/,
+  "Workspace should restore the persisted active familiar after mount",
+);
+assert.match(
+  workspace,
+  /if \(!activeFamiliarHydrated\) return;[\s\S]*setActiveFamiliar\(activeId\)/,
+  "Workspace should not write active familiar storage until after the mount restore runs",
+);
+
 assert.doesNotMatch(
   workspace,
   /FamiliarAvatarRail|familiarRail=\{|sidebar-trigger-rail/,

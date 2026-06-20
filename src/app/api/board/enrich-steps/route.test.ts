@@ -18,8 +18,14 @@ assert.match(
 
 assert.match(
   source,
-  /await req\.json\(\)[\s\S]*body\.intent === "board-enrich-steps"/,
-  "Enrich route should require the matching JSON intent body",
+  /type EnrichRequestBody = \{[\s\S]*intent\?: unknown;[\s\S]*familiarId\?: unknown;[\s\S]*\}/,
+  "Enrich route should parse both the intent and selected familiar from one JSON body",
+);
+
+assert.match(
+  source,
+  /body\.intent !== ENRICH_INTENT[\s\S]*typeof body\.familiarId !== "string"/,
+  "Enrich route should require the matching JSON intent body and familiar id",
 );
 
 assert.match(
@@ -72,8 +78,8 @@ assert.match(
 
 assert.match(
   source,
-  /const candidates = board\.cards\.filter\([\s\S]*c\.familiarId[\s\S]*!SKIP_LIFECYCLE\.has\(c\.lifecycle\)[\s\S]*\);/,
-  "Enrich route should revisit every active assigned task, including tasks that already have steps",
+  /const candidates = board\.cards\.filter\([\s\S]*c\.familiarId === familiarId[\s\S]*!SKIP_LIFECYCLE\.has\(c\.lifecycle\)[\s\S]*\);/,
+  "Enrich route should revisit active assigned tasks only for the selected familiar",
 );
 
 assert.doesNotMatch(

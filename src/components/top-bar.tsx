@@ -29,12 +29,14 @@ type Props = {
   activeFamiliar?: ResolvedFamiliar | null;
   familiarOptions?: ResolvedFamiliar[];
   onSelectFamiliar?: (id: string | null) => void;
-  /** Mobile quick actions folded in from the desktop menu bar: start a chat
-   *  with the active familiar and jump to the task board. The top bar is the
+  /** Mobile quick actions folded in from the desktop menu bar: enrich tasks
+   *  and jump to the task board. The top bar is the
    *  one mobile bar (it's `display:none` on desktop, where the dedicated
    *  `FamiliarMenuBar` carries these), so these render only on mobile. Omit
    *  either handler to hide that button. */
-  onStartChat?: () => void;
+  onEnrichTasks?: () => void;
+  enrichingTasks?: boolean;
+  enrichProgress?: { done: number; total: number } | null;
   onViewTasks?: () => void;
   /** Open task count (board cards not yet done) — drives the Tasks badge. */
   taskCount?: number;
@@ -78,6 +80,9 @@ export function TopBar(props: Props) {
     activeFamiliar,
     familiarOptions,
     onSelectFamiliar,
+    onEnrichTasks,
+    enrichingTasks,
+    enrichProgress,
     onViewTasks,
     taskCount,
     sessions,
@@ -89,6 +94,11 @@ export function TopBar(props: Props) {
   // handler is wired (the menu offers "All", so it's reachable even before a
   // familiar is the global-active one — e.g. the Home surface).
   const showFamiliarSwitcher = Boolean(onSelectFamiliar && (familiarOptions?.length ?? 0) > 0);
+  const enrichLabel = enrichingTasks
+    ? enrichProgress
+      ? `${enrichProgress.done}/${enrichProgress.total}`
+      : "Starting..."
+    : "Enrich tasks";
 
   return (
     <header className="top-bar">
@@ -162,6 +172,18 @@ export function TopBar(props: Props) {
             placement="bottom-end"
             labeled={familiarSwitcherLabeled}
           />
+        ) : null}
+        {onEnrichTasks ? (
+          <button
+            type="button"
+            className="top-bar__icon-btn top-bar__tasks-enrich"
+            onClick={onEnrichTasks}
+            disabled={enrichingTasks || !activeFamiliar}
+            aria-label={activeFamiliar ? enrichLabel : "Select a familiar to enrich tasks"}
+            title={activeFamiliar ? "Enrich selected familiar tasks" : "Select a familiar to enrich tasks"}
+          >
+            <Icon name="ph:sparkle" width={15} />
+          </button>
         ) : null}
         {onViewTasks ? (
           <button

@@ -34,6 +34,11 @@ type TaskEnrichment = {
   lifecycleReason?: string;
 };
 
+type EnrichRequestBody = {
+  intent?: unknown;
+  familiarId?: unknown;
+};
+
 function statusForLifecycle(lifecycle: CardLifecycle, currentStatus: CardStatus): CardStatus {
   if (lifecycle === "dispatched" || lifecycle === "running") return "running";
   if (lifecycle === "review") return "review";
@@ -115,14 +120,17 @@ function enrichPrompt(card: Card): string {
   ].join("\n");
 }
 
-async function hasIntent(req: Request): Promise<boolean> {
+async function readEnrichRequestBody(req: Request): Promise<{ familiarId: string } | null> {
   if (req.headers.get("x-coven-cave-intent") !== "board-enrich-steps")
-    return false;
+    return null;
   try {
-    const body = (await req.json()) as { intent?: unknown };
-    return body.intent === "board-enrich-steps";
+    const body = (await req.json()) as EnrichRequestBody;
+    if (body.intent !== ENRICH_INTENT || typeof body.familiarId !== "string")
+      return null;
+    const familiarId = body.familiarId.trim();
+    return /^[a-z0-9_-]+$/i.test(familiarId) ? { familiarId } : null;
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -309,7 +317,8 @@ function normalizeTaskEnrichment(card: Card, enrichment: TaskEnrichment, now: st
 }
 
 export async function POST(req: Request) {
-  if (!(await hasIntent(req))) {
+  const body = await readEnrichRequestBody(req);
+  if (!body) {
     return new Response(
       JSON.stringify({ ok: false, error: "missing enrich intent" }),
       {
@@ -320,13 +329,14 @@ export async function POST(req: Request) {
   }
 
   const [board, config] = await Promise.all([loadBoard(), loadConfig()]);
+  const { familiarId } = body;
 
-  // Only enrich active tasks with an assigned familiar. Existing steps are
-  // included so the familiar can refresh stale plans and task metadata.
+  // Only enrich active tasks assigned to the selected familiar. Existing steps
+  // are included so the familiar can refresh stale plans and task metadata.
   const SKIP_LIFECYCLE = new Set(["completed", "cancelled"]);
   const candidates = board.cards.filter(
     (c) =>
-      c.familiarId &&
+      c.familiarId === familiarId &&
       !SKIP_LIFECYCLE.has(c.lifecycle),
   );
 

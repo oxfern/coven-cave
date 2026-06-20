@@ -14,6 +14,26 @@ assert.match(bookmarks, /\(a\.domain \?\? ""\)\.localeCompare\(b\.domain \?\? ""
 assert.match(bookmarks, /\(a\.savedAt \?\? ""\)\.localeCompare\(b\.savedAt \?\? ""\)/,"bookmarks savedAt null-guard");
 assert.match(bookmarks, /function bookmarkTags\(item: LibraryBookmark\): string\[\]/, "bookmarks normalize tag arrays before grouping/searching");
 assert.match(bookmarks, /const domain = displayDomain\(item\);[\s\S]{0,120}const keys = by === "domain" \? \[domain\] : \(tags\.length > 0 \? tags : \["\(untagged\)"\]\);/, "bookmarks group by a display-safe domain");
+assert.match(
+  bookmarks,
+  /const BOOKMARK_GROUP_OPTIONS: Array<\{[\s\S]*?icon: IconName/,
+  "Bookmark grouping selector should define icon-backed options",
+);
+assert.match(
+  bookmarks,
+  /<Popover[\s\S]*?className="library-bookmark-selector__popover"/,
+  "Bookmark grouping selector should use a popover selector",
+);
+assert.match(
+  bookmarks,
+  /<PopoverItem[\s\S]*?icon=\{option\.icon\}[\s\S]*?active=\{option\.id === groupBy\}/,
+  "Bookmark grouping options should render icons and selected state",
+);
+assert.doesNotMatch(
+  bookmarks,
+  /<select[\s\S]*?setGroupBy/,
+  "Bookmark grouping should not use a native select",
+);
 assert.match(bookmarksRoute, /function normalizeBookmark\(item: Partial<LibraryBookmark>\): LibraryBookmark/, "bookmarks API normalizes legacy bookmark records");
 assert.match(bookmarksRoute, /const domain = cleanString\(item\.domain\) \|\| \(url \? domainFrom\(url\) : "\(unknown\)"\);/, "bookmarks API backfills missing domains");
 
@@ -28,10 +48,20 @@ assert.match(
   /className="board-table-title library-reading-title"/,
   "reading titles should opt into library-specific wrapping instead of the shared one-line board title style",
 );
+assert.doesNotMatch(
+  reading,
+  /library-reading-col-added|relTime\(item\.addedAt\)|function relTime/,
+  "Reading list should not render the relative Added/day column",
+);
 assert.match(
   libraryCss,
   /\.library-reading-title\s*\{[\s\S]*?-webkit-line-clamp:\s*2[\s\S]*?white-space:\s*normal/,
   "reading titles should wrap and clamp at two visible lines",
+);
+assert.match(
+  libraryCss,
+  /\.library-bookmark-selector__trigger\s*\{[\s\S]*?display:\s*inline-flex/,
+  "Bookmark selector trigger should have compact dedicated styles",
 );
 assert.match(
   reading,
@@ -122,8 +152,8 @@ assert.match(
 );
 assert.match(
   libraryCss,
-  /@container \(max-width: 560px\) \{[\s\S]*?\.library-reading-row\s*\{[\s\S]*?display:\s*grid;[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\)\s*minmax\(132px,\s*176px\)\s*42px;/,
-  "Narrow reading panels should render rows as a compact grid with a readable status control",
+  /@container \(max-width: 560px\) \{[\s\S]*?\.library-reading-row\s*\{[\s\S]*?display:\s*grid;[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\)\s*minmax\(132px,\s*176px\);/,
+  "Narrow reading panels should render rows as a compact grid with title and a readable status control",
 );
 assert.match(
   libraryCss,

@@ -152,7 +152,8 @@ export function Workspace() {
   const nextRouter = useRouter();
   const routerRef = useRef<ChatRouterHandle | null>(null);
   const shellRef = useRef<ShellHandle | null>(null);
-  const [activeId, setActiveId] = useState<string | null>(() => getActiveFamiliar());
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeFamiliarHydrated, setActiveFamiliarHydrated] = useState(false);
   const [familiars, setFamiliars] = useState<Familiar[]>([]);
   const resolvedFamiliars = useResolvedFamiliars(familiars);
   const [familiarsError, setFamiliarsError] = useState<string | null>(null);
@@ -161,6 +162,7 @@ export function Workspace() {
   // false until the first /api/sessions/list fetch settles — lets the chat
   // list show a skeleton instead of flashing its empty state on boot.
   const [sessionsLoaded, setSessionsLoaded] = useState(false);
+  const loadSessionsInFlightRef = useRef<Promise<void> | null>(null);
   const [daemonRunning, setDaemonRunning] = useState<boolean>(false);
   const { pushBanner, dismissBanner } = useShellBanners();
   const [responseNeeded, setResponseNeeded] = useState<Set<string>>(new Set());
@@ -199,6 +201,8 @@ export function Workspace() {
   // show a per-familiar count when a familiar is scoped, and the grand total
   // only when "All familiars" is selected.
   const [openTaskCards, setOpenTaskCards] = useState<{ familiarId: string | null }[]>([]);
+  const [enrichingTasks, setEnrichingTasks] = useState(false);
+  const [enrichProgress, setEnrichProgress] = useState<{ done: number; total: number } | null>(null);
   const [inboxPrefs, setInboxPrefs] = useState<InboxPrefs>({
     version: 1,
     mutedFamiliars: [],
@@ -292,8 +296,14 @@ export function Workspace() {
   }, []);
 
   useEffect(() => {
+    setActiveId(getActiveFamiliar());
+    setActiveFamiliarHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!activeFamiliarHydrated) return;
     setActiveFamiliar(activeId);
-  }, [activeId]);
+  }, [activeId, activeFamiliarHydrated]);
 
   useEffect(() => {
     if (!activeId) {
@@ -447,26 +457,46 @@ export function Workspace() {
     selectFamiliarScope(id);
   }, [selectFamiliarScope]);
 
-  const loadSessions = useCallback(async () => {
-    try {
-      const [sessionsResult, githubTasksResult] = await Promise.allSettled([
-        fetch("/api/sessions/list", { cache: "no-store" }),
-        addons.github ? fetch("/api/github/tasks", { cache: "no-store" }) : Promise.resolve(null),
-      ]);
-      if (sessionsResult.status !== "fulfilled") return;
-      const json = await sessionsResult.value.json();
-      if (!json.ok) return;
-      let nextSessions = (json.sessions ?? []) as SessionRow[];
-      if (githubTasksResult.status === "fulfilled" && githubTasksResult.value?.ok) {
-        const githubTasksJson = await githubTasksResult.value.json().catch(() => null);
-        nextSessions = attachGitHubTaskContext(nextSessions, githubTasksJson);
+  const loadSessions = useCallback(() => {
+    if (loadSessionsInFlightRef.current) return loadSessionsInFlightRef.current;
+
+    const request = (async () => {
+      let baseSessionsApplied = false;
+      const githubTasksPromise = addons.github
+        ? fetch("/api/github/tasks", { cache: "no-store" })
+            .then((res) => (res.ok ? res.json() : null))
+            .catch(() => null)
+        : Promise.resolve(null);
+
+      try {
+        const sessionsResult = await fetch("/api/sessions/list", { cache: "no-store" });
+        const json = await sessionsResult.json();
+        if (!json.ok) return;
+
+        const baseSessions = (json.sessions ?? []) as SessionRow[];
+        setSessions(baseSessions);
+        setSessionsLoaded(true);
+        baseSessionsApplied = true;
+
+        const githubTasksJson = await githubTasksPromise;
+        if (githubTasksJson) {
+          setSessions((currentSessions) =>
+            attachGitHubTaskContext(
+              currentSessions.length > 0 ? currentSessions : baseSessions,
+              githubTasksJson,
+            ),
+          );
+        }
+      } catch {
+        /* transient */
+      } finally {
+        if (!baseSessionsApplied) setSessionsLoaded(true);
+        loadSessionsInFlightRef.current = null;
       }
-      setSessions(nextSessions);
-    } catch {
-      /* transient */
-    } finally {
-      setSessionsLoaded(true);
-    }
+    })();
+
+    loadSessionsInFlightRef.current = request;
+    return request;
   }, [addons.github]);
 
   useEffect(() => {
@@ -779,24 +809,28 @@ export function Workspace() {
     };
   }, []);
 
+  const refreshOpenTaskCards = useCallback(async () => {
+    try {
+      const res = await fetch("/api/board", { cache: "no-store" });
+      const json = await res.json();
+      if (json.ok && Array.isArray(json.cards)) {
+        const open = (json.cards as Array<{ status?: string; familiarId?: string | null }>)
+          .filter((c) => c.status !== "done")
+          .map((c) => ({ familiarId: c.familiarId ?? null }));
+        setOpenTaskCards(open);
+      }
+    } catch {
+      /* keep last value on transient failure */
+    }
+  }, []);
+
   // Poll the board for the count of open task cards (anything not yet "done")
   // — drives the desktop menu bar's Tasks badge. Cheap GET every 60s.
   useEffect(() => {
     let cancelled = false;
     const tick = async () => {
-      try {
-        const res = await fetch("/api/board", { cache: "no-store" });
-        const json = await res.json();
-        if (cancelled) return;
-        if (json.ok && Array.isArray(json.cards)) {
-          const open = (json.cards as Array<{ status?: string; familiarId?: string | null }>)
-            .filter((c) => c.status !== "done")
-            .map((c) => ({ familiarId: c.familiarId ?? null }));
-          setOpenTaskCards(open);
-        }
-      } catch {
-        /* keep last value on transient failure */
-      }
+      if (cancelled) return;
+      await refreshOpenTaskCards();
     };
     void tick();
     const t = setInterval(tick, 60_000);
@@ -804,7 +838,56 @@ export function Workspace() {
       cancelled = true;
       clearInterval(t);
     };
-  }, []);
+  }, [refreshOpenTaskCards]);
+
+  const handleEnrichTasks = useCallback(async () => {
+    if (!activeId || enrichingTasks) return;
+    setEnrichingTasks(true);
+    setEnrichProgress(null);
+    try {
+      const res = await fetch("/api/board/enrich-steps", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-coven-cave-intent": "board-enrich-steps",
+        },
+        body: JSON.stringify({ intent: "board-enrich-steps", familiarId: activeId }),
+      });
+      if (!res.ok) throw new Error(`enrich tasks failed (${res.status})`);
+      if (!res.body) throw new Error("enrich tasks: missing response body");
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          try {
+            const msg = JSON.parse(trimmed) as Record<string, unknown>;
+            if (msg.kind === "start") {
+              setEnrichProgress({ done: 0, total: (msg.total as number) ?? 0 });
+            } else if (msg.kind === "done" || msg.kind === "skip") {
+              setEnrichProgress((prev) => prev ? { ...prev, done: prev.done + 1 } : prev);
+            } else if (msg.kind === "complete") {
+              window.dispatchEvent(new CustomEvent("cave:board:reload"));
+              await refreshOpenTaskCards();
+            }
+          } catch {
+            /* ignore malformed progress lines */
+          }
+        }
+      }
+    } catch {
+      /* keep the top-bar action quiet; progress resets below */
+    } finally {
+      setEnrichingTasks(false);
+    }
+  }, [activeId, enrichingTasks, refreshOpenTaskCards]);
 
   const openReminderModal = useCallback((title = "", whenText = "", fireAt = "") => {
     setReminderModalDefaults({ fireAt, title, whenText });
@@ -1715,6 +1798,9 @@ export function Workspace() {
               }}
               onSelectFamiliar={selectFamiliarScope}
               onViewTasks={() => setMode("board")}
+              onEnrichTasks={handleEnrichTasks}
+              enrichingTasks={enrichingTasks}
+              enrichProgress={enrichProgress}
               onViewInbox={() => setMode("inbox")}
             />
             <TopBar
@@ -1732,7 +1818,9 @@ export function Workspace() {
               activeFamiliar={resolvedFamiliars.find((f) => f.id === activeId) ?? null}
               familiarOptions={resolvedFamiliars}
               onSelectFamiliar={selectFamiliarScope}
-              onStartChat={() => startFamiliarChat(activeId)}
+              onEnrichTasks={handleEnrichTasks}
+              enrichingTasks={enrichingTasks}
+              enrichProgress={enrichProgress}
               onViewTasks={() => setMode("board")}
               taskCount={boardTaskCount}
               sessions={sessions}

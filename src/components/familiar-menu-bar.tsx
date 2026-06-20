@@ -24,6 +24,10 @@ type Props = {
   onSelectFamiliar: (id: string | null) => void;
   /** Jump to the task board. */
   onViewTasks: () => void;
+  /** Enrich active tasks for the selected familiar. */
+  onEnrichTasks?: () => void;
+  enrichingTasks?: boolean;
+  enrichProgress?: { done: number; total: number } | null;
   /** Jump to the inbox / schedules. */
   onViewInbox: () => void;
 };
@@ -50,8 +54,17 @@ export function FamiliarMenuBar({
   onSearchQueryChange,
   onSelectFamiliar,
   onViewTasks,
+  onEnrichTasks,
+  enrichingTasks,
+  enrichProgress,
   onViewInbox,
 }: Props) {
+  const enrichLabel = enrichingTasks
+    ? enrichProgress
+      ? `${enrichProgress.done}/${enrichProgress.total}`
+      : "Starting..."
+    : "Enrich";
+
   return (
     <nav className="menu-bar" aria-label="Chat with familiars and view tasks">
       <div className="menu-bar__group menu-bar__group--chat">
@@ -94,6 +107,19 @@ export function FamiliarMenuBar({
       </form>
 
       <div className="menu-bar__group menu-bar__group--tasks">
+        {onEnrichTasks ? (
+          <button
+            type="button"
+            className="menu-bar__task focus-ring"
+            onClick={onEnrichTasks}
+            disabled={enrichingTasks || !activeFamiliarId}
+            aria-label={enrichingTasks ? `Enriching tasks ${enrichLabel}` : activeFamiliarId ? "Enrich selected familiar tasks" : "Select a familiar to enrich tasks"}
+            title={activeFamiliarId ? "Enrich selected familiar tasks" : "Select a familiar to enrich tasks"}
+          >
+            <Icon name="ph:sparkle" width={15} aria-hidden />
+            <span>{enrichingTasks ? enrichLabel : "Enrich"}</span>
+          </button>
+        ) : null}
         <button
           type="button"
           className="menu-bar__task focus-ring"

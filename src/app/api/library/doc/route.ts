@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { homedir } from "node:os";
 import type { LibraryDocBody } from "@/lib/library-types";
+import { renameOrMoveResearchDoc } from "./doc-file";
 
 const SAGE_ROOT = path.join(homedir(), ".openclaw", "workspace", "sage");
 const RESEARCH_ROOT = path.join(SAGE_ROOT, "research");
@@ -220,4 +221,24 @@ export async function GET(req: NextRequest) {
   };
 
   return NextResponse.json({ ok: true, doc });
+}
+
+export async function PATCH(req: NextRequest) {
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ ok: false, error: "invalid json" }, { status: 400 });
+  }
+
+  const result = await renameOrMoveResearchDoc(
+    typeof body === "object" && body !== null ? body : {},
+    { sageRoot: SAGE_ROOT, researchRoot: RESEARCH_ROOT },
+  );
+
+  if (!result.ok) {
+    return NextResponse.json({ ok: false, error: result.error }, { status: result.status });
+  }
+
+  return NextResponse.json({ ok: true, doc: result.doc });
 }

@@ -33,8 +33,28 @@ assert.match(
 const workspace = read("./workspace.tsx");
 assert.match(
   workspace,
-  /const \[sessionsLoaded, setSessionsLoaded\] = useState\(false\)[\s\S]*?finally \{\s*setSessionsLoaded\(true\);/,
+  /const \[sessionsLoaded, setSessionsLoaded\] = useState\(false\)/,
   "Workspace flips sessionsLoaded after the first /api/sessions/list fetch settles",
+);
+assert.match(
+  workspace,
+  /const loadSessionsInFlightRef = useRef<Promise<void> \| null>\(null\)/,
+  "Workspace deduplicates overlapping session-list refreshes",
+);
+assert.match(
+  workspace,
+  /if \(loadSessionsInFlightRef\.current\) return loadSessionsInFlightRef\.current;/,
+  "Workspace reuses an in-flight session-list request instead of stacking pollers",
+);
+assert.doesNotMatch(
+  workspace,
+  /Promise\.allSettled\(\[[\s\S]{0,600}\/api\/sessions\/list[\s\S]{0,600}\/api\/github\/tasks/,
+  "Workspace does not block the first visible chat sessions on optional GitHub task enrichment",
+);
+assert.match(
+  workspace,
+  /setSessions\(baseSessions\);[\s\S]{0,220}setSessionsLoaded\(true\);[\s\S]{0,500}githubTasksPromise/,
+  "Workspace renders base chat sessions before applying optional GitHub task context",
 );
 assert.match(
   workspace,

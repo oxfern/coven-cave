@@ -39,6 +39,8 @@
   position: relative;
   display: flex;
   flex-direction: column;
+  align-self: stretch;
+  height: 100%;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -46,6 +48,8 @@
 
 .workflow-studio-library-content,
 .workflow-studio-side-content {
+  display: flex;
+  flex-direction: column;
   flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
@@ -54,6 +58,7 @@
 }
 
 .workflow-studio-side-content > [role="tabpanel"] {
+  flex: 1 1 auto;
   min-height: 100%;
   display: flex;
   flex-direction: column;
@@ -61,6 +66,8 @@
 
 .workflow-studio-shell.is-left-collapsed > .workflow-studio-library-panel {
   border-right: 1px solid var(--border-hairline);
+  background: var(--bg-panel);
+  color: var(--text-primary);
 }
 
 .workflow-studio-shell.is-right-collapsed > .workflow-studio-side {
@@ -234,6 +241,10 @@
   align-items: flex-start;
   padding-top: 10px;
   margin-bottom: 0;
+}
+
+.workflow-studio-shell.is-left-collapsed .workflow-panel-tab-left {
+  color: var(--text-primary);
 }
 
 .workflow-studio-shell.is-right-collapsed .workflow-side-panel-header {

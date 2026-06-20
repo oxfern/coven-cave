@@ -1,8 +1,9 @@
 "use client";
 
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Icon } from "@/lib/icon";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Popover, PopoverBody, PopoverItem, PopoverLabel } from "@/components/ui/popover";
+import { Icon, type IconName } from "@/lib/icon";
 import { useUndoDelete } from "@/lib/use-undo-delete";
 import { LibraryUndoToast } from "@/components/library-undo-toast";
 import type { LibraryBookmark } from "@/lib/library-types";
@@ -13,6 +14,12 @@ import { useIsCoarsePointer } from "@/lib/use-viewport";
 type SortKey = "title" | "domain" | "savedAt";
 type SortDir = "asc" | "desc";
 type GroupBy = "tags" | "domain" | "none";
+
+const BOOKMARK_GROUP_OPTIONS: Array<{ id: GroupBy; label: string; icon: IconName }> = [
+  { id: "tags", label: "Group: Tags", icon: "ph:tag-bold" },
+  { id: "domain", label: "Group: Domain", icon: "ph:globe" },
+  { id: "none", label: "No grouping", icon: "ph:list-bullets" },
+];
 
 function relTime(iso: string): string {
   try {
@@ -192,11 +199,13 @@ export function LibraryBookmarksList({ selectedId, onSelect, onDelete, onAddToBo
   const [sortKey, setSortKey] = useState<SortKey>("savedAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [groupBy, setGroupBy] = useState<GroupBy>("tags");
+  const [groupSelectorOpen, setGroupSelectorOpen] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [adding, setAdding] = useState(false);
   const [addedToBoardId, setAddedToBoardId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const groupSelectorRef = useRef<HTMLButtonElement | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -218,6 +227,7 @@ export function LibraryBookmarksList({ selectedId, onSelect, onDelete, onAddToBo
   const filtered = useMemo(() => filterItems(items, query), [items, query]);
   const sorted = useMemo(() => sortItems(filtered, sortKey, sortDir), [filtered, sortKey, sortDir]);
   const groups = useMemo(() => groupItems(sorted, groupBy), [sorted, groupBy]);
+  const activeGroupOption = BOOKMARK_GROUP_OPTIONS.find((option) => option.id === groupBy) ?? BOOKMARK_GROUP_OPTIONS[0];
 
   function handleCol(key: SortKey) {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -266,15 +276,51 @@ export function LibraryBookmarksList({ selectedId, onSelect, onDelete, onAddToBo
           <span className="board-table-group-badge">{items.length}</span>
         </span>
         <div className="library-list-header-controls">
-          <select
-            className="board-toolbar-select"
-            value={groupBy}
-            onChange={(e) => setGroupBy(e.target.value as GroupBy)}
-          >
-            <option value="tags">Group: Tags</option>
-            <option value="domain">Group: Domain</option>
-            <option value="none">No grouping</option>
-          </select>
+          <div className="library-bookmark-selector">
+            <button
+              ref={groupSelectorRef}
+              type="button"
+              className="library-bookmark-selector__trigger focus-ring"
+              aria-haspopup="menu"
+              aria-expanded={groupSelectorOpen}
+              aria-label="Group bookmarks"
+              onClick={() => setGroupSelectorOpen((open) => !open)}
+            >
+              <Icon name={activeGroupOption.icon} width={12} aria-hidden />
+              <span>{activeGroupOption.label}</span>
+              <Icon
+                name="ph:caret-down"
+                width={10}
+                aria-hidden
+                className="library-bookmark-selector__caret"
+              />
+            </button>
+            <Popover
+              open={groupSelectorOpen}
+              onOpenChange={setGroupSelectorOpen}
+              anchorRef={groupSelectorRef}
+              placement="bottom-start"
+              className="library-bookmark-selector__popover"
+              minWidth={180}
+            >
+              <PopoverBody>
+                <PopoverLabel>Group bookmarks</PopoverLabel>
+                {BOOKMARK_GROUP_OPTIONS.map((option) => (
+                  <PopoverItem
+                    key={option.id}
+                    icon={option.icon}
+                    active={option.id === groupBy}
+                    onSelect={() => {
+                      setGroupBy(option.id);
+                      setGroupSelectorOpen(false);
+                    }}
+                  >
+                    {option.label}
+                  </PopoverItem>
+                ))}
+              </PopoverBody>
+            </Popover>
+          </div>
           <button type="button" className="board-toolbar-btn" onClick={() => setAdding((v) => !v)}>
             <Icon name="ph:plus" width={12} /> Add
           </button>

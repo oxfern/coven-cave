@@ -74,20 +74,35 @@ assert.doesNotMatch(
   /library-reader-iconbtn"[\s\S]{0,300}Open in editor/,
   "Reader cluster has no open-in-editor button (it stays in the inline preview header)",
 );
-assert.match(
+assert.doesNotMatch(
   src,
-  /READER_WIDE_KEY = "cave:library:reader-wide"/,
-  "Reader width preference persists",
+  /READER_WIDE_KEY|readerWide|setReaderWide/,
+  "Reader has no width preference state: it always opens expanded",
+);
+assert.doesNotMatch(
+  src,
+  /Widen reading width|Narrow reading width|ph:arrows-(in|out)-simple|aria-pressed=\{readerWide\}/,
+  "Reader no longer renders an expand/narrow width toggle",
 );
 assert.match(
   src,
-  /aria-pressed=\{readerWide\}[\s\S]{0,200}ph:arrows-(in|out)-simple/,
-  "Width toggle is a labeled pressed-state button",
+  /className="library-reader-modal library-reader-modal--wide"/,
+  "Reader modal always opens in expanded full-width form",
 );
 assert.match(
   css,
-  /\.library-reader-modal--wide \{[\s\S]*?max-width: min\(1240px/,
-  "Wide mode grows the modal and unlocks the measure",
+  /\.library-reader-modal--wide \{[\s\S]*?width: calc\(100vw - 64px\);[\s\S]*?max-width: none;/,
+  "Wide mode grows the reader to the available viewport width",
+);
+assert.match(
+  css,
+  /\.library-reader-modal--wide \.library-reader-body \.cave-md\.library-preview-md\s*\{[\s\S]*?max-width:\s*100%;[\s\S]*?width:\s*100%;/,
+  "Wide mode makes every reader markdown body span the available width",
+);
+assert.match(
+  css,
+  /\.library-reader-modal--wide \.library-reader-body--with-toc \.library-preview-md\s*\{[\s\S]*?flex-basis:\s*100%;[\s\S]*?width:\s*100%;/,
+  "Wide mode makes synthesis/paper markdown span the full reader width even when a ToC is present",
 );
 
 // ── P2: prev/next document nav ──

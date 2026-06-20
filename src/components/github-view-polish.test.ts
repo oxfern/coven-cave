@@ -6,6 +6,7 @@ const source = readFileSync(
   new URL("./github-view.tsx", import.meta.url),
   "utf8",
 );
+const boardCss = readFileSync(new URL("../styles/board.css", import.meta.url), "utf8");
 
 // Inner GitHub <h2> and logo removed — the workspace breadcrumb already names the surface.
 assert.doesNotMatch(
@@ -102,6 +103,31 @@ assert.match(
   source,
   /className="gh-glass-panel"/,
   "detail panel uses the glass panel styling hook",
+);
+assert.doesNotMatch(
+  source,
+  /gh-issue-labels|gh-issue-label|gh-issue-label-dot|No labels on this item\.|gh-badge--label|item\.labels\?\.slice/,
+  "GitHub view should not render visible GitHub labels in rows or the detail panel",
+);
+assert.doesNotMatch(
+  boardCss,
+  /gh-issue-labels|gh-issue-label|gh-issue-label-dot|gh-badge--label|gh-glass-labels/,
+  "GitHub label chip styles should be removed with the visible label UI",
+);
+assert.match(
+  boardCss,
+  /\.gh-glass-panel \{[\s\S]*?scrollbar-width:none;[\s\S]*?-ms-overflow-style:none;/,
+  "GitHub detail sidepanel scrolls without the hover-only scrollbar rail",
+);
+assert.match(
+  boardCss,
+  /\.gh-glass-panel::(?:-webkit-scrollbar) \{ width:0; height:0; \}/,
+  "GitHub detail sidepanel hides WebKit scrollbar chrome on hover",
+);
+assert.doesNotMatch(
+  source,
+  /<div className="gh-glass-section-title">Labels<\/div>/,
+  "detail panel removes the Labels section entirely",
 );
 
 // Selecting a repo pins the org to that repo's org and locks the Org select.

@@ -80,6 +80,8 @@ export function CanvasList({
   const [refineText, setRefineText] = useState("");
   const refineRef = useRef<HTMLTextAreaElement | null>(null);
   const composerRef = useRef<HTMLInputElement | null>(null);
+  const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
+  const [editingTitleDraft, setEditingTitleDraft] = useState("");
 
   // Seed the generate composer from an example prompt and focus it, so the
   // empty-state starters are one tap from a ready-to-run sketch.
@@ -195,6 +197,43 @@ export function CanvasList({
     }).catch(() => undefined);
   }, []);
 
+  const startRename = useCallback((artifact: CanvasArtifact) => {
+    setSelectedId(artifact.id);
+    setEditingTitleId(artifact.id);
+    setEditingTitleDraft(artifact.title || "Untitled sketch");
+  }, []);
+
+  const cancelRename = useCallback(() => {
+    setEditingTitleId(null);
+    setEditingTitleDraft("");
+  }, []);
+
+  const commitRename = useCallback(
+    (id: string) => {
+      const title = editingTitleDraft.trim();
+      if (!title) {
+        cancelRename();
+        return;
+      }
+      setArtifacts((prev) =>
+        prev.map((artifact) => {
+          if (artifact.id !== id) return artifact;
+          if (artifact.title === title) return artifact;
+          const next: CanvasArtifact = {
+            ...artifact,
+            title,
+            updatedAt: new Date().toISOString(),
+          };
+          persist(next);
+          return next;
+        }),
+      );
+      setEditingTitleId(null);
+      setEditingTitleDraft("");
+    },
+    [cancelRename, editingTitleDraft, persist],
+  );
+
   const selected = artifacts.find((a) => a.id === selectedId) ?? null;
   const canGenerate = Boolean(activeFamiliarId ?? familiars[0]?.id);
   const selectedBusy = selected ? generating.has(selected.id) : false;
@@ -274,20 +313,52 @@ export function CanvasList({
           <ul className="journal-list__items">
             {[...artifacts].reverse().map((a) => (
               <li key={a.id}>
-                <button
-                  type="button"
-                  className={`journal-art${a.id === selectedId ? " is-selected" : ""}`}
-                  onClick={() => {
-                    setSelectedId(a.id);
-                    setView("preview");
-                  }}
-                >
-                  <span className="journal-art__title">{a.title || "Untitled sketch"}</span>
-                  <span className="journal-art__meta">
-                    <span className={`journal-kind journal-kind--${a.kind ?? "html"}`}>{a.kind ?? "html"}</span>
-                    {generating.has(a.id) ? " · generating…" : ` · ${relativeTime(a.updatedAt)}`}
-                  </span>
-                </button>
+                <div className={`journal-art${a.id === selectedId ? " is-selected" : ""}`}>
+                  {editingTitleId === a.id ? (
+                    <input
+                      className="journal-art__rename"
+                      value={editingTitleDraft}
+                      autoFocus
+                      aria-label="Rename canvas item"
+                      onChange={(e) => setEditingTitleDraft(e.target.value)}
+                      onBlur={() => commitRename(a.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          commitRename(a.id);
+                        }
+                        if (e.key === "Escape") {
+                          e.preventDefault();
+                          cancelRename();
+                        }
+                      }}
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      className="journal-art__select"
+                      onClick={() => {
+                        setSelectedId(a.id);
+                        setView("preview");
+                      }}
+                    >
+                      <span className="journal-art__title">{a.title || "Untitled sketch"}</span>
+                      <span className="journal-art__meta">
+                        <span className={`journal-kind journal-kind--${a.kind ?? "html"}`}>{a.kind ?? "html"}</span>
+                        {generating.has(a.id) ? " · generating…" : ` · ${relativeTime(a.updatedAt)}`}
+                      </span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="journal-art__rename-btn"
+                    aria-label={`Rename ${a.title || "Untitled sketch"}`}
+                    title="Rename"
+                    onClick={() => startRename(a)}
+                  >
+                    <Icon name="ph:pencil-simple" width={13} aria-hidden />
+                  </button>
+                </div>
               </li>
             ))}
           </ul>

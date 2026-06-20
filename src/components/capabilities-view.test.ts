@@ -18,6 +18,8 @@ assert.match(source, /normalizeCapabilities/, "should derive an operator map vie
 assert.match(source, /CapabilityMap/, "should render the hybrid capability map");
 assert.match(source, /CapabilityDetails/, "should render inspector details inline inside the expanded capability row");
 assert.doesNotMatch(source, /CapabilityInspector/, "the separate right-side inspector column is removed in favor of inline details");
+assert.match(source, /className="capability-meta-row"/, "inspector metadata should use a compact responsive row");
+assert.match(source, /<InspectorMetaItem label="Detail"[\s\S]*<InspectorMetaItem label="Path"[\s\S]*<InspectorMetaItem label="Scanned"/, "detail/path/scanned metadata should render as collapsed inline fields");
 assert.match(source, /placeholder="Search skills, plugins, paths, commands"/, "should expose operator-grade search");
 assert.match(source, /copyCapabilityDetail/, "inspector should expose read-only copy actions");
 assert.doesNotMatch(source, /\bharnessLabel,\n/, "should not import unused harnessLabel into the view component");

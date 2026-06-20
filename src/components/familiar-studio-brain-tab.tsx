@@ -137,198 +137,215 @@ export function FamiliarStudioBrainTab({ familiar }: Props) {
 
   return (
     <div className="familiar-studio-brain">
-      <label className="familiar-studio-brain__row">
-        <span className="familiar-studio-brain__label">Runtime</span>
-        <div className="familiar-studio-brain__control">
-          <select
-            value={draftHarness}
-            onChange={(e) => {
-              setDraftHarness(e.target.value);
-              void save({ harness: e.target.value || null });
-            }}
-            className="familiar-studio-brain__input"
-          >
-            <option value="">— inherit default —</option>
-            {harnesses.map((h) => (
-              <option key={h.id} value={h.id}>
-                {h.label}{h.installed ? "" : " (not installed)"}
-              </option>
-            ))}
-          </select>
-        </div>
-      </label>
+      <div className="familiar-studio-brain__workspace">
+        <div className="familiar-studio-brain__primary">
+          <section className="familiar-studio-brain__card">
+            <h3 className="familiar-studio-brain__card-title">Runtime & model</h3>
+            <div className="familiar-studio-brain__field-grid">
+              <label className="familiar-studio-brain__row">
+                <span className="familiar-studio-brain__label">Runtime</span>
+                <div className="familiar-studio-brain__control">
+                  <select
+                    value={draftHarness}
+                    onChange={(e) => {
+                      setDraftHarness(e.target.value);
+                      void save({ harness: e.target.value || null });
+                    }}
+                    className="familiar-studio-brain__input"
+                  >
+                    <option value="">— inherit default —</option>
+                    {harnesses.map((h) => (
+                      <option key={h.id} value={h.id}>
+                        {h.label}{h.installed ? "" : " (not installed)"}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </label>
 
-      <label className="familiar-studio-brain__row">
-        <span className="familiar-studio-brain__label">Model</span>
-        <div className="familiar-studio-brain__control">
-          {modelOptions.length > 0 ? (
-            <select
-              aria-label="Model"
-              value={draftModelIsListed ? draftModel : "__custom__"}
-              onChange={(e) => {
-                const value = e.target.value;
-                if (value === "__custom__") {
-                  setDraftModel("");
-                  return;
-                }
-                setDraftModel(value);
-                void save({ model: value || null });
-              }}
-              className="familiar-studio-brain__input"
+              <label className="familiar-studio-brain__row">
+                <span className="familiar-studio-brain__label">Model</span>
+                <div className="familiar-studio-brain__control">
+                  {modelOptions.length > 0 ? (
+                    <select
+                      aria-label="Model"
+                      value={draftModelIsListed ? draftModel : "__custom__"}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value === "__custom__") {
+                          setDraftModel("");
+                          return;
+                        }
+                        setDraftModel(value);
+                        void save({ model: value || null });
+                      }}
+                      className="familiar-studio-brain__input"
+                    >
+                      <option value="">— inherit default —</option>
+                      {modelOptions.map((option) => (
+                        <option key={option.id} value={option.id}>
+                          {option.label}
+                        </option>
+                      ))}
+                      {allowCustomModel ? <option value="__custom__">Custom…</option> : null}
+                    </select>
+                  ) : null}
+                  {allowCustomModel && (modelOptions.length === 0 || !draftModelIsListed) ? (
+                    <input
+                      type="text"
+                      value={draftModel}
+                      onChange={(e) => setDraftModel(e.target.value)}
+                      onBlur={() => save({ model: draftModel.trim() || null })}
+                      placeholder="provider/model"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      className="familiar-studio-brain__input"
+                    />
+                  ) : null}
+                </div>
+              </label>
+            </div>
+          </section>
+
+          <section className="familiar-studio-brain__card familiar-studio-brain__card--prompt">
+            <h3 className="familiar-studio-brain__card-title">System prompt / note</h3>
+            <label className="familiar-studio-brain__row">
+              <span className="sr-only">System prompt / note</span>
+              <div className="familiar-studio-brain__control">
+                <textarea
+                  rows={9}
+                  value={draftNote}
+                  onChange={(e) => setDraftNote(e.target.value)}
+                  onBlur={() => save({ note: draftNote.trim() || null })}
+                  placeholder="Plain text instructions to seed this familiar's behavior."
+                  className="familiar-studio-brain__input familiar-studio-brain__input--note"
+                />
+              </div>
+            </label>
+          </section>
+
+          {toast ? <p className="familiar-studio-brain__toast">{toast}</p> : null}
+        </div>
+
+        <aside className="familiar-studio-brain__sidecar" aria-label="Voice and capabilities">
+          <section className="familiar-studio-brain__card">
+            <h3 className="familiar-studio-brain__card-title">Voice</h3>
+            <label className="familiar-studio-brain__row">
+              <span className="familiar-studio-brain__label">Voice provider</span>
+              <div className="familiar-studio-brain__control">
+                <select
+                  value={draftVoiceProvider}
+                  onChange={(e) => {
+                    setDraftVoiceProvider(e.target.value);
+                    void save({ voiceProvider: e.target.value || null });
+                  }}
+                  className="familiar-studio-brain__input"
+                >
+                  <option value="">— none —</option>
+                  <option value="openai">OpenAI Realtime</option>
+                  <option value="gemini" disabled>Gemini Live (v1.1)</option>
+                </select>
+              </div>
+            </label>
+
+            {draftVoiceProvider === "openai" && (
+              <>
+                <label className="familiar-studio-brain__row">
+                  <span className="familiar-studio-brain__label">Voice model</span>
+                  <div className="familiar-studio-brain__control">
+                    <input
+                      type="text"
+                      value={draftVoiceModel}
+                      onChange={(e) => setDraftVoiceModel(e.target.value)}
+                      onBlur={() => void save({ voiceModel: draftVoiceModel.trim() || null })}
+                      placeholder="gpt-4o-realtime-preview"
+                      className="familiar-studio-brain__input"
+                    />
+                  </div>
+                </label>
+
+                <label className="familiar-studio-brain__row">
+                  <span className="familiar-studio-brain__label">Voice</span>
+                  <div className="familiar-studio-brain__control">
+                    <select
+                      value={draftVoiceName}
+                      onChange={(e) => {
+                        setDraftVoiceName(e.target.value);
+                        void save({ voiceName: e.target.value || null });
+                      }}
+                      className="familiar-studio-brain__input"
+                    >
+                      <option value="">— default (alloy) —</option>
+                      <option value="alloy">alloy</option>
+                      <option value="ash">ash</option>
+                      <option value="ballad">ballad</option>
+                      <option value="coral">coral</option>
+                      <option value="echo">echo</option>
+                      <option value="sage">sage</option>
+                      <option value="shimmer">shimmer</option>
+                      <option value="verse">verse</option>
+                    </select>
+                  </div>
+                </label>
+              </>
+            )}
+          </section>
+
+          {harnessId ? (
+            <details
+              className="familiar-studio-brain__capabilities"
+              open={capsOpen}
+              onToggle={(e) => setCapsOpen((e.currentTarget as HTMLDetailsElement).open)}
             >
-              <option value="">— inherit default —</option>
-              {modelOptions.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
-              {allowCustomModel ? <option value="__custom__">Custom…</option> : null}
-            </select>
-          ) : null}
-          {allowCustomModel && (modelOptions.length === 0 || !draftModelIsListed) ? (
-            <input
-              type="text"
-              value={draftModel}
-              onChange={(e) => setDraftModel(e.target.value)}
-              onBlur={() => save({ model: draftModel.trim() || null })}
-              placeholder="provider/model"
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              className="familiar-studio-brain__input"
-            />
-          ) : null}
-        </div>
-      </label>
-
-      <label className="familiar-studio-brain__row">
-        <span className="familiar-studio-brain__label">System prompt / note</span>
-        <div className="familiar-studio-brain__control">
-          <textarea
-            rows={5}
-            value={draftNote}
-            onChange={(e) => setDraftNote(e.target.value)}
-            onBlur={() => save({ note: draftNote.trim() || null })}
-            placeholder="Plain text instructions to seed this familiar's behavior."
-            className="familiar-studio-brain__input"
-          />
-        </div>
-      </label>
-
-      <label className="familiar-studio-brain__row">
-        <span className="familiar-studio-brain__label">Voice provider</span>
-        <div className="familiar-studio-brain__control">
-          <select
-            value={draftVoiceProvider}
-            onChange={(e) => {
-              setDraftVoiceProvider(e.target.value);
-              void save({ voiceProvider: e.target.value || null });
-            }}
-            className="familiar-studio-brain__input"
-          >
-            <option value="">— none —</option>
-            <option value="openai">OpenAI Realtime</option>
-            <option value="gemini" disabled>Gemini Live (v1.1)</option>
-          </select>
-        </div>
-      </label>
-
-      {draftVoiceProvider === "openai" && (
-        <>
-          <label className="familiar-studio-brain__row">
-            <span className="familiar-studio-brain__label">Voice model</span>
-            <div className="familiar-studio-brain__control">
-              <input
-                type="text"
-                value={draftVoiceModel}
-                onChange={(e) => setDraftVoiceModel(e.target.value)}
-                onBlur={() => void save({ voiceModel: draftVoiceModel.trim() || null })}
-                placeholder="gpt-4o-realtime-preview"
-                className="familiar-studio-brain__input"
-              />
-            </div>
-          </label>
-
-          <label className="familiar-studio-brain__row">
-            <span className="familiar-studio-brain__label">Voice</span>
-            <div className="familiar-studio-brain__control">
-              <select
-                value={draftVoiceName}
-                onChange={(e) => {
-                  setDraftVoiceName(e.target.value);
-                  void save({ voiceName: e.target.value || null });
-                }}
-                className="familiar-studio-brain__input"
-              >
-                <option value="">— default (alloy) —</option>
-                <option value="alloy">alloy</option>
-                <option value="ash">ash</option>
-                <option value="ballad">ballad</option>
-                <option value="coral">coral</option>
-                <option value="echo">echo</option>
-                <option value="sage">sage</option>
-                <option value="shimmer">shimmer</option>
-                <option value="verse">verse</option>
-              </select>
-            </div>
-          </label>
-        </>
-      )}
-
-      {toast ? <p className="familiar-studio-brain__toast">{toast}</p> : null}
-
-      {harnessId ? (
-        <details
-          className="familiar-studio-brain__capabilities"
-          open={capsOpen}
-          onToggle={(e) => setCapsOpen((e.currentTarget as HTMLDetailsElement).open)}
-        >
-          <summary className="familiar-studio-brain__capabilities-summary">
-            <span>Capabilities</span>
-            {manifestState === "loading" ? (
-              <span className="familiar-studio-brain__capabilities-meta">scanning…</span>
-            ) : manifestState === "error" ? (
-              <span className="familiar-studio-brain__capabilities-meta">daemon offline</span>
-            ) : manifest ? (
-              <span className="familiar-studio-brain__capabilities-meta">
-                {capabilityCount} item{capabilityCount === 1 ? "" : "s"}
-              </span>
-            ) : null}
-          </summary>
-          {manifest ? (
-            <div className="familiar-studio-brain__capabilities-body">
-              <p className="familiar-studio-brain__capabilities-line">
-                <strong>AGENTS.md:</strong>{" "}
-                {manifest.global_instructions.present
-                  ? manifest.global_instructions.path?.replace(/^\/Users\/[^/]+/, "~") ?? "present"
-                  : "not present"}
-              </p>
-              <p className="familiar-studio-brain__capabilities-line">
-                <strong>Skills:</strong> {manifest.skills.length}
-                {manifest.skills.length > 0 && (
-                  <> · {manifest.skills.slice(0, 3).map((s) => s.name).join(", ")}
-                    {manifest.skills.length > 3 ? ` +${manifest.skills.length - 3} more` : ""}</>
-                )}
-              </p>
-              {/* Skills are building blocks of Workflows — see the Workflows tab in Capabilities */}
-              {manifest.warnings.length > 0 && (
-                <p className="familiar-studio-brain__capabilities-line familiar-studio-brain__capabilities-line--warn">
-                  {manifest.warnings.length} parse warning
-                  {manifest.warnings.length === 1 ? "" : "s"}
+              <summary className="familiar-studio-brain__capabilities-summary">
+                <span>Capabilities</span>
+                {manifestState === "loading" ? (
+                  <span className="familiar-studio-brain__capabilities-meta">scanning…</span>
+                ) : manifestState === "error" ? (
+                  <span className="familiar-studio-brain__capabilities-meta">daemon offline</span>
+                ) : manifest ? (
+                  <span className="familiar-studio-brain__capabilities-meta">
+                    {capabilityCount} item{capabilityCount === 1 ? "" : "s"}
+                  </span>
+                ) : null}
+              </summary>
+              {manifest ? (
+                <div className="familiar-studio-brain__capabilities-body">
+                  <p className="familiar-studio-brain__capabilities-line">
+                    <strong>AGENTS.md:</strong>{" "}
+                    {manifest.global_instructions.present
+                      ? manifest.global_instructions.path?.replace(/^\/Users\/[^/]+/, "~") ?? "present"
+                      : "not present"}
+                  </p>
+                  <p className="familiar-studio-brain__capabilities-line">
+                    <strong>Skills:</strong> {manifest.skills.length}
+                    {manifest.skills.length > 0 && (
+                      <> · {manifest.skills.slice(0, 3).map((s) => s.name).join(", ")}
+                        {manifest.skills.length > 3 ? ` +${manifest.skills.length - 3} more` : ""}</>
+                    )}
+                  </p>
+                  {/* Skills are building blocks of Workflows — see the Workflows tab in Capabilities */}
+                  {manifest.warnings.length > 0 && (
+                    <p className="familiar-studio-brain__capabilities-line familiar-studio-brain__capabilities-line--warn">
+                      {manifest.warnings.length} parse warning
+                      {manifest.warnings.length === 1 ? "" : "s"}
+                    </p>
+                  )}
+                </div>
+              ) : manifestState === "error" ? (
+                <p className="familiar-studio-brain__capabilities-empty">
+                  Coven daemon is offline — capabilities require the daemon.
                 </p>
-              )}
-            </div>
-          ) : manifestState === "error" ? (
-            <p className="familiar-studio-brain__capabilities-empty">
-              Coven daemon is offline — capabilities require the daemon.
-            </p>
-          ) : manifestState === "ready" ? (
-            <p className="familiar-studio-brain__capabilities-empty">
-              No capabilities reported for {harnessId}.
-            </p>
+              ) : manifestState === "ready" ? (
+                <p className="familiar-studio-brain__capabilities-empty">
+                  No capabilities reported for {harnessId}.
+                </p>
+              ) : null}
+            </details>
           ) : null}
-        </details>
-      ) : null}
+        </aside>
+      </div>
     </div>
   );
 }

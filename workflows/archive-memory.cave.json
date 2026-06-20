@@ -1,25 +1,33 @@
 {
   "version": 1,
   "positions": {
-    "collect-context": {
+    "input": {
       "x": 80,
       "y": 80
     },
-    "separate-records": {
+    "collect-context": {
       "x": 80,
       "y": 220
     },
-    "identify-candidates": {
+    "separate-records": {
       "x": 80,
       "y": 360
     },
-    "review-gate": {
+    "identify-candidates": {
       "x": 80,
       "y": 500
     },
-    "write-archive": {
+    "review-gate": {
       "x": 80,
       "y": 640
+    },
+    "write-archive": {
+      "x": 80,
+      "y": 780
+    },
+    "output": {
+      "x": 80,
+      "y": 920
     }
   }
 }

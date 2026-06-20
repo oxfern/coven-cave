@@ -1,14 +1,16 @@
 import { NextResponse } from "next/server";
 import { isValidNoteDate } from "@/lib/daily-note";
-import { buildJournalContext } from "@/lib/journal";
+import {
+  buildJournalMemoryContext,
+  buildJournalMemoryStats,
+} from "@/lib/journal-memory-stats";
 import {
   deleteJournalEntry,
   listJournalEntries,
   readJournalEntry,
   writeJournalEntry,
 } from "@/lib/server/journal-store";
-import { loadInbox } from "@/lib/cave-inbox";
-import { breakdownForDay, parseDateSlug } from "@/lib/daily-report";
+import { listMemoryFileEntries } from "@/lib/server/memory-file-inventory";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -25,25 +27,28 @@ export const runtime = "nodejs";
  * `YYYY-MM-DD` real-day guard before any fs access.
  */
 export async function GET(req: Request) {
-  const date = new URL(req.url).searchParams.get("date");
+  const { searchParams } = new URL(req.url);
+  const date = searchParams.get("date");
+  const familiarId = searchParams.get("familiar");
   if (date) {
     if (!isValidNoteDate(date)) {
       return NextResponse.json({ ok: false, error: "invalid date" }, { status: 400 });
     }
-    const record = await readJournalEntry(date);
-    const day = parseDateSlug(date);
-    const breakdown = day
-      ? breakdownForDay((await loadInbox()).items, day)
-      : { reminders: [], responses: [], familiars: [], openItems: [] };
-    const stats = {
-      reminders: breakdown.reminders.length,
-      responses: breakdown.responses.length,
-      familiars: breakdown.familiars.length,
-    };
-    const context = buildJournalContext(date, breakdown);
+    const [rawRecord, memoryEntries] = await Promise.all([readJournalEntry(date), listMemoryFileEntries()]);
+    const record = familiarId && rawRecord.exists && rawRecord.entry.reflectedBy !== familiarId
+      ? {
+          date,
+          exists: false,
+          entry: { reflectedBy: null, generatedAt: null, reflection: "" },
+          modified: null,
+        }
+      : rawRecord;
+    const stats = buildJournalMemoryStats(memoryEntries, familiarId);
+    const context = buildJournalMemoryContext(date, familiarId, stats);
     return NextResponse.json({ ok: true, ...record, stats, context });
   }
-  const days = await listJournalEntries();
+  const allDays = await listJournalEntries();
+  const days = familiarId ? allDays.filter((day) => day.reflectedBy === familiarId) : allDays;
   return NextResponse.json({ ok: true, days });
 }
 

@@ -694,11 +694,6 @@ function GitHubItemGlassPanel({
   const stateLabel = merged ? "Merged" : stateKind === "closed" ? "Closed" : "Open";
   const openedNoun =
     item.kind === "pr" || item.kind === "review_request" ? "pull request" : "issue";
-  const labels: { name: string; color: string }[] =
-    detail?.labels && detail.labels.length > 0
-      ? detail.labels
-      : (item.labels ?? []).map((name) => ({ name, color: "" }));
-
   const rowFamiliars = Array.from(
     new Set(
       linkedCards
@@ -769,27 +764,6 @@ function GitHubItemGlassPanel({
           </div>
         ) : (
           <p className="gh-glass-muted">No one assigned.</p>
-        )}
-      </div>
-
-      <div className="gh-glass-section">
-        <div className="gh-glass-section-title">Labels</div>
-        {labels.length > 0 ? (
-          <div className="gh-issue-labels">
-            {labels.slice(0, 8).map((l) => (
-              <span
-                key={l.name}
-                className="gh-issue-label"
-                style={l.color ? ({ "--gh-label": `#${l.color}` } as React.CSSProperties) : undefined}
-                title={l.name}
-              >
-                <span className="gh-issue-label-dot" aria-hidden />
-                {l.name}
-              </span>
-            ))}
-          </div>
-        ) : (
-          <p className="gh-glass-muted">No labels on this item.</p>
         )}
       </div>
 
@@ -1371,11 +1345,6 @@ export function GitHubView({ onJumpToSession, onFocusCard }: Props = {}) {
                         {item.draft && (
                           <span className="gh-badge gh-badge--muted">draft</span>
                         )}
-                        {item.labels?.slice(0, 2).map((l) => (
-                          <span key={l} className="gh-badge gh-badge--label" title={l}>
-                            {l}
-                          </span>
-                        ))}
                       </td>
                       <td>
                         {linked.length === 0 ? (

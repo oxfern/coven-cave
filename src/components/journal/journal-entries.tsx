@@ -8,7 +8,7 @@ import { generateReflection } from "@/lib/journal-generate";
 import type { Familiar } from "@/lib/types";
 
 type JournalSummary = { date: string; preview: string; reflectedBy: string | null; modified: string | null };
-type JournalStats = { reminders: number; responses: number; familiars: number };
+type JournalStats = { covenOrigin: number; externalRuntimes: number; runtimeMemory: number };
 type JournalDay = {
   date: string;
   exists: boolean;
@@ -30,7 +30,12 @@ export function JournalEntries({
   const [selected, setSelected] = useState<string>(today);
   const [day, setDay] = useState<JournalDay | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draftReflection, setDraftReflection] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const selectedFamiliarId = activeFamiliarId ?? familiars[0]?.id ?? null;
 
   const familiarName = useCallback(
     (id: string | null) => (id ? familiars.find((f) => f.id === id)?.display_name ?? id : null),
@@ -39,33 +44,42 @@ export function JournalEntries({
 
   const loadDays = useCallback(async () => {
     try {
-      const res = await fetch("/api/journal", { cache: "no-store" });
+      const listQuery = selectedFamiliarId ? `?familiar=${encodeURIComponent(selectedFamiliarId)}` : "";
+      const res = await fetch(`/api/journal${listQuery}`, { cache: "no-store" });
       const json = await res.json().catch(() => ({}));
       if (json.ok) setDays(Array.isArray(json.days) ? json.days : []);
     } catch {
       /* keep prior */
     }
-  }, []);
+  }, [selectedFamiliarId]);
 
   const loadDay = useCallback(async (slug: string) => {
     try {
-      const res = await fetch(`/api/journal?date=${slug}`, { cache: "no-store" });
+      const detailQuery = selectedFamiliarId
+        ? `date=${encodeURIComponent(slug)}&familiar=${encodeURIComponent(selectedFamiliarId)}`
+        : `date=${encodeURIComponent(slug)}`;
+      const res = await fetch(`/api/journal?${detailQuery}`, { cache: "no-store" });
       const json = await res.json().catch(() => ({}));
       if (json.ok) setDay(json as JournalDay);
     } catch {
       setDay(null);
     }
-  }, []);
+  }, [selectedFamiliarId]);
 
   useEffect(() => {
     void loadDays();
   }, [loadDays]);
   useEffect(() => {
     void loadDay(selected);
+    setEditing(false);
+    setDraftReflection("");
   }, [selected, loadDay]);
+  useEffect(() => {
+    setSelected(today);
+  }, [selectedFamiliarId, today]);
 
   const generate = useCallback(async () => {
-    const familiarId = activeFamiliarId ?? familiars[0]?.id ?? null;
+    const familiarId = selectedFamiliarId;
     if (!familiarId) {
       setError("Pick a familiar first — reflections are written by a familiar.");
       return;
@@ -87,9 +101,67 @@ export function JournalEntries({
     setGenerating(false);
     await loadDay(day.date);
     await loadDays();
-  }, [activeFamiliarId, familiars, day, loadDay, loadDays]);
+  }, [selectedFamiliarId, day, loadDay, loadDays]);
 
-  const canGenerate = Boolean(activeFamiliarId ?? familiars[0]?.id);
+  function startEdit() {
+    if (!day) return;
+    setDraftReflection(day.entry.reflection);
+    setEditing(true);
+    setError(null);
+  }
+
+  function cancelEdit() {
+    setEditing(false);
+    setDraftReflection("");
+  }
+
+  async function saveEdit() {
+    if (!day) return;
+    const reflection = draftReflection.trim();
+    if (!reflection) {
+      setError("Write a reflection before saving.");
+      return;
+    }
+    const familiarId = day.entry.reflectedBy ?? selectedFamiliarId;
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/journal", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ date: day.date, reflection: draftReflection, reflectedBy: familiarId }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.ok) throw new Error(json.error ?? "Could not save journal entry.");
+      cancelEdit();
+      await loadDay(day.date);
+      await loadDays();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save journal entry.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function deleteEntry() {
+    if (!day || !hasEntry) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/journal?date=${encodeURIComponent(day.date)}`, { method: "DELETE" });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.ok) throw new Error(json.error ?? "Could not delete journal entry.");
+      cancelEdit();
+      await loadDay(day.date);
+      await loadDays();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not delete journal entry.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  const canGenerate = Boolean(selectedFamiliarId);
   const hasEntry = Boolean(day?.exists && day.entry.reflection.trim());
 
   return (
@@ -140,14 +212,78 @@ export function JournalEntries({
           <>
             <div className="journal-entry__sec">What happened · {longDateLabel(parseDateSlug(day.date) ?? new Date())}</div>
             <div className="journal-entry__stats">
-              <div className="journal-entry__stat"><b>{day.stats.reminders}</b><span>reminders</span></div>
-              <div className="journal-entry__stat"><b>{day.stats.responses}</b><span>responses</span></div>
-              <div className="journal-entry__stat"><b>{day.stats.familiars}</b><span>familiar updates</span></div>
+              <div className="journal-entry__stat"><b>{day.stats.covenOrigin}</b><span>coven files</span></div>
+              <div className="journal-entry__stat"><b>{day.stats.externalRuntimes}</b><span>external runtime files</span></div>
+              <div className="journal-entry__stat"><b>{day.stats.runtimeMemory}</b><span>runtime files</span></div>
             </div>
-            <div className="journal-entry__sec">Reflection</div>
+            <div className="journal-entry__head">
+              <div className="journal-entry__sec">Reflection</div>
+              {hasEntry ? (
+                <div className="journal-entry__actions">
+                  {editing ? (
+                    <>
+                      <button
+                        type="button"
+                        className="journal-entry__action journal-entry__action--primary"
+                        onClick={() => { void saveEdit(); }}
+                        disabled={saving || deleting || !draftReflection.trim()}
+                        aria-label="Save journal entry"
+                        title="Save"
+                      >
+                        <Icon name="ph:check" width={12} aria-hidden />
+                      </button>
+                      <button
+                        type="button"
+                        className="journal-entry__action"
+                        onClick={cancelEdit}
+                        disabled={saving || deleting}
+                        aria-label="Cancel journal edit"
+                        title="Cancel"
+                      >
+                        <Icon name="ph:x" width={12} aria-hidden />
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      className="journal-entry__action"
+                      onClick={startEdit}
+                      disabled={saving || deleting}
+                      aria-label="Edit journal entry"
+                      title="Edit"
+                    >
+                      <Icon name="ph:pencil-simple" width={12} aria-hidden />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="journal-entry__action journal-entry__action--danger"
+                    onClick={() => { void deleteEntry(); }}
+                    disabled={saving || deleting}
+                    aria-label="Delete journal entry"
+                    title="Delete"
+                  >
+                    <Icon name="ph:trash" width={12} aria-hidden />
+                  </button>
+                </div>
+              ) : null}
+            </div>
             {hasEntry ? (
               <>
-                <MarkdownBlock text={day.entry.reflection} className="journal-entry__reflection" />
+                {editing ? (
+                  <textarea
+                    className="journal-entry__editor"
+                    value={draftReflection}
+                    onChange={(e) => setDraftReflection(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") cancelEdit();
+                    }}
+                    aria-label="Journal reflection"
+                    autoFocus
+                  />
+                ) : (
+                  <MarkdownBlock text={day.entry.reflection} className="journal-entry__reflection" />
+                )}
                 <div className="journal-entry__by">
                   <Icon name="ph:sparkle" aria-hidden />
                   Reflected by <b>{familiarName(day.entry.reflectedBy) ?? "a familiar"}</b>

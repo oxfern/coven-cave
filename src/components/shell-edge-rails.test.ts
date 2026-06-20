@@ -2,7 +2,7 @@
 // Side panel toggles live in the desktop top menu bar:
 //   - the nav toggle anchors the bar's left edge
 //   - the side-panel + expand toggles its right edge
-//   - they share the bar's height/background so they read as one strip
+//   - they match the row's compact icon-button controls
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
@@ -81,12 +81,12 @@ assert.doesNotMatch(
   "the old absolutely-positioned corner floats are removed from the shell",
 );
 
-// The toggles share the menu bar's 44px height + panel background so they read
-// as one continuous strip, and tint accent in their open state.
+// The shell row owns the band chrome; the toggles render as compact bordered
+// icon buttons matching the other controls in the row.
 assert.match(
   css,
-  /\.shell-top\s*\{[\s\S]*?display:\s*flex;[\s\S]*?align-items:\s*stretch;/,
-  "the top bar row is a stretch flex container",
+  /\.shell-top\s*\{[\s\S]*?display:\s*flex;[\s\S]*?align-items:\s*center;[\s\S]*?min-height:\s*44px;[\s\S]*?border-bottom:\s*1px solid var\(--border-hairline\);/,
+  "the top bar row owns the shared band background and centers its controls",
 );
 assert.match(
   css,
@@ -95,13 +95,13 @@ assert.match(
 );
 assert.match(
   css,
-  /\.shell-top-toggle\s*\{[\s\S]*?height:\s*44px;[\s\S]*?border-bottom:\s*1px solid var\(--border-hairline\);[\s\S]*?background:\s*var\(--bg-panel\);/,
-  "top-bar toggles match the menu bar's height, hairline and panel background",
+  /\.shell-top-toggle\s*\{[\s\S]*?width:\s*28px;[\s\S]*?height:\s*28px;[\s\S]*?border:\s*1px solid var\(--border-hairline\);[\s\S]*?background:\s*var\(--bg-base\);/,
+  "top-bar toggles match the row's compact bordered icon buttons",
 );
 assert.match(
   css,
-  /\.shell-top-toggle--active\s*\{[\s\S]*?color:\s*var\(--accent-presence\);/,
-  "an open panel's toggle tints accent",
+  /\.shell-top-toggle--active\s*\{[\s\S]*?color:\s*var\(--accent-presence\);[\s\S]*?border-color:\s*color-mix\(in oklch, var\(--accent-presence\) 55%, var\(--border-hairline\)\);/,
+  "an open panel's toggle tints accent while staying button-shaped",
 );
 assert.match(
   css,

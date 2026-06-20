@@ -2,28 +2,55 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const source = readFileSync(new URL("./board-view.tsx", import.meta.url), "utf8");
+const board = readFileSync(new URL("./board-view.tsx", import.meta.url), "utf8");
+const workspace = readFileSync(new URL("./workspace.tsx", import.meta.url), "utf8");
+const menuBar = readFileSync(new URL("./familiar-menu-bar.tsx", import.meta.url), "utf8");
+const topBar = readFileSync(new URL("./top-bar.tsx", import.meta.url), "utf8");
 
-assert.match(
-  source,
-  /fetch\("\/api\/board\/enrich-steps", \{[\s\S]*method: "POST"[\s\S]*"content-type": "application\/json"[\s\S]*"x-coven-cave-intent": "board-enrich-steps"[\s\S]*body: JSON\.stringify\(\{ intent: "board-enrich-steps" \}\)/,
-  "Board enrich client should send an intentional JSON request with a non-simple header",
+assert.doesNotMatch(
+  board,
+  /\/api\/board\/enrich-steps|handleEnrichTasks|Enrich tasks/,
+  "Board view should not own task enrichment; navigation away from Board must not abort the process",
 );
 
 assert.match(
-  source,
-  /const handleEnrichTasks = async \(\) => \{/,
-  "Board enrich client handler should describe full task enrichment",
+  workspace,
+  /const handleEnrichTasks = useCallback\(async \(\) => \{[\s\S]*if \(!activeId \|\| enrichingTasks\) return;[\s\S]*fetch\("\/api\/board\/enrich-steps", \{[\s\S]*body: JSON\.stringify\(\{ intent: "board-enrich-steps", familiarId: activeId \}\)/,
+  "Workspace should own the long-running enrich request and scope it to the selected familiar",
 );
 
 assert.match(
-  source,
-  /onClick=\{handleEnrichTasks\}[\s\S]*title="Ask each familiar to refresh task steps, status, lifecycle, and priority"/,
-  "Board enrich button should advertise full task refresh behavior",
+  workspace,
+  /<FamiliarMenuBar[\s\S]*onEnrichTasks=\{handleEnrichTasks\}[\s\S]*enrichingTasks=\{enrichingTasks\}[\s\S]*enrichProgress=\{enrichProgress\}/,
+  "Desktop top bar should receive the enrich action and progress from Workspace",
 );
 
 assert.match(
-  source,
-  /: "Enrich tasks"/,
-  "Board enrich button label should not imply that only steps are updated",
+  workspace,
+  /<TopBar[\s\S]*onEnrichTasks=\{handleEnrichTasks\}[\s\S]*enrichingTasks=\{enrichingTasks\}[\s\S]*enrichProgress=\{enrichProgress\}/,
+  "Mobile top bar should receive the enrich action and progress from Workspace",
+);
+
+assert.match(
+  menuBar,
+  /onEnrichTasks\?: \(\) => void[\s\S]*enrichingTasks\?: boolean[\s\S]*enrichProgress\?: \{ done: number; total: number \} \| null/,
+  "Desktop menu bar should accept the enrich action and progress state",
+);
+
+assert.match(
+  menuBar,
+  /onEnrichTasks \? \([\s\S]*onClick=\{onEnrichTasks\}[\s\S]*disabled=\{enrichingTasks \|\| !activeFamiliarId\}[\s\S]*aria-label=\{enrichingTasks[\s\S]*<span>\{enrichingTasks \? enrichLabel : "Enrich"\}<\/span>[\s\S]*onClick=\{onViewTasks\}/,
+  "Desktop menu bar should place Enrich next to Tasks and disable it without a selected familiar",
+);
+
+assert.match(
+  topBar,
+  /onEnrichTasks\?: \(\) => void[\s\S]*enrichingTasks\?: boolean[\s\S]*enrichProgress\?: \{ done: number; total: number \} \| null/,
+  "Mobile top bar should accept the enrich action and progress state",
+);
+
+assert.match(
+  topBar,
+  /onEnrichTasks \? \([\s\S]*className="top-bar__icon-btn top-bar__tasks-enrich"[\s\S]*onClick=\{onEnrichTasks\}[\s\S]*disabled=\{enrichingTasks \|\| !activeFamiliar\}[\s\S]*onViewTasks \?/,
+  "Mobile top bar should render Enrich immediately before the Tasks button",
 );

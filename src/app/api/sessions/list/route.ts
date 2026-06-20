@@ -27,6 +27,33 @@ type DaemonSession = {
   initiator?: SessionInitiator;
 };
 
+type SessionsListPayload =
+  | {
+      ok: true;
+      degraded?: boolean;
+      error?: string;
+      sessions: SessionRow[];
+    }
+  | {
+      ok: false;
+      error: string;
+      sessions: [];
+    };
+
+type SessionsListResult = {
+  payload: SessionsListPayload;
+  init?: ResponseInit;
+};
+
+type SessionsListCacheEntry = {
+  expiresAt: number;
+  result: SessionsListResult;
+};
+
+const SESSIONS_LIST_CACHE_MS = 2000;
+let sessionsListCache: Map<string, SessionsListCacheEntry> = new Map();
+let sessionsListInFlight: Map<string, Promise<SessionsListResult>> = new Map();
+
 function isTrueProjectCwd(projectRoot: string): boolean {
   const trimmed = projectRoot.trim();
   if (!trimmed) return false;
@@ -52,6 +79,10 @@ function git(projectRoot: string, args: string[]): string | null {
   }
 }
 
+function isGitWorkTree(projectRoot: string): boolean {
+  return git(projectRoot, ["rev-parse", "--is-inside-work-tree"]) === "true";
+}
+
 function resolveGitPath(projectRoot: string, value: string | null): string | null {
   if (!value) return null;
   return path.resolve(path.isAbsolute(value) ? value : path.join(projectRoot, value));
@@ -60,6 +91,7 @@ function resolveGitPath(projectRoot: string, value: string | null): string | nul
 function readGitContext(projectRoot: string): SessionGitContext | null {
   const trimmed = projectRoot.trim();
   if (!isTrueProjectCwd(trimmed)) return null;
+  if (!isGitWorkTree(trimmed)) return null;
 
   const branch =
     git(trimmed, ["branch", "--show-current"]) ??
@@ -145,10 +177,7 @@ function enrichSessionsWithGitContext(sessions: SessionRow[]): SessionRow[] {
   });
 }
 
-export async function GET(req: Request) {
-  const url = new URL(req.url);
-  const includeArchived = url.searchParams.get("includeArchived") === "1";
-
+async function computeSessionsList(includeArchived: boolean): Promise<SessionsListResult> {
   const [res, state, projects] = await Promise.all([
     callDaemon<DaemonSession[]>({ path: "/api/v1/sessions" }),
     loadState(),
@@ -158,17 +187,19 @@ export async function GET(req: Request) {
   if (!res.ok || !res.data) {
     const localSessions = localConversationSessionRows(localConversations, state, includeArchived);
     if (localSessions.length > 0) {
-      return NextResponse.json({
-        ok: true,
-        degraded: true,
-        error: res.error ?? `daemon http ${res.status}`,
-        sessions: enrichSessionsWithGitContext(localSessions),
-      });
+      return {
+        payload: {
+          ok: true,
+          degraded: true,
+          error: res.error ?? `daemon http ${res.status}`,
+          sessions: enrichSessionsWithGitContext(localSessions),
+        },
+      };
     }
-    return NextResponse.json(
-      { ok: false, error: res.error ?? `daemon http ${res.status}`, sessions: [] },
-      { status: 503 },
-    );
+    return {
+      payload: { ok: false, error: res.error ?? `daemon http ${res.status}`, sessions: [] },
+      init: { status: 503 },
+    };
   }
 
   function isKnownProjectOrValidDir(projectRoot: string): boolean {
@@ -184,5 +215,37 @@ export async function GET(req: Request) {
     isValidDaemonProjectRoot: isKnownProjectOrValidDir,
   });
 
-  return NextResponse.json({ ok: true, sessions: enrichSessionsWithGitContext(sessions) });
+  return { payload: { ok: true, sessions: enrichSessionsWithGitContext(sessions) } };
+}
+
+async function cachedSessionsList(cacheKey: string, includeArchived: boolean): Promise<SessionsListResult> {
+  const now = Date.now();
+  const cached = sessionsListCache.get(cacheKey);
+  if (cached && cached.expiresAt > now) {
+    return cached.result;
+  }
+  const inFlight = sessionsListInFlight.get(cacheKey);
+  if (inFlight) return inFlight;
+
+  const promise = computeSessionsList(includeArchived).then((result) => {
+    sessionsListCache.set(cacheKey, {
+      expiresAt: Date.now() + SESSIONS_LIST_CACHE_MS,
+      result,
+    });
+    return result;
+  });
+  sessionsListInFlight.set(cacheKey, promise);
+  try {
+    return await promise;
+  } finally {
+    if (sessionsListInFlight.get(cacheKey) === promise) sessionsListInFlight.delete(cacheKey);
+  }
+}
+
+export async function GET(req: Request) {
+  const url = new URL(req.url);
+  const includeArchived = url.searchParams.get("includeArchived") === "1";
+  const cacheKey = includeArchived ? "archived" : "active";
+  const result = await cachedSessionsList(cacheKey, includeArchived);
+  return NextResponse.json(result.payload, result.init);
 }

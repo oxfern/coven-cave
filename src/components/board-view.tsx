@@ -50,8 +50,6 @@ export function BoardView({ familiars, sessions, activeFamiliarId, onJumpToSessi
   const [modalDefaultStatus, setModalDefaultStatus] = useState<CardStatus>("backlog");
   const [chatLinkingId, setChatLinkingId] = useState<string | null>(null);
   const [chatLinkError, setChatLinkError] = useState<string | null>(null);
-  const [enriching, setEnriching] = useState(false);
-  const [enrichProgress, setEnrichProgress] = useState<{ done: number; total: number } | null>(null);
   const { projects } = useProjects();
 
   // "Clear done" flow: an inline confirm gate, and a transient undo banner that
@@ -318,50 +316,6 @@ export function BoardView({ familiars, sessions, activeFamiliarId, onJumpToSessi
     await startTaskChat(id);
   };
 
-  const handleEnrichTasks = async () => {
-    setEnriching(true);
-    setEnrichProgress(null);
-    try {
-      const res = await fetch("/api/board/enrich-steps", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-coven-cave-intent": "board-enrich-steps",
-        },
-        body: JSON.stringify({ intent: "board-enrich-steps" }),
-      });
-      if (!res.ok) throw new Error(`enrich tasks failed (${res.status})`);
-      if (!res.body) throw new Error("enrich tasks: missing response body");
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed) continue;
-          try {
-            const msg = JSON.parse(trimmed) as Record<string, unknown>;
-            if (msg.kind === "start") {
-              setEnrichProgress({ done: 0, total: (msg.total as number) ?? 0 });
-            } else if (msg.kind === "done" || msg.kind === "skip") {
-              setEnrichProgress((prev) => prev ? { ...prev, done: prev.done + 1 } : prev);
-            } else if (msg.kind === "complete") {
-              await load();
-            }
-          } catch { /* */ }
-        }
-      }
-      setEnriching(false);
-    } catch {
-      setEnriching(false);
-    }
-  };
-
   return (
     <section className="board-shell">
       {/* Header */}
@@ -472,20 +426,9 @@ export function BoardView({ familiars, sessions, activeFamiliarId, onJumpToSessi
 
           <button
             type="button"
-            className="board-toolbar-btn"
-            onClick={handleEnrichTasks}
-            disabled={enriching || cards.length === 0}
-            title="Ask each familiar to refresh task steps, status, lifecycle, and priority"
+            className="board-new-card-btn"
+            onClick={() => { setModalDefaultStatus("backlog"); setModalOpen(true); }}
           >
-            <Icon name="ph:sparkle" width={13} />
-            {enriching
-              ? enrichProgress
-                ? `${enrichProgress.done}/${enrichProgress.total}`
-                : "Starting..."
-              : "Enrich tasks"}
-          </button>
-                    <button type="button" className="board-new-card-btn"
-            onClick={() => { setModalDefaultStatus("backlog"); setModalOpen(true); }}>
             + New task
           </button>
         </div>

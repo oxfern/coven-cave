@@ -80,7 +80,7 @@ assert.match(
 );
 assert.match(
   workspace,
-  /addons\.github \? fetch\("\/api\/github\/tasks"/,
+  /addons\.github\s*\?[\s\S]{0,120}fetch\("\/api\/github\/tasks"/,
   "Workspace should only poll GitHub task context when the GitHub addon is enabled",
 );
 
