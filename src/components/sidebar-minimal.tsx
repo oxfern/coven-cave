@@ -8,7 +8,7 @@
  *   2. App destinations grouped by purpose:
  *      Work  (Home / Familiars / Board / Calendar / Schedules)
  *      Knowledge (Library)
- *      Tools (Browser / Terminal / Roles / Workflows / Capabilities / GitHub)
+ *      Tools (Browser / Terminal / Code / Roles / Workflows / GitHub)
  *   3. Footer: Notifications, mobile handoff, Settings
  */
 
@@ -73,8 +73,7 @@ const FOLDER_MODES: Array<{
   group: "work" | "knowledge" | "tools" | "addons";
   kbd?: string;
   // One-line hover/long-press help. Differentiates the surfaces that read
-  // alike at a glance — especially Roles (who) vs Workflows (steps) vs
-  // Capabilities (what tools).
+  // alike at a glance — especially Roles (who) vs Workflows (steps).
   description: string;
 }> = [
   // Work
@@ -90,9 +89,8 @@ const FOLDER_MODES: Array<{
   { id: "browser", label: "Browser", iconName: "ph:globe", group: "tools", kbd: "⌘7", description: "Built-in web browser" },
   { id: "terminal", label: "Terminal", iconName: "ph:terminal-window", group: "tools", kbd: "⌘8", description: "Shell session in your project" },
   { id: "code", label: "Code", iconName: "ph:code", group: "tools", kbd: "⌘0", description: "Chat with a familiar beside your files and terminal" },
-  { id: "roles", label: "Roles", iconName: "ph:mask-happy", group: "tools", description: "Reusable agent personas you can attach to a familiar" },
+  { id: "roles", label: "Roles", iconName: "ph:mask-happy", group: "tools", description: "Agent personas, workflows, skills, and the capabilities your familiars can use" },
   { id: "workflows", label: "Workflows", iconName: "ph:git-branch-bold", group: "tools", description: "Multi-step pipelines that orchestrate familiars" },
-  { id: "capabilities", label: "Capabilities", iconName: "ph:lightning-bold", group: "tools", description: "Skills and tools your familiars can use" },
   // Add-ons (gated)
   { id: "github", label: "GitHub", iconName: "ph:github-logo", group: "addons", description: "Issues and PRs assigned to you" },
 ];
@@ -279,7 +277,9 @@ export function SidebarMinimal(props: SidebarMinimalProps) {
               id={fm.id}
               label={fm.label}
               iconName={fm.iconName}
-              active={mode === fm.id}
+              // Capabilities now lives as a tab on the Roles page, so keep the
+              // Roles entry lit when that mode is active.
+              active={mode === fm.id || (fm.id === "roles" && mode === "capabilities")}
               badge={fm.badge?.(props)}
               kbd={fm.kbd}
               description={fm.description}
