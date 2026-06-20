@@ -32,10 +32,8 @@ type Props = {
    *  left-edge sidebar home); the mobile top bar passes "bottom-end" since its
    *  trigger sits at the right edge. */
   placement?: "bottom-start" | "bottom-end" | "top-start" | "top-end";
-  /** Render the trigger as a full-width labeled row (avatar/glyph + name +
-   *  caret) instead of the compact icon pill. The sidebar uses this so the
-   *  control reads as the familiar scope and aligns with the action rows below
-   *  it; the mobile top bar keeps the compact icon. */
+  /** Back-compat prop from the former labeled trigger. The trigger stays
+   *  avatar-only; callers can still pass this while older surfaces unwind. */
   labeled?: boolean;
 };
 
@@ -53,7 +51,6 @@ export function FamiliarSwitcher({
   responseNeeded,
   onSelectFamiliar,
   placement = "bottom-start",
-  labeled = false,
 }: Props) {
   const { openFamiliarStudio, openFamiliarStudioListView } = useFamiliarStudio();
   const triggerRef = useRef<HTMLButtonElement | null>(null);
@@ -117,7 +114,6 @@ export function FamiliarSwitcher({
         ref={triggerRef}
         type="button"
         className="familiar-switcher__trigger focus-ring"
-        data-labeled={labeled ? "true" : undefined}
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="dialog"
         aria-expanded={open}
@@ -130,12 +126,6 @@ export function FamiliarSwitcher({
         ) : (
           <Icon name="ph:sparkle" width={14} aria-hidden />
         )}
-        {labeled ? (
-          <span className="familiar-switcher__trigger-label">
-            {active ? active.display_name : "All familiars"}
-          </span>
-        ) : null}
-        <Icon name="ph:caret-down" width={9} className="familiar-switcher__caret" aria-hidden />
         {anyNeedsReply ? <span className="familiar-switcher__unread" aria-hidden /> : null}
       </button>
 

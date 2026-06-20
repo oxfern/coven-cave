@@ -4455,11 +4455,10 @@ button:active > .edge-rail-chip {
   background: var(--bg-raised);
 }
 
-/* The labeled switcher trigger is full-width in the sidebar; in the menu bar it
-   should size to its content beside the compose control. */
+/* The menu bar uses the same square avatar selector as the top-bar row. */
 .menu-bar__group--chat .familiar-switcher__trigger {
   flex: 0 0 auto;
-  width: auto;
+  width: 28px;
   max-width: 200px;
 }
 
@@ -4685,24 +4684,18 @@ button:active > .edge-rail-chip {
   min-width: 0;
 }
 
-.top-bar__actions .familiar-switcher__trigger[data-labeled="true"] {
-  width: min(174px, 34vw);
-  height: 34px;
-  border-radius: var(--radius-control);
-  background: var(--bg-base);
-}
-
 /* ── Familiar profile switcher ──────────────────────────────────────────────
    The single familiar control in the top bar: an account-style profile button
-   (the active familiar's avatar, a caret, and a reply dot) that opens a menu to
+   (the active familiar's avatar or all-scope glyph, plus a reply dot) that opens a menu to
    switch scope, edit a profile, create, manage, or reorder. */
 .familiar-switcher__trigger {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  height: 26px;
-  padding: 0 6px 0 4px;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
   border-radius: var(--radius-control);
   border: 1px solid var(--border-hairline);
   background: var(--bg-raised);
@@ -4730,38 +4723,6 @@ button:active > .edge-rail-chip {
   border-color: color-mix(in oklch, var(--familiar-accent, var(--accent-presence)) 45%, var(--border-hairline));
 }
 
-.familiar-switcher__caret {
-  color: var(--text-muted);
-}
-
-/* Labeled variant — the familiar-scope control. Full-width row
-   (avatar/glyph + name + caret) that lines up with the New chat / Ask Salem
-   action rows beneath it, so the control reads as the scope selector instead of
-   a bare floating icon. Surface-specific wrappers constrain this width where
-   needed, such as the Familiars header and mobile top bar. */
-.familiar-switcher__trigger[data-labeled="true"] {
-  width: 100%;
-  height: 32px;
-  gap: 8px;
-  padding: 0 8px 0 6px;
-  justify-content: flex-start;
-}
-.familiar-switcher__trigger-label {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: left;
-  font-size: 12.5px;
-  color: var(--text-secondary);
-}
-.familiar-switcher__trigger[data-labeled="true"]:hover .familiar-switcher__trigger-label {
-  color: var(--text-primary);
-}
-.familiar-switcher__trigger[data-labeled="true"] .familiar-switcher__caret {
-  margin-left: auto;
-}
 .sidebar-familiar-slot { flex: 1; }
 .sidebar-familiar-slot > * { flex: 1; }
 
@@ -5984,10 +5945,10 @@ a.mobile-handoff__link:hover {
      targets: every control is a 44px hairline-bordered box with a transparent
      fill (hover/active and the bell's unread state tint it). The icon buttons
      (chat, tasks) and the cat drawer toggle are borderless/undersized by
-     default, so they get the box + size here to match the bell/account/avatar.
-     The familiar switcher keeps a content-based width for its avatar + caret. */
+     default, so they get the box + size here to match the bell/account/avatar. */
   .top-bar__actions .notification-bell__trigger,
   .top-bar__account,
+  .top-bar__actions .familiar-switcher__trigger,
   .top-bar__actions .top-bar__icon-btn,
   .top-bar__actions .top-bar__mobile-toggle {
     width: var(--touch-target);
@@ -6003,13 +5964,7 @@ a.mobile-handoff__link:hover {
   .top-bar__account {
     background: transparent;
   }
-  /* Match the familiar switcher's height to the other action buttons so the
-     row reads as one consistent set. Width stays content-based to fit its
-     avatar + caret (the bell/account are square icon buttons). */
-  .top-bar__actions .familiar-switcher__trigger,
-  .top-bar__actions .familiar-switcher__trigger[data-labeled="true"] {
-    height: var(--touch-target);
-    min-height: var(--touch-target);
+  .top-bar__actions .familiar-switcher__trigger {
     background: transparent;
   }
   .top-bar__actions .notification-bell {

@@ -64,6 +64,24 @@ assert.match(
   "ChatView turn avatars should render uploaded images through FamiliarAvatar before glyph fallback",
 );
 
+assert.match(
+  source,
+  /className=\{`cave-linear-turn-avatar\$\{expanded \? " is-selected" : ""\}`\}/,
+  "Selected chat avatars should expose an explicit selected class for enlarged image styling",
+);
+
+assert.match(
+  styles,
+  /\.cave-linear-turn-avatar\.is-selected\s*\{[\s\S]*?width:\s*64px;[\s\S]*?height:\s*64px;/,
+  "Selected chat avatar image should grow larger than the default 44px row avatar",
+);
+
+assert.match(
+  styles,
+  /\.cave-linear-turn-avatar-btn\s*\{[\s\S]*?width:\s*100%;[\s\S]*?height:\s*100%;/,
+  "Avatar button should fill the avatar box so selected uploaded images occupy the larger size",
+);
+
 assert.doesNotMatch(
   source,
   /native Cave chat only supports Codex, Claude Code, and Hermes right now/,

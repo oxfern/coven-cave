@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 const source = readFileSync(new URL("./familiar-menu-bar.tsx", import.meta.url), "utf8");
 const workspace = readFileSync(new URL("./workspace.tsx", import.meta.url), "utf8");
 const globals = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+const menuBarSwitcherRule = globals.match(/\.menu-bar__group--chat \.familiar-switcher__trigger\s*\{([\s\S]*?)\}/)?.[1] ?? "";
 
 // The bar provides desktop top chrome: chat with familiars, global
 // context-aware search, and view tasks/inbox. It is a labelled landmark so
@@ -84,6 +85,16 @@ assert.match(
   source,
   /className="menu-bar__compose-select"/,
   "the dropdown has a familiar selector",
+);
+assert.match(
+  menuBarSwitcherRule,
+  /width:\s*28px;/,
+  "desktop menu-bar familiar selector should stay a square avatar button, not collapse to content width",
+);
+assert.doesNotMatch(
+  menuBarSwitcherRule,
+  /width:\s*auto;/,
+  "desktop menu-bar familiar selector must not use content-width sizing after the label/caret were removed",
 );
 assert.match(
   source,

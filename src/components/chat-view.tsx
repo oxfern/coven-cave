@@ -3838,7 +3838,7 @@ function TurnRowImpl({
     >
       <div className="cave-linear-turn-content text-[14px] leading-relaxed text-[var(--text-primary)] group/turn">
         {/* Avatar (interactive) + right column */}
-        <div className="cave-linear-turn-avatar" ref={avatarWrapRef}>
+        <div className={`cave-linear-turn-avatar${expanded ? " is-selected" : ""}`} ref={avatarWrapRef}>
           <button
             ref={avatarBtnRef}
             type="button"

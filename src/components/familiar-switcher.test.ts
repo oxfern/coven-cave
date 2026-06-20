@@ -5,8 +5,8 @@ import { readFileSync } from "node:fs";
 const source = readFileSync(new URL("./familiar-switcher.tsx", import.meta.url), "utf8");
 const globals = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
 
-// Trigger is an account-style profile button: the active familiar's avatar (or
-// an "all" glyph), a caret, and a reply-needed dot — opening a dialog menu.
+// Trigger is an account-style profile/avatar button: the active familiar's
+// avatar (or an "all" glyph) and a reply-needed dot — opening a dialog menu.
 assert.match(
   source,
   /className="familiar-switcher__trigger focus-ring"[\s\S]*aria-haspopup="dialog"/,
@@ -16,6 +16,11 @@ assert.match(
   source,
   /active \?\s*\(\s*<FamiliarAvatar familiar=\{active\} size="sm" \/>\s*\) : \(\s*<Icon name="ph:sparkle"/,
   "trigger shows the active familiar's avatar, falling back to an all-scope glyph",
+);
+assert.doesNotMatch(
+  source,
+  /familiar-switcher__trigger-label|familiar-switcher__caret/,
+  "trigger is avatar-only: no visible name label or dropdown caret",
 );
 assert.match(
   source,
@@ -76,6 +81,16 @@ assert.match(source, /setFamiliarOrder\(arrayMove\(/, "reorder persists the new 
 
 // Styling hooks exist.
 assert.match(globals, /\.familiar-switcher__trigger \{/, "trigger has dedicated styling");
+assert.match(
+  globals,
+  /\.familiar-switcher__trigger\s*\{[\s\S]*?width:\s*28px;[\s\S]*?height:\s*28px;/,
+  "desktop trigger should match the square top-bar icon button dimensions",
+);
+assert.match(
+  globals,
+  /@media \(max-width: 1023px\)[\s\S]*\.top-bar__actions \.familiar-switcher__trigger\s*\{[\s\S]*?width:\s*var\(--touch-target\);[\s\S]*?height:\s*var\(--touch-target\)/,
+  "mobile trigger should match the row's shared touch-target icon height",
+);
 assert.match(globals, /\.familiar-switcher__option \{/, "menu options have dedicated styling");
 
 console.log("familiar-switcher.test.ts: ok");
