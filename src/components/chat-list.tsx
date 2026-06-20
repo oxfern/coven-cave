@@ -2,7 +2,7 @@
 
 import { Fragment, useMemo, useState, useEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import type { Familiar, SessionRow } from "@/lib/types";
-import { stripLeadingTrailingEmoji } from "@/lib/cave-chat-titles";
+import { stripLeadingTrailingEmoji, disambiguateSessionTitles } from "@/lib/cave-chat-titles";
 import { Icon } from "@/lib/icon";
 import { modelIcon, modelLabel } from "@/lib/model-label";
 import { useKeySymbols } from "@/lib/platform-keys";
@@ -822,6 +822,7 @@ export function ChatList({ familiar, familiars = [], sessions, daemonRunning, on
               // the desktop rail. firstPinnedIdx/firstRestIdx place each header
               // before its first member, so it reads right regardless of order.
               const pinnedFlags = rows.map((r) => isSessionPinned(pinnedIds, r.id));
+              const sessionTitles = disambiguateSessionTitles(rows);
               const pinnedCount = pinnedFlags.filter(Boolean).length;
               const restCount = rows.length - pinnedCount;
               const firstPinnedIdx = pinnedFlags.indexOf(true);
@@ -953,7 +954,7 @@ export function ChatList({ familiar, familiars = [], sessions, daemonRunning, on
                                   ? "text-white"
                                   : "text-[var(--text-primary)]",
                               ].join(" ")}>
-                                {stripLeadingTrailingEmoji(s.title || "(untitled chat)")}
+                                {stripLeadingTrailingEmoji((sessionTitles.get(s.id) ?? s.title) || "(untitled chat)")}
                               </span>
                             </span>
 
