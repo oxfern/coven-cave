@@ -47,6 +47,26 @@ assert.match(
 );
 assert.match(bookmarksRoute, /function normalizeBookmark\(item: Partial<LibraryBookmark>\): LibraryBookmark/, "bookmarks API normalizes legacy bookmark records");
 assert.match(bookmarksRoute, /const domain = cleanString\(item\.domain\) \|\| \(url \? domainFrom\(url\) : "\(unknown\)"\);/, "bookmarks API backfills missing domains");
+assert.match(
+  bookmarks,
+  /const loadRequestRef = useRef\(0\);/,
+  "Bookmarks list should track in-flight loads so stale responses cannot overwrite newer items",
+);
+assert.match(
+  bookmarks,
+  /const requestId = \+\+loadRequestRef\.current;[\s\S]*?if \(requestId !== loadRequestRef\.current \|\| signal\?\.aborted\) return;/,
+  "Bookmarks load should drop stale or aborted responses before writing state",
+);
+assert.match(
+  bookmarks,
+  /fetch\("\/api\/library\/bookmarks", \{ cache: "no-store", signal \}\)/,
+  "Bookmarks fetch should pass an AbortSignal so unmounts cancel obsolete requests",
+);
+assert.match(
+  bookmarks,
+  /useEffect\(\(\) => \{[\s\S]*?const ctrl = new AbortController\(\);[\s\S]*?void load\(ctrl\.signal\);[\s\S]*?return \(\) => ctrl\.abort\(\);[\s\S]*?\}, \[load\]\);/,
+  "Bookmarks effect should abort the previous request on unmount",
+);
 
 // reading — title, addedAt, label
 assert.match(reading, /\(a\.title \?\? ""\)\.localeCompare\(b\.title \?\? ""\)/,     "reading title null-guard");

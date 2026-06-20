@@ -183,23 +183,35 @@ export function LibraryBookmarksList({ selectedId, onSelect, onDelete, onAddToBo
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
   const groupSelectorRef = useRef<HTMLButtonElement | null>(null);
+  const loadRequestRef = useRef(0);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (signal?: AbortSignal) => {
+    const requestId = ++loadRequestRef.current;
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/library/bookmarks", { cache: "no-store" });
+      const res = await fetch("/api/library/bookmarks", { cache: "no-store", signal });
       const json = await res.json();
+      if (requestId !== loadRequestRef.current || signal?.aborted) return;
       if (json.ok) {
         setItems(json.items ?? []);
         setError(null);
       } else {
         setError("Failed to load. Try again.");
       }
-    } catch { setError("Failed to load. Try again."); } finally { setLoading(false); }
+    } catch {
+      if (requestId !== loadRequestRef.current || signal?.aborted) return;
+      setError("Failed to load. Try again.");
+    } finally {
+      if (requestId === loadRequestRef.current && !signal?.aborted) setLoading(false);
+    }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const ctrl = new AbortController();
+    void load(ctrl.signal);
+    return () => ctrl.abort();
+  }, [load]);
 
   const filtered = useMemo(() => filterItems(items, query), [items, query]);
   const sorted = useMemo(() => sortItems(filtered, sortKey, sortDir), [filtered, sortKey, sortDir]);
