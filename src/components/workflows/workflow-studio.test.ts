@@ -386,9 +386,8 @@ assert.match(css, /\.workflow-issue-jump/, "CSS should style the issue jump affo
 
 // Runs history filter: plan snapshots vs executions vs problems.
 assert.match(runsPanel, /RUN_FILTERS/, "Runs panel should define history filters");
-assert.match(runsPanel, /workflow-runs-filter/, "Runs panel should render filter chips");
+assert.match(runsPanel, /variant="segment"/, "Runs panel should render filter via shared segment Tabs");
 assert.match(runsPanel, /visibleRuns/, "Runs panel should render the filtered run set");
-assert.match(css, /\.workflow-runs-filter-chip/, "CSS should style runs filter chips");
 
 // Manifest copy: hand off the canonical YAML.
 assert.match(manifestPreview, /navigator\.clipboard\.writeText/, "Manifest preview should copy the canonical YAML");
@@ -442,8 +441,8 @@ assert.match(css, /\.workflow-runs-clear/, "CSS should style the clear-history b
 // The manifest panel toggles between the YAML manifest and the compiled run prompt.
 assert.match(manifestPreview, /buildWorkflowRunPrompt/, "Manifest preview should compile the run prompt");
 assert.match(manifestPreview, /Run prompt/, "Manifest preview should offer a run-prompt view");
-assert.match(manifestPreview, /workflow-manifest-views/, "Manifest preview should render a view toggle");
-assert.match(css, /\.workflow-manifest-view\b/, "CSS should style the manifest view toggle");
+assert.match(manifestPreview, /variant="segment"/, "Manifest preview should render a segment tab toggle");
+assert.match(manifestPreview, /ariaLabel="Preview mode"/, "Manifest preview segment tabs should have an aria-label");
 
 // Import a workflow from a pasted manifest.
 assert.match(dialogs, /export function WorkflowImportDialog/, "An import dialog should parse a pasted manifest");

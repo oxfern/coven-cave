@@ -307,45 +307,6 @@
   flex: none;
 }
 
-/* Manifest ⇄ Run-prompt segmented toggle. */
-.workflow-manifest-views {
-  display: flex;
-  gap: 2px;
-  margin-bottom: 8px;
-  padding: 2px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--bg-base);
-}
-
-.workflow-manifest-view {
-  flex: 1;
-  min-height: 24px;
-  padding: 2px 10px;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--muted-foreground);
-  font-size: 11.5px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.workflow-manifest-view:hover {
-  color: var(--text-primary);
-}
-
-.workflow-manifest-view.is-active {
-  border-color: color-mix(in oklch, var(--accent-presence) 45%, var(--border));
-  background: var(--card);
-  color: var(--text-primary);
-}
-
-.workflow-manifest-view:focus-visible {
-  outline: var(--ring-width) solid var(--ring-focus);
-  outline-offset: 1px;
-}
-
 /* Import dialog: monospace paste area + parse-error line. */
 .workflow-import-field {
   min-height: 200px;
@@ -1514,55 +1475,6 @@
   color: var(--text-primary);
 }
 
-/* Runs history filter chips (plan snapshots vs real executions vs problems). */
-.workflow-runs-filter {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-bottom: 8px;
-}
-
-.workflow-runs-filter-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  min-height: 24px;
-  padding: 0 8px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--bg-base);
-  color: var(--muted-foreground);
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.workflow-runs-filter-chip:hover {
-  border-color: var(--border-strong);
-  color: var(--text-primary);
-}
-
-.workflow-runs-filter-chip.is-active {
-  border-color: color-mix(in oklch, var(--accent-presence) 50%, var(--border));
-  background: color-mix(in oklch, var(--accent-presence) 14%, transparent);
-  color: var(--text-primary);
-}
-
-.workflow-runs-filter-chip:focus-visible {
-  outline: var(--ring-width) solid var(--ring-focus);
-  outline-offset: 1px;
-}
-
-.workflow-runs-filter-count {
-  font-size: 10px;
-  font-variant-numeric: tabular-nums;
-  color: var(--muted-foreground);
-}
-
-.workflow-runs-filter-chip.is-active .workflow-runs-filter-count {
-  color: var(--text-primary);
-}
-
 .workflow-role-list {
   margin: 0;
   padding: 0 4px 0 0;
@@ -1945,7 +1857,6 @@
 }
 
 .workflow-manifest-preview .workflow-panel-heading,
-.workflow-manifest-preview .workflow-manifest-views,
 .workflow-manifest-preview .workflow-manifest-changes,
 .workflow-manifest-preview > .workflow-muted:last-child {
   flex-shrink: 0;
@@ -2462,33 +2373,6 @@
   .workflow-canvas .react-flow__node {
     min-height: calc(var(--touch-target) * 2) !important;
   }
-}
-
-/* Create-dialog mode toggle (Describe / Pattern) */
-.workflow-create-mode-toggle {
-  display: inline-flex;
-  gap: 2px;
-  padding: 2px;
-  margin-bottom: 12px;
-  border-radius: 8px;
-  background: var(--bg-panel, rgba(127, 127, 127, 0.12));
-}
-.workflow-create-mode {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 12px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--color-muted, inherit);
-  font: inherit;
-  cursor: pointer;
-}
-.workflow-create-mode.is-active {
-  background: var(--bg-base, var(--background, #fff));
-  color: var(--color-text, inherit);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
 }
 
 /* Review step list */
