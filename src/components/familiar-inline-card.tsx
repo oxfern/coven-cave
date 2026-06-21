@@ -125,7 +125,7 @@ export function FamiliarInlineCard({
       </button>
 
       <div className="familiar-inline-card__identity">
-        <FamiliarAvatar familiar={resolved} size="xl" />
+        <FamiliarAvatar familiar={resolved} size="xl" expandable />
         <div className="familiar-inline-card__id-text">
           <div className="familiar-inline-card__name">{familiar.display_name}</div>
           <div className="familiar-inline-card__role">{familiar.role}</div>
