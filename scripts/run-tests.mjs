@@ -42,6 +42,7 @@ export const SUITES = {
     "src/components/chat-project-sidebar-dnd.test.ts",
     "src/lib/workflows.test.ts",
     "src/lib/workflow-generate.test.ts",
+    "src/lib/familiar-multiselect.test.ts",
     "src/lib/git-changes.test.ts",
     "src/lib/env-file.test.ts",
     "src/lib/workflow-graph.test.ts",
