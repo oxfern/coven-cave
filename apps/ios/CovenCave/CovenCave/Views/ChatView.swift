@@ -21,6 +21,7 @@ struct ChatView: View {
     @Environment(AppModel.self) private var app
     @Environment(\.dismiss) private var dismiss
     @Bindable var thread: ChatThread
+    @AppStorage("cave.dev.section") private var devSectionRaw = DevSection.code.rawValue
     @State private var draft: String = ""
     @FocusState private var composerFocused: Bool
     @State private var showCommands = false
@@ -449,6 +450,13 @@ struct ChatView: View {
         case .openBoard:
             app.selectedTab = .tasks
             app.showToast("Opened Tasks", systemImage: "checklist", style: .info)
+        case .openDeveloper(let section):
+            devSectionRaw = section
+            app.selectedTab = .dev
+            dismiss()
+            app.showToast(section == "terminal" ? "Opened Terminal" : "Opened Code",
+                          systemImage: section == "terminal" ? "terminal" : "folder",
+                          style: .info)
         case .sendAsPrompt:
             sendPrompt(args, command: command)
         case .saveLink:

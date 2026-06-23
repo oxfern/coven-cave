@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// Autocomplete surface that floats above the composer while the user is typing
-/// a `/command`. Mirrors the web composer popover: name · description · arg hint,
-/// with desktop-only commands tagged so nothing is a surprise on tap.
+/// a `/command`. Mirrors the web composer popover for native iOS commands:
+/// name · description · arg hint.
 struct SlashCommandMenu: View {
     /// Commands matching the current partial token.
     let commands: [SlashCommand]
@@ -45,13 +45,6 @@ struct SlashCommandMenu: View {
                         Text(arg)
                             .font(.system(.caption2, design: .monospaced))
                             .foregroundStyle(.tertiary)
-                    }
-                    if command.availability == .desktopOnly {
-                        Text("Desktop")
-                            .font(.system(size: 9, weight: .semibold))
-                            .padding(.horizontal, 5).padding(.vertical, 1)
-                            .background(Color.secondary.opacity(0.18), in: Capsule())
-                            .foregroundStyle(.secondary)
                     }
                 }
                 Text(command.description)

@@ -8,9 +8,9 @@ import Foundation
 /// Aliases are first-class: `/h`, `/cls`, `/q` resolve to their canonical command.
 ///
 /// Each command also carries an `action` (what it does on mobile) and an
-/// `availability`. Commands whose surface only exists on the desktop
-/// (terminal, projects, journal…) are still recognised and answered with an
-/// honest redirect rather than being silently sent to the familiar as text.
+/// `availability`. Commands whose surface only exists on the desktop are still
+/// recognised and answered with an honest redirect rather than being silently
+/// sent to the familiar as text, but they are not shown in mobile command lists.
 struct SlashCommand: Identifiable, Hashable {
     enum Section: String, CaseIterable {
         case chat, familiar, daemon, view, launch
@@ -38,6 +38,7 @@ struct SlashCommand: Identifiable, Hashable {
         case familiarPicker        // switch familiar (arg = name) or open the picker
         case openSessions          // jump to the Chats list
         case openBoard             // switch to the Tasks tab
+        case openDeveloper(String) // switch to Developer and select a section
         case sendAsPrompt          // /run /codex /claude — send the args as a message
         case saveLink              // /save <url> … — route a URL into the library
         case daemonStatus          // /daemon — fetch + show status inline
@@ -124,11 +125,11 @@ enum SlashCatalog {
                      argPlaceholder: "when + text", section: .view,
                      availability: .desktopOnly, action: .desktopOnly("Reminders")),
         SlashCommand(name: "/terminal", aliases: ["/comux"], hint: "Terminal",
-                     description: "The integrated terminal lives on the desktop.",
-                     section: .view, availability: .desktopOnly, action: .desktopOnly("Terminal")),
+                     description: "Open the Developer terminal.",
+                     section: .view, availability: .native, action: .openDeveloper("terminal")),
         SlashCommand(name: "/projects", hint: "Projects",
-                     description: "The project browser lives on the desktop.",
-                     section: .view, availability: .desktopOnly, action: .desktopOnly("Projects")),
+                     description: "Open the Developer code browser.",
+                     section: .view, availability: .native, action: .openDeveloper("code")),
         SlashCommand(name: "/attach", hint: "open session",
                      description: "Open a daemon session by id — desktop for now.",
                      argPlaceholder: "session-id", section: .view,
@@ -136,6 +137,10 @@ enum SlashCatalog {
         SlashCommand(name: "/tui", hint: "open in Coven Code",
                      description: "Open the session in the desktop Coven Code TUI.",
                      section: .view, availability: .desktopOnly, action: .desktopOnly("Coven Code")),
+        SlashCommand(name: "/toggle-agent", hint: "toggle panel",
+                     description: "Toggle the Familiar Chat side panel on desktop.",
+                     section: .view, availability: .desktopOnly,
+                     action: .desktopOnly("Familiar side panel")),
 
         // MARK: Launch
         SlashCommand(name: "/run", hint: "run task",
@@ -152,6 +157,10 @@ enum SlashCatalog {
                      availability: .native, action: .sendAsPrompt),
     ]
 
+    /// Commands that have a real native iOS target. Desktop-only commands stay
+    /// parseable in `all`, but the mobile autocomplete/help surfaces use this.
+    static let available: [SlashCommand] = all.filter { $0.availability == .native }
+
     /// alias/name → command, for O(1) canonical resolution.
     private static let byToken: [String: SlashCommand] = {
         var map: [String: SlashCommand] = [:]
@@ -167,13 +176,13 @@ enum SlashCatalog {
         return byToken[token.lowercased()]
     }
 
-    /// Typeahead: every command whose name or an alias starts with `prefix`.
+    /// Typeahead: every native command whose name or an alias starts with `prefix`.
     /// `prefix` is the partial first word, e.g. `/sa`. Empty after `/` → all.
     static func matches(_ prefix: String) -> [SlashCommand] {
         guard prefix.hasPrefix("/") else { return [] }
         let q = prefix.lowercased()
-        if q == "/" { return all }
-        return all.filter { command in
+        if q == "/" { return available }
+        return available.filter { command in
             command.tokens.contains { $0.lowercased().hasPrefix(q) }
         }
     }
