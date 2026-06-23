@@ -6,6 +6,8 @@ struct TaskDetailView: View {
     let card: BoardCard
 
     @State private var showFamiliarPicker = false
+    @State private var notesHeight: CGFloat = 0
+    @State private var notesReader: ResponseReaderItem?
     @State private var confirmingDelete = false
     @State private var notesHeight: CGFloat = 0
     @State private var notesReader: ResponseReaderItem?
@@ -38,6 +40,9 @@ struct TaskDetailView: View {
                 showFamiliarPicker = false
                 app.openChat(for: card, familiarId: fam.id)
             }
+        }
+        .sheet(item: $notesReader) { item in
+            ResponseReaderView(item: item)
         }
         .confirmationDialog("Delete this task?", isPresented: $confirmingDelete,
                             titleVisibility: .visible) {
