@@ -690,8 +690,8 @@ assert.match(
 );
 assert.match(
   mentionSource,
-  /\/api\/project\/files\?root=\$\{encodeURIComponent\(mentionRoot\)\}/,
-  "The picker must fetch the file index for the chat's project root",
+  /new URLSearchParams\(\{ root: mentionRoot, familiarId: familiar\.id \}\)/,
+  "The picker must fetch the file index for the chat's project root scoped to the active familiar",
 );
 assert.match(
   mentionSource,

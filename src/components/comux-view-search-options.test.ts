@@ -13,7 +13,11 @@ assert.match(src, /const \[searchGlob, setSearchGlob\] = useState\(""\)/, "glob 
 // Fetch wires the params (and only when set).
 assert.match(src, /if \(searchCaseSensitive\) params\.set\("case", "sensitive"\)/, "case param sent when sensitive");
 assert.match(src, /const glob = searchGlob\.trim\(\);[\s\S]*?if \(glob\) params\.set\("glob", glob\)/, "glob param sent when present");
-assert.match(src, /\}, \[searchInput, searchRegex, searchCaseSensitive, searchGlob, searchRoot\]\)/, "effect re-runs on the new options");
+assert.match(
+  src,
+  /\}, \[searchInput, searchRegex, searchCaseSensitive, searchGlob, searchRoot, selectedProjectFamiliarId\]\)/,
+  "effect re-runs on the new options and selected familiar scope",
+);
 
 // UI controls.
 assert.match(src, /onClick=\{\(\) => setSearchCaseSensitive\(\(v\) => !v\)\}[\s\S]*?aria-pressed=\{searchCaseSensitive\}/, "Aa case toggle wired");

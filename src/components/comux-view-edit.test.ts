@@ -10,8 +10,8 @@ const source = await readFile(new URL("./comux-view.tsx", import.meta.url), "utf
 // Save posts the edited content to the write endpoint.
 assert.match(
   source,
-  /fetch\("\/api\/project-file",\s*\{[\s\S]*?method:\s*"POST"[\s\S]*?body:\s*JSON\.stringify\(\{ path: previewPath, content: editValue \}\)/,
-  "saveEdit must POST { path, content } to /api/project-file",
+  /fetch\("\/api\/project-file",\s*\{[\s\S]*?method:\s*"POST"[\s\S]*?body:\s*JSON\.stringify\(\{ path: previewPath, content: editValue, familiarId: selectedProjectFamiliarId \}\)/,
+  "saveEdit must POST { path, content, familiarId } to /api/project-file",
 );
 
 // On success the edit is committed back into the preview and edit mode exits.
