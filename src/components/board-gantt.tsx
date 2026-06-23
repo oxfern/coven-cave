@@ -15,11 +15,28 @@ type Props = {
   onSelect: (id: string) => void;
   /** Persist a card change — used to drag a bar to reschedule its dates. */
   onPatch?: (id: string, patch: Partial<Card>) => void;
+  /**
+   * "project" (default): one bar per scheduled task, grouped by project.
+   * "task": one group per task, one bar per checklist step (using step dates,
+   * falling back to the task's own range for undated steps).
+   */
+  groupMode?: "project" | "task";
 };
 
-type ScheduledCard = { card: Card; start: Date; end: Date };
-type Group = { key: string; name: string; tasks: ScheduledCard[]; firstStart: number };
 type GanttCategory = "done" | "in-progress" | "pending" | "at-risk";
+
+// A single timeline bar. In project mode it's a task; in task mode it's a step.
+type GanttRow = {
+  rowId: string;        // unique within the chart
+  cardId: string;       // the task this row belongs to (selected on click)
+  stepId?: string;      // set in task mode — the step this bar drags/patches
+  label: string;
+  owner: string;
+  start: Date;
+  end: Date;
+  category: GanttCategory;
+};
+type Group = { key: string; name: string; rows: GanttRow[]; firstStart: number };
 
 const DAY_W = 22; // px per day column — keep in sync with --cg-day in board.css
 const LEFT_W = 416; // sum of the left table columns — keep in sync with .cg-left
@@ -90,7 +107,9 @@ function statusCategory(status: CardStatus): GanttCategory {
   return "pending"; // backlog · inbox · review
 }
 
-export function BoardGantt({ cards, familiars, projects, selectedCardId, onSelect, onPatch }: Props) {
+export function BoardGantt({ cards, familiars, projects, selectedCardId, onSelect, onPatch, groupMode = "project" }: Props) {
+  // Click a group header to focus it (hide the others); click again to show all.
+  const [focusedKey, setFocusedKey] = useState<string | null>(null);
   // "Today" depends on the clock, so resolve it after mount to avoid an SSR
   // hydration mismatch — the line just isn't drawn on the first client render.
   const [todayMs, setTodayMs] = useState<number | null>(null);
@@ -107,15 +126,15 @@ export function BoardGantt({ cards, familiars, projects, selectedCardId, onSelec
   // Suppresses the row's select-click that would otherwise fire after a drag.
   const suppressClickRef = useRef(false);
 
-  const beginDrag = (e: React.PointerEvent, cardId: string, mode: DragMode) => {
+  const beginDrag = (e: React.PointerEvent, rowId: string, mode: DragMode) => {
     if (!draggable) return;
     // Don't preventDefault — that would also swallow the click we rely on to
     // select a bar that was tapped (not dragged). stopPropagation keeps an
     // edge-handle press from also starting the bar's move-drag.
     e.stopPropagation();
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    dragRef.current = { id: cardId, mode, startX: e.clientX, moved: false };
-    setDrag({ id: cardId, mode, deltaDays: 0 });
+    dragRef.current = { id: rowId, mode, startX: e.clientX, moved: false };
+    setDrag({ id: rowId, mode, deltaDays: 0 });
   };
   const moveDrag = (e: React.PointerEvent) => {
     const d = dragRef.current;
@@ -124,80 +143,153 @@ export function BoardGantt({ cards, familiars, projects, selectedCardId, onSelec
     if (Math.abs(dx) > 3) d.moved = true;
     setDrag({ id: d.id, mode: d.mode, deltaDays: Math.round(dx / DAY_W) });
   };
-  const endDrag = (e: React.PointerEvent, card: Card, start: Date, end: Date) => {
+  const endDrag = (e: React.PointerEvent, row: GanttRow) => {
     const d = dragRef.current;
     const active = drag;
     dragRef.current = null;
     setDrag(null);
     if (!d) return;
     if (d.moved) suppressClickRef.current = true; // swallow the trailing click
-    const dur = daysBetween(start, end) + 1;
+    const dur = daysBetween(row.start, row.end) + 1;
     const delta = clampDelta(d.mode, active?.deltaDays ?? 0, dur);
-    if (d.moved && delta !== 0 && onPatch) {
+    if (!(d.moved && delta !== 0 && onPatch)) return;
+    const card = cards.find((c) => c.id === row.cardId);
+    if (!card) return;
+    const newStart = fmtISO(addDays(row.start, delta));
+    const newEnd = fmtISO(addDays(row.end, delta));
+    const curStart = fmtISO(row.start);
+    const curEnd = fmtISO(row.end);
+    // Resolve the new {start,end} for the dragged mode.
+    const next =
+      d.mode === "move" ? { startDate: newStart, endDate: newEnd }
+      : d.mode === "resize-start" ? { startDate: newStart, endDate: curEnd }
+      : { startDate: curStart, endDate: newEnd };
+    if (row.stepId) {
+      // Task mode: write this step's dates (promoting a card-range fallback to
+      // explicit dates), leaving the other steps untouched.
+      const steps = (card.steps ?? []).map((s) =>
+        s.id === row.stepId ? { ...s, ...next } : s,
+      );
+      onPatch(row.cardId, { steps });
+    } else {
+      // Project mode: a move shifts whichever of the task's own dates are set;
+      // a resize sets the dragged end explicitly.
       const patch: Partial<Card> = {};
       if (d.mode === "move") {
-        const s = parseDate(card.startDate);
-        const en = parseDate(card.endDate);
-        if (s) patch.startDate = fmtISO(addDays(s, delta));
-        if (en) patch.endDate = fmtISO(addDays(en, delta));
+        if (parseDate(card.startDate)) patch.startDate = newStart;
+        if (parseDate(card.endDate)) patch.endDate = newEnd;
       } else if (d.mode === "resize-start") {
-        patch.startDate = fmtISO(addDays(start, delta));
+        patch.startDate = newStart;
       } else {
-        patch.endDate = fmtISO(addDays(end, delta));
+        patch.endDate = newEnd;
       }
-      if (patch.startDate || patch.endDate) onPatch(card.id, patch);
+      if (patch.startDate || patch.endDate) onPatch(row.cardId, patch);
     }
   };
-
-  const scheduled: ScheduledCard[] = [];
-  const unscheduled: Card[] = [];
-  for (const card of cards) {
-    const startDate = parseDate(card.startDate);
-    const endDate = parseDate(card.endDate);
-    if (!startDate && !endDate) {
-      unscheduled.push(card);
-      continue;
-    }
-    const start = startDate ?? endDate!;
-    const end = endDate ?? startDate!;
-    scheduled.push({ card, start: start <= end ? start : end, end: start <= end ? end : start });
-  }
-
-  if (scheduled.length === 0) {
-    return (
-      <div className="board-gantt board-gantt--empty">
-        <p>No tasks have start and end dates yet.</p>
-        {unscheduled.length > 0 ? (
-          <span>{unscheduled.length} task{unscheduled.length === 1 ? "" : "s"} without dates</span>
-        ) : null}
-      </div>
-    );
-  }
 
   const ownerName = (id: string | null): string =>
     (id ? familiars?.find((f) => f.id === id)?.display_name : undefined) ?? "—";
   const projectName = (id: string | null | undefined): string =>
     (id ? projects?.find((p) => p.id === id)?.name : undefined) ?? "No project";
 
-  // Group scheduled tasks by project, each group sorted by start date.
-  const groupMap = new Map<string, Group>();
-  for (const item of scheduled) {
-    const key = item.card.projectId ?? "__none__";
-    let group = groupMap.get(key);
-    if (!group) {
-      group = { key, name: projectName(item.card.projectId), tasks: [], firstStart: item.start.getTime() };
-      groupMap.set(key, group);
+  // A card's own date range; start/end fall back to each other. null if neither.
+  const cardRange = (card: Card): { start: Date; end: Date } | null => {
+    const s = parseDate(card.startDate);
+    const e = parseDate(card.endDate);
+    if (!s && !e) return null;
+    const a = s ?? e!;
+    const b = e ?? s!;
+    return a <= b ? { start: a, end: b } : { start: b, end: a };
+  };
+
+  const groups: Group[] = [];
+  const placedCardIds = new Set<string>();
+
+  if (groupMode === "task") {
+    // One group per task; one bar per step, placed by the step's own dates and
+    // falling back to the task's range for undated steps.
+    for (const card of cards) {
+      const steps = card.steps ?? [];
+      if (steps.length === 0) continue;
+      const cr = cardRange(card);
+      const rows: GanttRow[] = [];
+      for (const step of steps) {
+        let s = parseDate(step.startDate);
+        let e = parseDate(step.endDate);
+        if (!s && !e) {
+          if (!cr) continue; // no step dates and no task range — can't place it
+          s = cr.start;
+          e = cr.end;
+        }
+        const a = s ?? e!;
+        const b = e ?? s!;
+        rows.push({
+          rowId: `${card.id}:${step.id}`,
+          cardId: card.id,
+          stepId: step.id,
+          label: step.text,
+          owner: "",
+          start: a <= b ? a : b,
+          end: a <= b ? b : a,
+          category: step.done ? "done" : statusCategory(card.status),
+        });
+      }
+      if (rows.length === 0) continue;
+      placedCardIds.add(card.id);
+      groups.push({ key: card.id, name: card.title, rows, firstStart: Math.min(...rows.map((r) => r.start.getTime())) });
     }
-    group.tasks.push(item);
-    group.firstStart = Math.min(group.firstStart, item.start.getTime());
-  }
-  const groups = [...groupMap.values()].sort((a, b) => a.firstStart - b.firstStart);
-  for (const g of groups) {
-    g.tasks.sort((a, b) => a.start.getTime() - b.start.getTime() || a.end.getTime() - b.end.getTime());
+  } else {
+    // One group per project; one bar per scheduled task.
+    const groupMap = new Map<string, Group>();
+    for (const card of cards) {
+      const cr = cardRange(card);
+      if (!cr) continue;
+      placedCardIds.add(card.id);
+      const key = card.projectId ?? "__none__";
+      let group = groupMap.get(key);
+      if (!group) {
+        group = { key, name: projectName(card.projectId), rows: [], firstStart: cr.start.getTime() };
+        groupMap.set(key, group);
+      }
+      group.rows.push({
+        rowId: card.id,
+        cardId: card.id,
+        label: card.title,
+        owner: ownerName(card.familiarId),
+        start: cr.start,
+        end: cr.end,
+        category: statusCategory(card.status),
+      });
+      group.firstStart = Math.min(group.firstStart, cr.start.getTime());
+    }
+    groups.push(...groupMap.values());
   }
 
-  const min = new Date(Math.min(...scheduled.map((i) => i.start.getTime())));
-  const max = new Date(Math.max(...scheduled.map((i) => i.end.getTime())));
+  groups.sort((a, b) => a.firstStart - b.firstStart);
+  for (const g of groups) {
+    g.rows.sort((a, b) => a.start.getTime() - b.start.getTime() || a.end.getTime() - b.end.getTime());
+  }
+
+  const allRows = groups.flatMap((g) => g.rows);
+  const unscheduledCount = cards.filter((c) => !placedCardIds.has(c.id)).length;
+
+  if (allRows.length === 0) {
+    return (
+      <div className="board-gantt board-gantt--empty">
+        <p>{groupMode === "task" ? "No tasks have steps with dates yet." : "No tasks have start and end dates yet."}</p>
+        {unscheduledCount > 0 ? (
+          <span>{unscheduledCount} task{unscheduledCount === 1 ? "" : "s"} without dates</span>
+        ) : null}
+      </div>
+    );
+  }
+
+  // Focus: when a group is clicked, render only it (range stays global so bars don't jump).
+  const focused = focusedKey && groups.some((g) => g.key === focusedKey) ? focusedKey : null;
+  const visibleGroups = focused ? groups.filter((g) => g.key === focused) : groups;
+
+  const min = new Date(Math.min(...allRows.map((r) => r.start.getTime())));
+  const max = new Date(Math.max(...allRows.map((r) => r.end.getTime())));
   const rangeStart = startOfWeekMon(min);
   const rangeEnd = addDays(startOfWeekMon(max), 7); // complete the final week
   const totalDays = Math.max(7, daysBetween(rangeStart, rangeEnd));
@@ -246,25 +338,32 @@ export function BoardGantt({ cards, familiars, projects, selectedCardId, onSelec
               </span>
             ) : null}
 
-            {groups.map((g) => (
+            {visibleGroups.map((g) => (
               <div key={g.key} className="cg-group">
-                <div className="cg-grouprow">
-                  <div className="cg-left cg-left--group">
-                    <span className="cg-caret" aria-hidden>▾</span>
+                <button
+                  type="button"
+                  className={`cg-grouprow cg-grouprow--btn${focused === g.key ? " cg-grouprow--focused" : ""}`}
+                  onClick={() => setFocusedKey((cur) => (cur === g.key ? null : g.key))}
+                  aria-pressed={focused === g.key}
+                  title={focused === g.key ? "Show all groups" : `Focus ${g.name}`}
+                >
+                  <span className="cg-left cg-left--group">
+                    <span className="cg-caret" aria-hidden>{focused === g.key ? "▸" : "▾"}</span>
                     <span className="cg-groupname">{g.name}</span>
-                    <span className="cg-count">{g.tasks.length}</span>
-                  </div>
-                  <div className="cg-grouptl" style={{ width: `${timelineW}px` }} aria-hidden />
-                </div>
+                    <span className="cg-count">{g.rows.length}</span>
+                  </span>
+                  <span className="cg-grouptl" style={{ width: `${timelineW}px` }} aria-hidden />
+                </button>
 
-                {g.tasks.map(({ card, start, end }) => {
-                  const cat = statusCategory(card.status);
+                {g.rows.map((row) => {
+                  const { start, end } = row;
+                  const cat = row.category;
                   const offset = Math.max(0, daysBetween(rangeStart, start));
                   const dur = Math.max(1, daysBetween(start, end) + 1);
                   const milestone = dur === 1;
                   // Live drag state for this row, clamped so a resize can't
                   // invert the bar. A diamond has no edges, so it only moves.
-                  const active = drag?.id === card.id ? drag : null;
+                  const active = drag?.id === row.rowId ? drag : null;
                   const mode: DragMode = active?.mode ?? "move";
                   const dragDelta = active ? clampDelta(mode, active.deltaDays, dur) : 0;
                   const dragging = active !== null && dragDelta !== 0;
@@ -281,9 +380,9 @@ export function BoardGantt({ cards, familiars, projects, selectedCardId, onSelec
                     `${base}${draggable ? " cg-bar--grab" : ""}${dragging ? " cg-bar--dragging" : ""}`;
                   const handlers = draggable
                     ? {
-                        onPointerDown: (e: React.PointerEvent) => beginDrag(e, card.id, "move"),
+                        onPointerDown: (e: React.PointerEvent) => beginDrag(e, row.rowId, "move"),
                         onPointerMove: moveDrag,
-                        onPointerUp: (e: React.PointerEvent) => endDrag(e, card, start, end),
+                        onPointerUp: (e: React.PointerEvent) => endDrag(e, row),
                       }
                     : {};
                   // Edge handles share the move pointer plumbing but start in a
@@ -291,26 +390,26 @@ export function BoardGantt({ cards, familiars, projects, selectedCardId, onSelec
                   const resizeHandle = (which: "start" | "end") => (
                     <span
                       className={`cg-bar__resize cg-bar__resize--${which}`}
-                      onPointerDown={(e) => beginDrag(e, card.id, which === "start" ? "resize-start" : "resize-end")}
+                      onPointerDown={(e) => beginDrag(e, row.rowId, which === "start" ? "resize-start" : "resize-end")}
                       onPointerMove={moveDrag}
-                      onPointerUp={(e) => endDrag(e, card, start, end)}
+                      onPointerUp={(e) => endDrag(e, row)}
                       aria-hidden
                     />
                   );
                   return (
                     <button
-                      key={card.id}
+                      key={row.rowId}
                       type="button"
-                      className={`cg-row${selectedCardId === card.id ? " cg-row--sel" : ""}`}
+                      className={`cg-row${selectedCardId === row.cardId ? " cg-row--sel" : ""}`}
                       onClick={() => {
                         if (suppressClickRef.current) { suppressClickRef.current = false; return; }
-                        onSelect(card.id);
+                        onSelect(row.cardId);
                       }}
-                      title={`${card.title} · ${formatLabel(previewStart)}–${formatLabel(previewEnd)}${draggable ? " · drag to move, drag edges to resize" : ""}`}
+                      title={`${row.label} · ${formatLabel(previewStart)}–${formatLabel(previewEnd)}${draggable ? " · drag to move, drag edges to resize" : ""}`}
                     >
                       <span className="cg-left">
-                        <span className="cg-c-task">{card.title}</span>
-                        <span className="cg-c-owner">{ownerName(card.familiarId)}</span>
+                        <span className="cg-c-task">{row.label}</span>
+                        <span className="cg-c-owner">{row.owner}</span>
                         <span className="cg-c-date">{formatLabel(previewStart)}</span>
                         <span className="cg-c-date">{formatLabel(previewEnd)}</span>
                         <span className="cg-c-st"><span className={`cg-dot cg-dot--${cat}`} aria-hidden /></span>
@@ -358,9 +457,9 @@ export function BoardGantt({ cards, familiars, projects, selectedCardId, onSelec
           </div>
         </div>
       </div>
-      {unscheduled.length > 0 ? (
+      {unscheduledCount > 0 ? (
         <div className="board-gantt-unscheduled">
-          {unscheduled.length} task{unscheduled.length === 1 ? "" : "s"} without dates
+          {unscheduledCount} task{unscheduledCount === 1 ? "" : "s"} {groupMode === "task" ? "without scheduled steps" : "without dates"}
         </div>
       ) : null}
     </div>

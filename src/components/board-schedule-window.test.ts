@@ -58,11 +58,11 @@ assert.match(gantt, /function clampDelta\(mode: DragMode, delta: number, dur: nu
 assert.match(gantt, /if \(mode === "resize-start"\) return Math\.min\(delta, dur - 1\)/, "resize-start can't drag the start past the end");
 assert.match(gantt, /if \(mode === "resize-end"\) return Math\.max\(delta, -\(dur - 1\)\)/, "resize-end can't drag the end past the start");
 // The left edge patches startDate, the right edge patches endDate.
-assert.match(gantt, /patch\.startDate = fmtISO\(addDays\(start, delta\)\)/, "resize-start persists a new startDate");
-assert.match(gantt, /patch\.endDate = fmtISO\(addDays\(end, delta\)\)/, "resize-end persists a new endDate");
+assert.match(gantt, /d\.mode === "resize-start"[\s\S]*?\{\s*patch\.startDate = newStart;/, "resize-start persists a new startDate");
+assert.match(gantt, /else \{\s*patch\.endDate = newEnd;/, "resize-end persists a new endDate");
 // Each non-milestone bar renders a grab handle at each edge.
 assert.match(gantt, /const resizeHandle = \(which: "start" \| "end"\)/, "bars render edge resize handles");
-assert.match(gantt, /beginDrag\(e, card\.id, which === "start" \? "resize-start" : "resize-end"\)/, "edge handles start a resize drag");
+assert.match(gantt, /beginDrag\(e, row\.rowId, which === "start" \? "resize-start" : "resize-end"\)/, "edge handles start a resize drag");
 assert.match(gantt, /\{draggable \? resizeHandle\("start"\) : null\}[\s\S]*?\{draggable \? resizeHandle\("end"\) : null\}/, "both edge handles render inside the bar");
 assert.match(styles, /\.cg-bar__resize \{/, "resize-handle styles exist");
 assert.match(styles, /cursor: ew-resize/, "resize handles show the horizontal-resize cursor");
