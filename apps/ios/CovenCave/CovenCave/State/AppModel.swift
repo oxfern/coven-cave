@@ -747,6 +747,62 @@ final class AppModel {
         return thread
     }
 
+    /// Copy a thread into a new, independent local thread — fresh message ids,
+    /// no server session (so sending in the copy starts clean), and reset
+    /// pin/archive/mute. Inserts at the top and persists.
+    @discardableResult
+    func duplicateThread(_ thread: ChatThread) -> ChatThread {
+        let copiedMessages = thread.messages.map { message in
+            DisplayMessage(role: message.role, familiarId: message.familiarId,
+                           text: message.text, isError: message.isError,
+                           attachmentDataUrls: message.attachmentDataUrls)
+        }
+        let copy = ChatThread(title: "\(thread.title) (copy)",
+                              familiarIds: thread.familiarIds,
+                              messages: copiedMessages)
+        threads.insert(copy, at: 0)
+        persistThreads()
+        return copy
+    }
+
+    /// Bundle every thread's Markdown into a single `.zip` and return its URL.
+    /// Filenames come from titles (de-duplicated); zipping uses NSFileCoordinator's
+    /// `.forUploading`, so there's no third-party dependency.
+    func exportAllThreadsZip() throws -> URL {
+        let fm = FileManager.default
+        let staging = fm.temporaryDirectory
+            .appendingPathComponent("CovenCave Chats-\(UUID().uuidString)", isDirectory: true)
+        try fm.createDirectory(at: staging, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: staging) }
+
+        let invalid = CharacterSet(charactersIn: "/\\:?%*|\"<>")
+        var used = Set<String>()
+        for thread in threads {
+            let trimmed = thread.title.trimmingCharacters(in: .whitespacesAndNewlines)
+            var base = ""
+            for scalar in (trimmed.isEmpty ? "chat" : trimmed).unicodeScalars {
+                base.append(invalid.contains(scalar) ? "-" : Character(scalar))
+            }
+            var name = base
+            var n = 2
+            while used.contains(name.lowercased()) { name = "\(base) \(n)"; n += 1 }
+            used.insert(name.lowercased())
+            try exportMarkdown(thread)
+                .write(to: staging.appendingPathComponent("\(name).md"), atomically: true, encoding: .utf8)
+        }
+
+        var zipURL: URL?
+        var coordError: NSError?
+        NSFileCoordinator().coordinate(readingItemAt: staging, options: .forUploading, error: &coordError) { tmp in
+            let dest = fm.temporaryDirectory.appendingPathComponent("CovenCave Chats.zip")
+            try? fm.removeItem(at: dest)
+            if (try? fm.copyItem(at: tmp, to: dest)) != nil { zipURL = dest }
+        }
+        if let coordError { throw coordError }
+        guard let zipURL else { throw CocoaError(.fileWriteUnknown) }
+        return zipURL
+    }
+
     func touch(_ thread: ChatThread) {
         // Move the most recently active thread to the top, then persist.
         if let idx = threads.firstIndex(where: { $0.id == thread.id }), idx != 0 {
