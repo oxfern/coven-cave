@@ -9,9 +9,10 @@
  * Files live at:  ~/.codex/automations/<id>/automation.toml
  */
 
-import { readdir, readFile, writeFile, access } from "node:fs/promises";
+import { readdir, readFile, writeFile, access, mkdir, rm, realpath } from "node:fs/promises";
 import path from "node:path";
 import { homedir } from "node:os";
+import { slugifyAutomationId } from "./codex-automation-form.ts";
 import type {
   AutomationStatus,
   CodexAutomation,
@@ -310,5 +311,79 @@ export async function updateCodexAutomation(
     await writeFile(auto.tomlPath, patched, "utf8");
 
     return getCodexAutomation(id);
+  });
+}
+
+export type CreateAutomationInput = {
+  id: string;
+  name: string;
+  rrule: string;
+  prompt: string;
+  cwds: string[];
+  tags: string[];
+  familiars: string[];
+  model: string;
+  reasoningEffort: string;
+  executionEnvironment: string;
+  skillPath: string | null;
+};
+
+/** Full automation.toml text for a NEW automation (always status = PAUSED). */
+export function serializeAutomationToml(input: CreateAutomationInput): string {
+  const lines: string[] = [
+    `version = "1"`,
+    `id = ${tomlString(input.id)}`,
+    `kind = "cron"`,
+    `name = ${tomlString(input.name)}`,
+    `status = "PAUSED"`,
+    `rrule = ${tomlString(input.rrule)}`,
+  ];
+  if (input.model.trim()) lines.push(`model = ${tomlString(input.model.trim())}`);
+  if (input.reasoningEffort.trim()) lines.push(`reasoning_effort = ${tomlString(input.reasoningEffort.trim())}`);
+  if (input.executionEnvironment.trim()) lines.push(`execution_environment = ${tomlString(input.executionEnvironment.trim())}`);
+  if (input.cwds.length) lines.push(`cwds = ${tomlStringArray(input.cwds)}`);
+  if (input.tags.length) lines.push(`tags = ${tomlStringArray(input.tags)}`);
+  if (input.familiars.length) lines.push(`familiars = ${tomlStringArray(input.familiars)}`);
+  if (input.skillPath && input.skillPath.trim()) lines.push(`skill_path = ${tomlString(input.skillPath.trim())}`);
+  lines.push(`prompt = ${tomlPrompt(input.prompt)}`);
+  return lines.join("\n") + "\n";
+}
+
+/** Create a new automation TOML under a unique id; returns the parsed record. */
+export async function createCodexAutomation(
+  input: Omit<CreateAutomationInput, "id">,
+): Promise<CodexAutomationRecord> {
+  return withCodexAutomationLock(async () => {
+    const existing = await listCodexAutomations();
+    const taken = new Set(existing.map((a) => a.id));
+    const base = slugifyAutomationId(input.name);
+    let id = base;
+    for (let n = 2; taken.has(id); n += 1) id = `${base}-${n}`;
+    const dir = path.join(AUTOMATIONS_DIR, id);
+    await mkdir(dir, { recursive: true });
+    await writeFile(path.join(dir, "automation.toml"), serializeAutomationToml({ ...input, id }), "utf8");
+    const created = (await listCodexAutomations()).find((a) => a.id === id);
+    if (!created) throw new Error("automation created but could not be read back");
+    return created;
+  });
+}
+
+/** Delete an automation's directory; returns whether it existed. Path-guarded. */
+export async function deleteCodexAutomation(id: string): Promise<boolean> {
+  return withCodexAutomationLock(async () => {
+    const dir = path.join(AUTOMATIONS_DIR, id);
+    let resolved: string;
+    try {
+      resolved = await realpath(dir);
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException)?.code === "ENOENT") return false;
+      throw err;
+    }
+    const root = await realpath(AUTOMATIONS_DIR);
+    if (path.dirname(resolved) !== root) {
+      throw new Error("refusing to delete outside the automations dir");
+    }
+    await rm(dir, { recursive: true, force: true });
+    return true;
   });
 }

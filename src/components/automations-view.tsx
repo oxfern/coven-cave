@@ -19,9 +19,11 @@ import { Tabs, type TabItem } from "@/components/ui/tabs";
 import { ProjectTree } from "@/components/project-tree";
 import type { CaveProject } from "@/lib/cave-projects-types";
 import { FamiliarMultiSelect } from "@/components/automation-familiar-select";
+import { SkillSelect } from "@/components/automation-skill-select";
 import { FamiliarAvatar } from "@/components/familiar-avatar";
 import { useResolvedFamiliars, type ResolvedFamiliar } from "@/lib/familiar-resolve";
 import { automationMatchesFilter } from "@/lib/familiar-multiselect";
+import { AutomationCreateDialog, type AutomationCreateInput } from "@/components/automation-create-dialog";
 
 // AutomationsView — Schedules surface, redesigned June 2026
 // Clean list layout matching the sleek/professional reference design:
@@ -47,9 +49,16 @@ function linkLabel(link: LinkRef): string {
 
 type ScheduleTab = "reminders" | "automations" | "inbox";
 
+import {
+  RRULE_DAY_ORDER,
+  parseCodexRrule,
+  buildCodexRrule,
+  splitAutomationPrompt,
+  composeAutomationPrompt,
+} from "@/lib/codex-automation-form";
+
 const WEEKDAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const DAY_INITIALS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
-const RRULE_DAY_ORDER = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
 const RRULE_DAY_LABEL: Record<string, string> = {
   SU: "Sun",
   MO: "Mon",
@@ -117,46 +126,6 @@ function relTime(iso: string | undefined | null): string {
   return formatTimestamp(iso, readDateTimePrefs());
 }
 
-function parseCodexRrule(rrule: string | null): {
-  mode: "daily" | "weekly" | "raw";
-  days: string[];
-  time: string;
-  raw: string;
-} {
-  const raw = rrule ?? "";
-  const freq = raw.match(/FREQ=(\w+)/)?.[1];
-  const hour = raw.match(/BYHOUR=(\d+)/)?.[1];
-  const min = raw.match(/BYMINUTE=(\d+)/)?.[1];
-  const days = raw.match(/BYDAY=([^;]+)/)?.[1]?.split(",").filter(Boolean) ?? [];
-  const time = `${(hour ?? "9").padStart(2, "0")}:${(min ?? "0").padStart(2, "0")}`;
-
-  if (freq === "DAILY" && hour !== undefined) return { mode: "daily", days: [], time, raw };
-  if (freq === "WEEKLY" && hour !== undefined) {
-    return {
-      mode: "weekly",
-      days: days.length > 0 ? days : RRULE_DAY_ORDER,
-      time,
-      raw,
-    };
-  }
-  return { mode: "raw", days: RRULE_DAY_ORDER, time, raw };
-}
-
-function buildCodexRrule(mode: "daily" | "weekly" | "raw", time: string, days: string[], raw: string): string {
-  if (mode === "raw") return raw.trim();
-  const [hour = "9", minute = "0"] = time.split(":");
-  const parts = [
-    "RRULE:FREQ=" + (mode === "daily" ? "DAILY" : "WEEKLY"),
-    `BYHOUR=${Number(hour)}`,
-    `BYMINUTE=${Number(minute)}`,
-  ];
-  if (mode === "weekly") {
-    const ordered = RRULE_DAY_ORDER.filter((day) => days.includes(day));
-    parts.push(`BYDAY=${ordered.join(",")}`);
-  }
-  return parts.join(";");
-}
-
 function listInput(values: string[]): string {
   return values.join("\n");
 }
@@ -170,48 +139,6 @@ function parseListInput(value: string): string[] {
     .split(/\n|,/)
     .map((part) => part.trim())
     .filter(Boolean);
-}
-
-function splitAutomationPrompt(prompt: string): {
-  goals: string;
-  deliverables: string;
-  hasStructuredSections: boolean;
-} {
-  const sectionPattern = /^\s*(?:#{1,6}\s*)?(Goals|Deliverables)\s*:?\s*$/gim;
-  const matches = [...prompt.matchAll(sectionPattern)];
-  if (matches.length === 0) {
-    return { goals: prompt, deliverables: "", hasStructuredSections: false };
-  }
-
-  const parts = { goals: "", deliverables: "" };
-  const leading = prompt.slice(0, matches[0].index ?? 0).trim();
-  if (leading) parts.goals = leading;
-
-  matches.forEach((match, index) => {
-    const key = match[1].toLowerCase() === "deliverables" ? "deliverables" : "goals";
-    const start = (match.index ?? 0) + match[0].length;
-    const end = matches[index + 1]?.index ?? prompt.length;
-    const value = prompt.slice(start, end).trim();
-    parts[key] = parts[key] ? `${parts[key]}\n\n${value}`.trim() : value;
-  });
-
-  return { ...parts, hasStructuredSections: true };
-}
-
-function composeAutomationPrompt(
-  goals: string,
-  deliverables: string,
-  includeHeadings: boolean,
-): string {
-  const nextGoals = goals.trim();
-  const nextDeliverables = deliverables.trim();
-
-  if (!includeHeadings && !nextDeliverables) return nextGoals;
-
-  const sections: string[] = [];
-  if (nextGoals) sections.push(`Goals:\n${nextGoals}`);
-  if (nextDeliverables) sections.push(`Deliverables:\n${nextDeliverables}`);
-  return sections.join("\n\n");
 }
 
 function FieldLabel({ children }: { children: ReactNode }) {
@@ -581,12 +508,14 @@ function CodexDetailPanel({
   onClose,
   onToggle,
   onSave,
+  onDelete,
 }: {
   auto: CodexAutomation;
   busy: boolean;
   onClose: () => void;
   onToggle: (auto: CodexAutomation) => void;
   onSave: (auto: CodexAutomation, patch: CodexAutomationPatch) => void;
+  onDelete: (auto: CodexAutomation) => void;
 }) {
   const isActive = auto.status === "ACTIVE";
   const parsedSchedule = useMemo(() => parseCodexRrule(auto.rrule), [auto.rrule]);
@@ -599,6 +528,7 @@ function CodexDetailPanel({
   const [executionEnvironment, setExecutionEnvironment] = useState(auto.executionEnvironment ?? "worktree");
   const [tagsText, setTagsText] = useState(commaInput(auto.tags));
   const [cwdsText, setCwdsText] = useState(listInput(auto.cwds));
+  const [skillPath, setSkillPath] = useState(auto.skillPath ?? "");
   // Folder-picker ("browse") state for the Working directories field.
   const [cwdPickerOpen, setCwdPickerOpen] = useState(false);
   const [cwdProjects, setCwdProjects] = useState<CaveProject[]>([]);
@@ -618,6 +548,7 @@ function CodexDetailPanel({
     setExecutionEnvironment(auto.executionEnvironment ?? "worktree");
     setTagsText(commaInput(auto.tags));
     setCwdsText(listInput(auto.cwds));
+    setSkillPath(auto.skillPath ?? "");
     setScheduleMode(nextSchedule.mode);
     setScheduleTime(nextSchedule.time);
     setScheduleDays(nextSchedule.days);
@@ -663,6 +594,7 @@ function CodexDetailPanel({
     executionEnvironment !== (auto.executionEnvironment ?? "worktree") ||
     tagsText !== commaInput(auto.tags) ||
     cwdsText !== listInput(auto.cwds) ||
+    skillPath.trim() !== (auto.skillPath ?? "") ||
     nextRrule !== (auto.rrule ?? "");
   const canSave = !busy && dirty && name.trim().length > 0 && !invalidSchedule;
 
@@ -694,6 +626,8 @@ function CodexDetailPanel({
       execution_environment: executionEnvironment,
       tags,
       cwds,
+      // Send "" (not undefined) so selecting "— none —" actually clears the skill.
+      skill_path: skillPath.trim(),
     });
   };
 
@@ -959,14 +893,10 @@ function CodexDetailPanel({
               style={fieldStyle}
             />
           </div>
-          {auto.skillPath && (
-            <div>
-              <FieldLabel>Skill</FieldLabel>
-              <p className="break-all font-mono text-[10px]" style={{ color: "var(--text-muted)" }}>
-                {auto.skillPath}
-              </p>
-            </div>
-          )}
+          <div>
+            <FieldLabel>Skill</FieldLabel>
+            <SkillSelect value={skillPath || null} onChange={(p) => setSkillPath(p ?? "")} className={automationSelectClass} />
+          </div>
         </div>
       </div>
 
@@ -995,6 +925,14 @@ function CodexDetailPanel({
           style={{ background: isActive ? "oklch(0.45 0.12 20)" : "var(--accent-presence)" }}
         >
           {busy ? (isActive ? "Pausing…" : "Activating…") : (isActive ? "Pause" : "Activate")}
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => onDelete(auto)}
+          className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-[12px] font-medium text-[var(--color-danger)] hover:bg-[color-mix(in_oklch,var(--color-danger)_12%,transparent)] disabled:opacity-50"
+        >
+          <Icon name="ph:trash" width={13} /> Delete
         </button>
       </div>
     </div>
@@ -1279,6 +1217,7 @@ export function AutomationsView({ familiars, onOpenSession, onNewReminder, onEdi
   // Selected item is either an InboxItem or a CodexAutomation — track by kind
   const [selectedItem, setSelectedItem] = useState<InboxItem | null>(null);
   const [selectedCodex, setSelectedCodex] = useState<CodexAutomation | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -1418,6 +1357,37 @@ export function AutomationsView({ familiars, onOpenSession, onNewReminder, onEdi
     }
   }, [load]);
 
+  const deleteCodex = useCallback(async (auto: CodexAutomation) => {
+    if (!window.confirm(`Delete automation "${auto.name}"? This removes its file.`)) return;
+    setBusyId(auto.id);
+    try {
+      const res = await fetch(`/api/codex-automations/${encodeURIComponent(auto.id)}`, { method: "DELETE" });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.ok) throw new Error(json?.error ?? `http ${res.status}`);
+      setSelectedCodex(null);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "codex delete failed");
+    } finally {
+      setBusyId(null);
+    }
+  }, [load]);
+
+  const createCodex = useCallback(async (input: AutomationCreateInput) => {
+    try {
+      const res = await fetch("/api/codex-automations", {
+        method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(input),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.ok) throw new Error(json?.error ?? `http ${res.status}`);
+      setCreateOpen(false);
+      await load();
+      if (json.automation) { setSelectedCodex(json.automation); setSelectedItem(null); }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "codex create failed");
+    }
+  }, [load]);
+
   // ── Sections ──────────────────────────────────────────────────────────────
   const reminderItems = useMemo(() =>
     items.filter(isScheduleInboxItem),
@@ -1511,21 +1481,28 @@ export function AutomationsView({ familiars, onOpenSession, onNewReminder, onEdi
           <h1 className="text-[22px] font-semibold" style={{ color: "var(--text-primary)" }}>
             Schedules
           </h1>
-          {onNewReminder && (
-            <button
-              type="button"
-              onClick={onNewReminder}
-              className="automation-create-chat-btn inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium whitespace-nowrap transition-colors hover:bg-white/5"
-              style={{
-                background: "var(--bg-raised)",
-                border: "1px solid var(--border-hairline)",
-                color: "var(--text-primary)",
-              }}
-            >
-              Create via chat
-              <span style={{ color: "var(--text-muted)", display: "flex" }}><Icon name="ph:caret-down" width={11} /></span>
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {activeTab === "automations" && (
+              <Button leadingIcon="ph:plus" onClick={() => setCreateOpen(true)}>
+                New automation
+              </Button>
+            )}
+            {onNewReminder && (
+              <button
+                type="button"
+                onClick={onNewReminder}
+                className="automation-create-chat-btn inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium whitespace-nowrap transition-colors hover:bg-white/5"
+                style={{
+                  background: "var(--bg-raised)",
+                  border: "1px solid var(--border-hairline)",
+                  color: "var(--text-primary)",
+                }}
+              >
+                Create via chat
+                <span style={{ color: "var(--text-muted)", display: "flex" }}><Icon name="ph:caret-down" width={11} /></span>
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="px-8 pb-4">
@@ -1671,9 +1648,19 @@ export function AutomationsView({ familiars, onOpenSession, onNewReminder, onEdi
               onClose={() => setSelectedCodex(null)}
               onToggle={toggleCodex}
               onSave={saveCodex}
+              onDelete={deleteCodex}
             />
           )}
         </div>
+      )}
+
+      {/* ── Create automation dialog ───────────────────────────────────────── */}
+      {createOpen && (
+        <AutomationCreateDialog
+          resolvedFamiliars={resolvedFamiliars}
+          onClose={() => setCreateOpen(false)}
+          onCreate={(i) => void createCodex(i)}
+        />
       )}
     </section>
   );
