@@ -3865,3 +3865,396 @@ h3:hover .library-heading-anchor,
     grid-template-columns: minmax(0, 1fr) minmax(112px, 128px);
   }
 }
+
+
+/* ── Library Chat Panel ───────────────────────────────────────────────────── */
+
+/*
+ * Design language:
+ *   - Dark-first; all colours via CSS custom properties.
+ *   - User bubbles: right-aligned, --accent-presence tint.
+ *   - Assistant bubbles: left-aligned, --bg-raised surface.
+ *   - No harsh borders on bubbles — subtle background + slight shadow.
+ *   - Input row is sticky to the bottom.
+ *   - Textarea expands up to ~4 lines.
+ *   - Send button: icon-only at rest, spinner while streaming.
+ */
+
+.library-chat-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--bg-base);
+}
+
+/* ── Header ───────────────────────────────────────────────────── */
+
+.library-chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border-hairline);
+  background: color-mix(in oklch, var(--bg-base) 86%, var(--foreground) 14%);
+  flex-shrink: 0;
+}
+
+.library-chat-header-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.01em;
+}
+
+.library-chat-header-icon {
+  color: var(--accent-presence);
+  flex-shrink: 0;
+}
+
+.library-chat-clear-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-hairline);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.library-chat-clear-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-strong);
+  color: var(--text-secondary);
+}
+
+.library-chat-clear-btn:focus-visible {
+  outline: var(--ring-width) solid var(--ring-focus);
+  outline-offset: 1px;
+}
+
+/* ── Message list ─────────────────────────────────────────────── */
+
+.library-chat-messages {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 14px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  /* Slim, accent-tinted scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklch, var(--accent-presence) 22%, transparent) transparent;
+}
+
+.library-chat-messages::-webkit-scrollbar {
+  width: 5px;
+}
+
+.library-chat-messages::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.library-chat-messages::-webkit-scrollbar-thumb {
+  background: color-mix(in oklch, var(--accent-presence) 22%, transparent);
+  border-radius: 999px;
+}
+
+/* ── Individual message row ───────────────────────────────────── */
+
+.library-chat-message {
+  display: flex;
+}
+
+.library-chat-message--user {
+  justify-content: flex-end;
+}
+
+.library-chat-message--assistant {
+  justify-content: flex-start;
+}
+
+/* Subtle pulse on streaming rows */
+.library-chat-message--streaming .library-chat-bubble--assistant {
+  animation: library-chat-stream-pulse 2s ease-in-out infinite;
+}
+
+@keyframes library-chat-stream-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.88; }
+}
+
+/* ── Bubble ───────────────────────────────────────────────────── */
+
+.library-chat-bubble {
+  max-width: min(80%, 600px);
+  border-radius: 14px;
+  padding: 10px 14px;
+  position: relative;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* User: right-aligned, accent-tinted surface */
+.library-chat-bubble--user {
+  background: color-mix(in oklch, var(--accent-presence) 18%, var(--bg-raised));
+  box-shadow:
+    0 1px 2px color-mix(in oklch, var(--accent-presence) 10%, transparent),
+    inset 0 1px 0 color-mix(in oklch, var(--text-primary) 5%, transparent);
+  border-bottom-right-radius: 4px;
+}
+
+/* Assistant: left-aligned, neutral raised surface */
+.library-chat-bubble--assistant {
+  background: color-mix(in oklch, var(--bg-raised) 80%, var(--bg-base));
+  box-shadow:
+    0 1px 3px color-mix(in oklch, black 12%, transparent),
+    inset 0 1px 0 color-mix(in oklch, var(--text-primary) 4%, transparent);
+  border-bottom-left-radius: 4px;
+}
+
+/* ── Bubble text variants ─────────────────────────────────────── */
+
+/* User: plain text, preserve newlines */
+.library-chat-bubble-text--user {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+}
+
+/* Streaming: plain pre-wrap, slightly muted */
+.library-chat-bubble-text--streaming {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  min-height: 20px; /* prevent zero-height before first chunk */
+}
+
+/* Loading (RenderedBubble while rendering) */
+.library-chat-bubble-text--loading {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text-muted);
+  white-space: pre-wrap;
+}
+
+/* Finalized markdown — cave-md prose */
+.library-chat-bubble .cave-md.library-chat-bubble-text {
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--text-primary);
+  /* Reset cave-md top-level font which may be scoped differently */
+  font-family: inherit;
+}
+
+/* cave-md inside the chat bubbles: tighten vertical rhythm */
+.library-chat-bubble .cave-md > * + * {
+  margin-top: 0.55em;
+}
+
+.library-chat-bubble .cave-md > *:first-child {
+  margin-top: 0;
+}
+
+/* Code blocks inside bubbles: slightly smaller, contained */
+.library-chat-bubble .cave-md pre {
+  font-size: 12px;
+  border-radius: 8px;
+  overflow-x: auto;
+}
+
+/* ── Error state ──────────────────────────────────────────────── */
+
+.library-chat-message--error .library-chat-bubble--assistant {
+  background: color-mix(in oklch, var(--color-danger) 12%, var(--bg-raised));
+  box-shadow: 0 0 0 1px color-mix(in oklch, var(--color-danger) 30%, transparent);
+}
+
+.library-chat-bubble-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--color-danger);
+  line-height: 1.5;
+}
+
+.library-chat-error-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* ── Input row ────────────────────────────────────────────────── */
+
+.library-chat-input-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  border-top: 1px solid var(--border-hairline);
+  background: var(--bg-base);
+  flex-shrink: 0;
+}
+
+/* ── Textarea ─────────────────────────────────────────────────── */
+
+.library-chat-textarea {
+  flex: 1;
+  min-width: 0;
+  /* Min 1 line (~20px line-height + 16px vertical padding) */
+  min-height: 38px;
+  /* Max ~4 lines clamped in JS; hard CSS fallback */
+  max-height: 96px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border-hairline);
+  background: var(--bg-raised);
+  color: var(--text-primary);
+  font-size: 13.5px;
+  line-height: 1.5;
+  font-family: inherit;
+  resize: none;
+  overflow-y: auto;
+  transition: border-color 0.12s, box-shadow 0.12s;
+  box-shadow: inset 0 1px 2px color-mix(in oklch, black 8%, transparent);
+}
+
+.library-chat-textarea::placeholder {
+  color: var(--text-muted);
+}
+
+.library-chat-textarea:focus {
+  outline: none;
+  border-color: color-mix(in oklch, var(--accent-presence) 52%, var(--border-strong));
+  box-shadow:
+    inset 0 1px 2px color-mix(in oklch, black 8%, transparent),
+    0 0 0 var(--ring-width) color-mix(in oklch, var(--ring-focus) 60%, transparent);
+}
+
+.library-chat-textarea:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* Slim scrollbar inside the textarea */
+.library-chat-textarea {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklch, var(--text-muted) 30%, transparent) transparent;
+}
+
+/* ── Send button ──────────────────────────────────────────────── */
+
+.library-chat-send-btn {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  border: 1px solid color-mix(in oklch, var(--accent-presence) 48%, var(--border-strong));
+  background: color-mix(in oklch, var(--accent-presence) 18%, var(--bg-raised));
+  color: var(--accent-presence);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s, opacity 0.12s;
+}
+
+.library-chat-send-btn:hover:not(:disabled) {
+  background: color-mix(in oklch, var(--accent-presence) 28%, var(--bg-raised));
+  border-color: color-mix(in oklch, var(--accent-presence) 70%, var(--border-strong));
+  color: var(--accent-presence);
+}
+
+.library-chat-send-btn:focus-visible {
+  outline: var(--ring-width) solid var(--ring-focus);
+  outline-offset: 1px;
+}
+
+.library-chat-send-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* While streaming: slightly different appearance — keep it visually active */
+.library-chat-send-btn--streaming {
+  border-color: color-mix(in oklch, var(--accent-presence) 30%, var(--border-hairline));
+  background: color-mix(in oklch, var(--bg-raised) 80%, transparent);
+  color: var(--text-muted);
+  cursor: default;
+  opacity: 1; /* override disabled opacity — spinner is the affordance */
+}
+
+/* ── Spinner (3-dot ellipsis) ─────────────────────────────────── */
+
+.library-chat-spinner {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 14px;
+}
+
+.library-chat-spinner-dot {
+  display: block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: library-chat-dot-bounce 1.2s ease-in-out infinite both;
+}
+
+.library-chat-spinner-dot:nth-child(1) { animation-delay: 0s;    }
+.library-chat-spinner-dot:nth-child(2) { animation-delay: 0.18s; }
+.library-chat-spinner-dot:nth-child(3) { animation-delay: 0.36s; }
+
+@keyframes library-chat-dot-bounce {
+  0%, 80%, 100% { transform: scale(0.7); opacity: 0.5; }
+  40%           { transform: scale(1);   opacity: 1;   }
+}
+
+/* ── Empty / no-path notice ───────────────────────────────────── */
+
+.library-chat-empty-notice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex: 1;
+  padding: 32px 24px;
+  text-align: center;
+}
+
+.library-chat-empty-notice-icon {
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+.library-chat-empty-notice-text {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.55;
+  max-width: 28rem;
+}
+
+/* ── Library doc tab bar ─────────────────────────────────────── */
+/* Sits between the preview header and the content body.
+ * The Tabs component handles its own underline/indicator; we just
+ * provide the container spacing that aligns it with the header. */
+.library-doc-tabs {
+  padding: 0 16px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border-hairline);
+}

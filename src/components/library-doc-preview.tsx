@@ -21,6 +21,8 @@ import type {
 import type { Skill } from "@/components/library-collection-rail";
 import { useFocusTrap } from "@/lib/use-focus-trap";
 import { formatDate, readDateTimePrefs } from "@/lib/datetime-format";
+import { Tabs, type TabItem } from "@/components/ui/tabs";
+import { LibraryChatPanel } from "@/components/library-chat-panel";
 
 // ── Discriminated union ──────────────────────────────────────────
 export type SelectedItem =
@@ -694,6 +696,12 @@ const READER_FONT_SIZES = [15, 17, 19, 21];
 
 function DocDetail({ doc, docNav }: { doc: LibraryDocBody; docNav?: DocNav }) {
   const [readerOpen, setReaderOpen] = useState(false);
+  type DocTab = "document" | "chat";
+  const [activeTab, setActiveTab] = useState<DocTab>("document");
+  const DOC_TABS: ReadonlyArray<TabItem<DocTab>> = [
+    { id: "document", label: "Document", icon: "ph:file-text" },
+    { id: "chat", label: "Chat", icon: "ph:chat-circle-dots" },
+  ];
 
   // Memoized so DocDetail's frequent re-renders (scroll-progress state) don't
   // hand MetadataBlock a fresh entries array each tick and re-run its markdown.
@@ -988,22 +996,41 @@ function DocDetail({ doc, docNav }: { doc: LibraryDocBody; docNav?: DocNav }) {
   return (
     <>
       <div className="library-preview">
-        {/* Scroll progress bar */}
-        <div className="library-scroll-progress">
-          <div className="library-scroll-progress-fill" style={{ width: `${scrollPct}%` }} />
-        </div>
+        {/* Scroll progress bar — only shown in document tab */}
+        {activeTab === "document" && (
+          <div className="library-scroll-progress">
+            <div className="library-scroll-progress-fill" style={{ width: `${scrollPct}%` }} />
+          </div>
+        )}
         {header}
-        <div
-          ref={bodyRef}
-          onScroll={handleScroll}
-          className={hasToc ? "library-preview-body library-preview-body--with-toc" : "library-preview-body"}
-        >
-          {leadingMeta && <MetadataBlock entries={leadingMeta.entries} />}
-          <RenderedMarkdown text={renderBody} containerRef={mdRef} />
-          {hasToc && (
-            <TocPanel items={tocItems} activeId={activeTocId} mdRef={mdRef} />
-          )}
-        </div>
+        {/* Tab bar — only when doc has a local path */}
+        {doc.absolutePath && (
+          <div className="library-doc-tabs">
+            <Tabs
+              items={DOC_TABS}
+              value={activeTab}
+              onChange={setActiveTab}
+              size="sm"
+              bordered={false}
+            />
+          </div>
+        )}
+        {/* Tab content */}
+        {activeTab === "document" ? (
+          <div
+            ref={bodyRef}
+            onScroll={handleScroll}
+            className={hasToc ? "library-preview-body library-preview-body--with-toc" : "library-preview-body"}
+          >
+            {leadingMeta && <MetadataBlock entries={leadingMeta.entries} />}
+            <RenderedMarkdown text={renderBody} containerRef={mdRef} />
+            {hasToc && (
+              <TocPanel items={tocItems} activeId={activeTocId} mdRef={mdRef} />
+            )}
+          </div>
+        ) : (
+          <LibraryChatPanel doc={doc} familiarId="sage" />
+        )}
       </div>
 
       {readerOpen && typeof document !== "undefined" && createPortal(
