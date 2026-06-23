@@ -49,9 +49,6 @@ struct TaskDetailView: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: { Text(live.title) }
-        .sheet(item: $notesReader) { item in
-            ResponseReaderView(item: item)
-        }
     }
 
     private var actionsMenu: some View {
