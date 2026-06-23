@@ -21,6 +21,7 @@ STATE_DIR="${COVEN_CAVE_MOBILE_STATE_DIR:-$STATE_ROOT/mobile-tailscale-${PORT}}"
 TOKEN_FILE="$STATE_DIR/access-token"
 SIDECAR_TOKEN_FILE="$STATE_DIR/sidecar-auth-token"
 PID_FILE="$STATE_DIR/next.pid"
+MODE_FILE="$STATE_DIR/server.mode"
 INVITE_FILE="$STATE_DIR/invite.url"
 EXPIRES_FILE="$STATE_DIR/invite.expires"
 LOG_FILE="${COVEN_CAVE_MOBILE_LOG:-$STATE_DIR/next.log}"
@@ -78,6 +79,20 @@ require_recorded_server() {
 
   echo "Refusing to contact an untracked server on ${HOST}:${PORT}. Run: pnpm mobile:tailscale:stop && pnpm mobile:tailscale" >&2
   exit 1
+}
+
+write_server_mode() {
+  ensure_state_dir
+  printf '%s\n' "$1" >"$MODE_FILE"
+  chmod 600 "$MODE_FILE"
+}
+
+recorded_server_mode_is() {
+  [ -s "$MODE_FILE" ] && [ "$(cat "$MODE_FILE")" = "$1" ]
+}
+
+clear_mobile_tokens() {
+  rm -f "$TOKEN_FILE" "$SIDECAR_TOKEN_FILE"
 }
 
 tailscale_cmd() {
@@ -277,7 +292,12 @@ start_next_server() {
   if port_is_listening >/dev/null 2>&1; then
     ensure_state_dir
     if [ "${CAVE_MOBILE_APP:-0}" = "1" ]; then
-      # Refuse to reuse a token-gated server under the tokenless app mode.
+      if recorded_server_is_running && recorded_server_mode_is app; then
+        clear_mobile_tokens
+        echo "CovenCave native-app server is already listening on ${HOST}:${PORT}."
+        return 0
+      fi
+      # Refuse to reuse a token-gated or untracked server under tokenless app mode.
       if [ -n "${COVEN_CAVE_ACCESS_TOKEN:-}" ] || [ -s "$TOKEN_FILE" ] || [ -s "$SIDECAR_TOKEN_FILE" ]; then
         echo "Error: port ${PORT} is already in use by a token-gated server. Run 'pnpm mobile:tailscale:stop' first." >&2
         exit 1
@@ -305,7 +325,9 @@ start_next_server() {
   fi
 
   if [ "${CAVE_MOBILE_APP:-0}" = "1" ]; then
-    : # tokenless app mode: do not mint or load any token
+    # tokenless app mode: do not mint or load any token, and clear stale tokens
+    # from invite/native runs so future app-mode reuse is judged by server.mode.
+    clear_mobile_tokens
   elif [ "${CAVE_MOBILE_NATIVE:-0}" != "1" ]; then
     load_or_create_token
   else
@@ -319,6 +341,13 @@ start_next_server() {
   else
     start_with_nohup
     echo "Server is running as background pid: $(cat "$PID_FILE")"
+  fi
+  if [ "${CAVE_MOBILE_APP:-0}" = "1" ]; then
+    write_server_mode app
+  elif [ "${CAVE_MOBILE_NATIVE:-0}" = "1" ]; then
+    write_server_mode native
+  else
+    write_server_mode invite
   fi
 
   if ! wait_for_server; then

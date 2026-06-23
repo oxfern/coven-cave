@@ -43,6 +43,14 @@ test("mobile tailscale app mode serves the native client with no token", () => {
   assert.match(script, /PORT="\$PORT"/);
 });
 
+test("mobile tailscale app mode records tokenless ownership separately from invite tokens", () => {
+  assert.match(script, /MODE_FILE=/);
+  assert.match(script, /write_server_mode app/);
+  assert.match(script, /recorded_server_mode_is app/);
+  assert.match(script, /clear_mobile_tokens/);
+  assert.match(script, /rm -f "\$TOKEN_FILE" "\$SIDECAR_TOKEN_FILE"/);
+});
+
 test("mobile tailscale runner persists state for remote invite regeneration", () => {
   assert.match(script, /STATE_DIR=/);
   assert.match(script, /TOKEN_FILE=/);
