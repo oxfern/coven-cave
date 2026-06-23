@@ -366,6 +366,22 @@ export function ComuxView({ view, sessions: daemonSessions, onOpenSession, onNew
     () => projects.find((project) => project.root === selectedProjectRoot) ?? projects[0] ?? null,
     [projects, selectedProjectRoot],
   );
+  const selectedProjectSessions = useMemo(() => {
+    if (!selectedProject) return [];
+    return daemonSessions
+      .filter((session) => session.project_root === selectedProject.root)
+      .sort((a, b) =>
+        (b.updated_at || b.created_at).localeCompare(a.updated_at || a.created_at),
+      );
+  }, [daemonSessions, selectedProject]);
+  const recentProjectSessions = useMemo(
+    () => selectedProjectSessions.slice(0, 6),
+    [selectedProjectSessions],
+  );
+  const selectedProjectFamiliarId = useMemo(
+    () => selectedProjectSessions[0]?.familiarId ?? "",
+    [selectedProjectSessions],
+  );
 
   useEffect(() => {
     if (projects.length === 0) {
@@ -676,8 +692,12 @@ export function ComuxView({ view, sessions: daemonSessions, onOpenSession, onNew
     setEditing(false);
     setSaveError(null);
     try {
+      const params = new URLSearchParams({
+        path,
+        familiarId: selectedProjectFamiliarId,
+      });
       const res = await fetch(
-        `/api/project-file?path=${encodeURIComponent(path)}`,
+        `/api/project-file?${params.toString()}`,
         { cache: "no-store" },
       );
       const json = (await res.json()) as {
@@ -701,7 +721,7 @@ export function ComuxView({ view, sessions: daemonSessions, onOpenSession, onNew
     } finally {
       setPreviewLoading(false);
     }
-  }, []);
+  }, [selectedProjectFamiliarId]);
 
   // Click-to-open from chat: a file tool's target (absolute path) or a prose
   // reference (relative, e.g. `src/foo.ts:42`) dispatches `cave:open-project-file`;
@@ -841,7 +861,7 @@ export function ComuxView({ view, sessions: daemonSessions, onOpenSession, onNew
       const res = await fetch("/api/project-file", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ path: previewPath, content: editValue }),
+        body: JSON.stringify({ path: previewPath, content: editValue, familiarId: selectedProjectFamiliarId }),
       });
       const json = (await res.json()) as { ok: boolean; size?: number; error?: string };
       if (!res.ok || !json.ok) {
@@ -858,7 +878,7 @@ export function ComuxView({ view, sessions: daemonSessions, onOpenSession, onNew
       setSaving(false);
       savingRef.current = false;
     }
-  }, [previewPath, editValue]);
+  }, [previewPath, editValue, selectedProjectFamiliarId]);
 
   // Auto-clear the "Saved" confirmation a moment after it shows.
   useEffect(() => {
@@ -906,6 +926,7 @@ export function ComuxView({ view, sessions: daemonSessions, onOpenSession, onNew
     setSearchLoading(true);
     const timer = setTimeout(() => {
       const params = new URLSearchParams({ root: searchRoot, q: query });
+      params.set("familiarId", selectedProjectFamiliarId);
       if (searchRegex) params.set("regex", "1");
       if (searchCaseSensitive) params.set("case", "sensitive");
       const glob = searchGlob.trim();
@@ -935,7 +956,7 @@ export function ComuxView({ view, sessions: daemonSessions, onOpenSession, onNew
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [searchInput, searchRegex, searchCaseSensitive, searchGlob, searchRoot]);
+  }, [searchInput, searchRegex, searchCaseSensitive, searchGlob, searchRoot, selectedProjectFamiliarId]);
 
   // Open a search match: search paths are relative to the searched root, so
   // rejoin them to the project root before handing off to the file preview.
@@ -952,16 +973,6 @@ export function ComuxView({ view, sessions: daemonSessions, onOpenSession, onNew
     setPreviewPath(null);
     setPreview(null);
   }, []);
-
-  const recentProjectSessions = useMemo(() => {
-    if (!selectedProject) return [];
-    return daemonSessions
-      .filter((session) => session.project_root === selectedProject.root)
-      .sort((a, b) =>
-        (b.updated_at || b.created_at).localeCompare(a.updated_at || a.created_at),
-      )
-      .slice(0, 6);
-  }, [daemonSessions, selectedProject]);
 
   // Poll the diff while a familiar is actively working this project so the
   // Changes view reflects edits as they land.
@@ -1679,6 +1690,7 @@ export function ComuxView({ view, sessions: daemonSessions, onOpenSession, onNew
                       <ProjectTree
                         ref={treeRef}
                         root={selectedProject.root}
+                        familiarId={selectedProjectFamiliarId}
                         selectedPath={previewPath}
                         onFileClick={openFilePreview}
                       />
@@ -1959,6 +1971,7 @@ export function ComuxView({ view, sessions: daemonSessions, onOpenSession, onNew
       <CodeQuickOpen
         open={quickOpen}
         root={searchRoot}
+        familiarId={selectedProjectFamiliarId}
         onClose={() => setQuickOpen(false)}
         onOpenFile={(rel) =>
           // Reuse the full open-and-reveal flow (switches to the Files view,

@@ -26,6 +26,7 @@ export type ProjectTreeHandle = {
 
 type Props = {
   root?: string;
+  familiarId?: string;
   /** Controlled selection — path of the currently open file */
   selectedPath?: string | null;
   onFileClick?: (path: string) => void;
@@ -109,10 +110,11 @@ function fileIcon(name: string): FileIcon {
 
 // ─── API ──────────────────────────────────────────────────────────────────────
 
-async function fetchChildren(dirPath: string): Promise<TreeEntry[]> {
+async function fetchChildren(dirPath: string, familiarId = ""): Promise<TreeEntry[]> {
   try {
+    const params = new URLSearchParams({ root: dirPath, depth: "1", familiarId });
     const res = await fetch(
-      `/api/project-tree?root=${encodeURIComponent(dirPath)}&depth=1`,
+      `/api/project-tree?${params.toString()}`,
       { cache: "no-store" },
     );
     const json = (await res.json()) as {
@@ -127,12 +129,12 @@ async function fetchChildren(dirPath: string): Promise<TreeEntry[]> {
 }
 
 /** Move `from` into `toDir`. Returns null on success, else an error message. */
-async function requestMove(from: string, toDir: string): Promise<string | null> {
+async function requestMove(from: string, toDir: string, familiarId = ""): Promise<string | null> {
   try {
     const res = await fetch("/api/project-tree", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ from, toDir }),
+      body: JSON.stringify({ from, toDir, familiarId }),
     });
     const json = (await res.json()) as { ok: boolean; error?: string };
     return json.ok ? null : json.error ?? "Move failed";
@@ -144,7 +146,7 @@ async function requestMove(from: string, toDir: string): Promise<string | null> 
 // ─── Root component ───────────────────────────────────────────────────────────
 
 export const ProjectTree = forwardRef<ProjectTreeHandle, Props>(
-  function ProjectTree({ root: rootProp, selectedPath, onFileClick, onDirSelect, selectedDirs }, ref) {
+  function ProjectTree({ root: rootProp, familiarId = "", selectedPath, onFileClick, onDirSelect, selectedDirs }, ref) {
     const [root, setRoot] = useState<string>("");
     const [entries, setEntries] = useState<TreeEntry[]>([]);
     const [loading, setLoading] = useState(true);
@@ -165,7 +167,7 @@ export const ProjectTree = forwardRef<ProjectTreeHandle, Props>(
       setLoading(true);
       const r = explicitRoot ?? rootProp;
       if (r) {
-        const tree = await fetchChildren(r);
+        const tree = await fetchChildren(r, familiarId);
         if (!mountedRef.current) return;
         setRoot(r);
         setEntries(tree);
@@ -174,7 +176,7 @@ export const ProjectTree = forwardRef<ProjectTreeHandle, Props>(
       }
       setEntries([]);
       setLoading(false);
-    }, [rootProp]);
+    }, [rootProp, familiarId]);
 
     useEffect(() => { void load(); }, [load]);
 
@@ -189,7 +191,7 @@ export const ProjectTree = forwardRef<ProjectTreeHandle, Props>(
         setMoveError("Can't move a folder into itself.");
         return;
       }
-      const error = await requestMove(fromPath, toDirPath);
+      const error = await requestMove(fromPath, toDirPath, familiarId);
       if (!mountedRef.current) return;
       if (error) {
         setMoveError(error);
@@ -204,7 +206,7 @@ export const ProjectTree = forwardRef<ProjectTreeHandle, Props>(
       }));
       // Top-level changes aren't covered by row refetch — reload the root.
       if (srcParent === root || toDirPath === root) void load(root);
-    }, [root, load]);
+    }, [root, load, familiarId]);
 
     // Auto-dismiss the error banner.
     useEffect(() => {
@@ -304,6 +306,7 @@ export const ProjectTree = forwardRef<ProjectTreeHandle, Props>(
               depth={0}
               root={root}
               selectedPath={selectedPath}
+              familiarId={familiarId}
               onFileClick={onFileClick}
               onDirSelect={onDirSelect}
               selectedDirs={selectedDirs}
@@ -325,6 +328,7 @@ function TreeRow({
   depth,
   root,
   selectedPath,
+  familiarId,
   onFileClick,
   onDirSelect,
   selectedDirs,
@@ -336,6 +340,7 @@ function TreeRow({
   depth: number;
   root: string;
   selectedPath?: string | null;
+  familiarId?: string;
   onFileClick?: (path: string) => void;
   onDirSelect?: (path: string) => void;
   selectedDirs?: Set<string>;
@@ -370,11 +375,11 @@ function TreeRow({
     setExpanded(next);
     if (next && children === null) {
       setFetching(true);
-      const fetched = await fetchChildren(entry.path);
+      const fetched = await fetchChildren(entry.path, familiarId);
       setChildren(fetched);
       setFetching(false);
     }
-  }, [entry, expanded, children, onFileClick]);
+  }, [entry, expanded, children, onFileClick, familiarId]);
 
   // Reveal-to-selection: when the selected (open) file lives somewhere under
   // this folder, auto-expand so the highlighted row becomes visible. This is
@@ -391,20 +396,20 @@ function TreeRow({
     revealedRef.current = true;
     let alive = true;
     setFetching(true);
-    void fetchChildren(entry.path).then((fetched) => {
+    void fetchChildren(entry.path, familiarId).then((fetched) => {
       if (!alive) return;
       setChildren(fetched);
       setFetching(false);
     });
     return () => { alive = false; };
-  }, [selectedPath, entry.isDir, entry.path, children]);
+  }, [selectedPath, entry.isDir, entry.path, children, familiarId]);
 
   // After a move, refetch this folder's children if it's affected and loaded.
   useEffect(() => {
     if (!entry.isDir || !refetchSignal.dirs.has(entry.path) || children === null) return;
     let cancelled = false;
     setFetching(true);
-    void fetchChildren(entry.path).then((fetched) => {
+    void fetchChildren(entry.path, familiarId).then((fetched) => {
       if (cancelled) return;
       setChildren(fetched);
       setFetching(false);
@@ -550,6 +555,7 @@ function TreeRow({
             depth={depth + 1}
             root={root}
             selectedPath={selectedPath}
+            familiarId={familiarId}
             onFileClick={onFileClick}
             onDirSelect={onDirSelect}
             selectedDirs={selectedDirs}

@@ -7,7 +7,10 @@ const itemRoute = readFileSync(new URL("./[id]/route.ts", import.meta.url), "utf
 const seedRoute = readFileSync(new URL("./seed/route.ts", import.meta.url), "utf8");
 
 assert.match(listRoute, /seedDefaultProjectsIfEmpty/, "GET /api/projects should seed defaults before listing");
-assert.match(listRoute, /export async function GET\(\)/, "projects route should expose GET");
+assert.match(listRoute, /export async function GET\(req: Request\)/, "projects route should expose GET");
+assert.match(listRoute, /searchParams\.get\("familiarId"\)/, "GET /api/projects should accept familiar-scoped listing");
+assert.match(listRoute, /isValidFamiliarId\(familiarId\)/, "GET /api/projects should validate familiar id before scoping");
+assert.match(listRoute, /filterProjectsForFamiliar\(projects, familiarId\)/, "GET /api/projects should filter projects server-side for familiars");
 assert.match(listRoute, /export async function POST\(req: Request\)/, "projects route should expose POST");
 assert.match(listRoute, /name and root are required/, "POST /api/projects should validate required fields");
 assert.match(listRoute, /status:\s*201/, "POST /api/projects should return 201 when creating");

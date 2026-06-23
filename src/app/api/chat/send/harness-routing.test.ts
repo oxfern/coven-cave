@@ -240,6 +240,30 @@ assert.match(
 
 assert.match(
   chatRoute,
+  /import \{[\s\S]*ProjectAccessDeniedError,[\s\S]*assertProjectAccess,[\s\S]*\} from "@\/lib\/project-permissions";/,
+  "Chat send should import the shared project-permission chokepoint",
+);
+
+assert.match(
+  chatRoute,
+  /async function chatProjectAccessId\([\s\S]*projectForRoot\(projectRoot, projects\)[\s\S]*projectForRoot\(args\.resolvedCwd, projects\)[\s\S]*return explicitRoot \? `unregistered:\$\{projectRoot\}` : null;/,
+  "Chat send should resolve explicit and resumed project roots to a project access id and fail unknown explicit roots closed",
+);
+
+assert.match(
+  chatRoute,
+  /const chatProjectId = sshRuntime[\s\S]*await chatProjectAccessId\(\{[\s\S]*requestedProjectRoot: body\.projectRoot,[\s\S]*resumeCwd,[\s\S]*resolvedCwd: cwd,[\s\S]*\}\);[\s\S]*await assertProjectAccess\(\{ familiarId: body\.familiarId \}, chatProjectId, "chat"\);/,
+  "Local project-scoped chat must assert project access before building the harness prompt",
+);
+
+assert.match(
+  chatRoute,
+  /error instanceof ProjectAccessDeniedError[\s\S]*status: error\.status/,
+  "Project access denials should return structured JSON 403 responses before spawning a harness",
+);
+
+assert.match(
+  chatRoute,
   /const harnessPrompt = buildPromptWithRuntimeScope\(/,
   "Every chat harness prompt should carry the runtime filesystem boundary",
 );

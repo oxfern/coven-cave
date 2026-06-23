@@ -5,6 +5,11 @@ import path from "node:path";
 import { resolveAllowedProjectPath } from "@/lib/server/project-paths";
 import { daemonSessionRoots, resolveWithinSessionRoots } from "@/lib/server/session-project-roots";
 import { parseRipgrepJson, type SearchResult } from "@/lib/project-search";
+import {
+  assertProjectApiAccess,
+  projectAccessDeniedBody,
+} from "@/lib/server/project-permission-requests";
+import { ProjectAccessDeniedError } from "@/lib/project-permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -148,6 +153,19 @@ export async function GET(req: NextRequest) {
   }
   if (query.length > MAX_QUERY_LEN) {
     return NextResponse.json({ ok: false, error: "query too long" }, { status: 400 });
+  }
+  try {
+    await assertProjectApiAccess({
+      familiarId: sp.get("familiarId"),
+      path: root,
+      surface: "project-api",
+    });
+  } catch (error) {
+    if (error instanceof ProjectAccessDeniedError) {
+      const result = projectAccessDeniedBody(error);
+      return NextResponse.json(result.body, { status: result.status });
+    }
+    throw error;
   }
 
   const resolved = await resolveSearchRoot(root);

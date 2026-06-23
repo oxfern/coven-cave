@@ -35,6 +35,7 @@ import { covenBin, covenSpawnEnv } from "@/lib/coven-bin";
 import { buildPromptWithCovenIdentityCanon } from "@/lib/coven-identity-canon";
 import { buildNextPathsDirective } from "@/lib/next-paths";
 import { COMPATIBILITY_ADAPTERS } from "@/lib/harness-adapters";
+import { loadProjects, projectForRoot } from "@/lib/cave-projects";
 import { openClawBin, openClawNeedsShell, openClawSpawnArgs, openClawSpawnEnv } from "@/lib/openclaw-bin";
 import {
   covenHome,
@@ -60,6 +61,10 @@ import {
   resolveLocalRuntimeCwd,
   type RuntimeScope,
 } from "@/lib/chat-runtime-scope";
+import {
+  ProjectAccessDeniedError,
+  assertProjectAccess,
+} from "@/lib/project-permissions";
 import {
   buildTaskAwarePrompt,
   taskContextForSession,
@@ -164,6 +169,28 @@ async function conversationCwd(sessionId?: string): Promise<string | undefined> 
     /* fall back to the caller's default */
   }
   return undefined;
+}
+
+async function chatProjectAccessId(args: {
+  requestedProjectRoot?: string;
+  resumeCwd?: string;
+  resolvedCwd: string;
+}): Promise<string | null> {
+  const explicitRoot = args.requestedProjectRoot?.trim() || undefined;
+  const resumedRoot = !explicitRoot ? args.resumeCwd?.trim() || undefined : undefined;
+  const projectRoot = explicitRoot ?? resumedRoot;
+  if (!projectRoot) return null;
+
+  const projects = await loadProjects();
+  const project =
+    projectForRoot(projectRoot, projects) ??
+    projectForRoot(args.resolvedCwd, projects);
+  if (project) return project.id;
+
+  // An explicit projectRoot that is not registered is still a project-scoped
+  // chat request. Fail it closed through the shared permission chokepoint so
+  // the decision is audited and only Supreme can proceed.
+  return explicitRoot ? `unregistered:${projectRoot}` : null;
 }
 
 /** Resolve the familiar's Coven workspace dir.
@@ -999,6 +1026,26 @@ export async function POST(req: Request) {
       );
     }
     throw error;
+  }
+  const chatProjectId = sshRuntime
+    ? null
+    : await chatProjectAccessId({
+        requestedProjectRoot: body.projectRoot,
+        resumeCwd,
+        resolvedCwd: cwd,
+      });
+  if (chatProjectId) {
+    try {
+      await assertProjectAccess({ familiarId: body.familiarId }, chatProjectId, "chat");
+    } catch (error) {
+      if (error instanceof ProjectAccessDeniedError) {
+        return new Response(
+          JSON.stringify({ ok: false, error: error.message }),
+          { status: error.status, headers: { "content-type": "application/json" } },
+        );
+      }
+      throw error;
+    }
   }
   const resolvedFamiliarWorkspace = !sshRuntime
     ? await resolveFamiliarWorkspace(body.familiarId)

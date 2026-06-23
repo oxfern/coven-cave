@@ -1985,7 +1985,8 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
     let cancelled = false;
     void (async () => {
       try {
-        const res = await fetch(`/api/project/files?root=${encodeURIComponent(mentionRoot)}`, { cache: "no-store" });
+        const params = new URLSearchParams({ root: mentionRoot, familiarId: familiar.id });
+        const res = await fetch(`/api/project/files?${params.toString()}`, { cache: "no-store" });
         const json = await res.json() as { ok?: boolean; repo?: boolean; files?: string[] };
         if (cancelled) return;
         setMentionIndex({
@@ -2000,7 +2001,7 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
     return () => {
       cancelled = true;
     };
-  }, [mentionToken, mentionRoot, mentionIndex]);
+  }, [mentionToken, mentionRoot, mentionIndex, familiar.id]);
 
   // Insert the picked path inline, replacing the `@query` token (Claude Code
   // convention: `@src/foo.ts`), and record it for the send body.

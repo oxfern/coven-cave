@@ -867,7 +867,12 @@ function CodexDetailPanel({
                             {cwdSet.has(proj.root) ? "Added" : "Use root"}
                           </button>
                         </div>
-                        <ProjectTree root={proj.root} onDirSelect={addCwd} selectedDirs={cwdSet} />
+                        <ProjectTree
+                          root={proj.root}
+                          familiarId={auto.familiars[0] ?? ""}
+                          onDirSelect={addCwd}
+                          selectedDirs={cwdSet}
+                        />
                       </div>
                     ))
                   )}

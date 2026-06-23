@@ -4,6 +4,11 @@ import { promisify } from "node:util";
 import fs from "node:fs";
 import path from "node:path";
 import { resolveAllowedProjectPath } from "@/lib/server/project-paths";
+import {
+  assertProjectApiAccess,
+  projectAccessDeniedBody,
+} from "@/lib/server/project-permission-requests";
+import { ProjectAccessDeniedError } from "@/lib/project-permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -130,6 +135,19 @@ export async function GET(req: NextRequest) {
   const root = req.nextUrl.searchParams.get("root");
   if (!root) {
     return NextResponse.json({ ok: false, error: "missing root param" }, { status: 400 });
+  }
+  try {
+    await assertProjectApiAccess({
+      familiarId: req.nextUrl.searchParams.get("familiarId"),
+      path: root,
+      surface: "project-api",
+    });
+  } catch (error) {
+    if (error instanceof ProjectAccessDeniedError) {
+      const result = projectAccessDeniedBody(error);
+      return NextResponse.json(result.body, { status: result.status });
+    }
+    throw error;
   }
 
   const resolved = await resolveIndexRoot(root);

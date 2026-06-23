@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import fs from "node:fs";
 import path from "node:path";
 import { resolveAllowedProjectPath } from "@/lib/server/project-paths";
+import {
+  assertProjectApiAccess,
+  projectAccessDeniedBody,
+} from "@/lib/server/project-permission-requests";
+import { ProjectAccessDeniedError } from "@/lib/project-permissions";
 
 type TreeEntry = {
   name: string;
@@ -56,6 +61,19 @@ export async function GET(req: NextRequest) {
       { status: 400 },
     );
   }
+  try {
+    await assertProjectApiAccess({
+      familiarId: req.nextUrl.searchParams.get("familiarId"),
+      path: root,
+      surface: "file-browse",
+    });
+  } catch (error) {
+    if (error instanceof ProjectAccessDeniedError) {
+      const result = projectAccessDeniedBody(error);
+      return NextResponse.json(result.body, { status: result.status });
+    }
+    throw error;
+  }
   const allowedRoot = resolveAllowedProjectPath(root);
   if (!allowedRoot) {
     return NextResponse.json(
@@ -75,7 +93,7 @@ export async function GET(req: NextRequest) {
  * subtree, and overwriting an existing entry.
  */
 export async function POST(req: NextRequest) {
-  let body: { from?: unknown; toDir?: unknown };
+  let body: { from?: unknown; toDir?: unknown; familiarId?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -86,6 +104,17 @@ export async function POST(req: NextRequest) {
   const toDir = typeof body.toDir === "string" ? body.toDir : "";
   if (!from || !toDir) {
     return NextResponse.json({ ok: false, error: "missing from/toDir" }, { status: 400 });
+  }
+  const familiarId = typeof body.familiarId === "string" ? body.familiarId : null;
+  try {
+    await assertProjectApiAccess({ familiarId, path: from, surface: "file-write" });
+    await assertProjectApiAccess({ familiarId, path: toDir, surface: "file-write" });
+  } catch (error) {
+    if (error instanceof ProjectAccessDeniedError) {
+      const result = projectAccessDeniedBody(error);
+      return NextResponse.json(result.body, { status: result.status });
+    }
+    throw error;
   }
 
   const sourcePath = resolveAllowedProjectPath(from);

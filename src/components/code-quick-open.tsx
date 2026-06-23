@@ -16,11 +16,13 @@ const RESULT_LIMIT = 50;
 export function CodeQuickOpen({
   open,
   root,
+  familiarId = "",
   onClose,
   onOpenFile,
 }: {
   open: boolean;
   root: string | undefined;
+  familiarId?: string;
   onClose: () => void;
   onOpenFile: (relPath: string) => void;
 }) {
@@ -38,7 +40,8 @@ export function CodeQuickOpen({
     let cancelled = false;
     void (async () => {
       try {
-        const res = await fetch(`/api/project/files?root=${encodeURIComponent(root)}`, { cache: "no-store" });
+        const params = new URLSearchParams({ root, familiarId });
+        const res = await fetch(`/api/project/files?${params.toString()}`, { cache: "no-store" });
         const json = await res.json();
         if (cancelled) return;
         setFiles(Array.isArray(json.files) ? (json.files as string[]) : []);
@@ -50,7 +53,7 @@ export function CodeQuickOpen({
     return () => {
       cancelled = true;
     };
-  }, [open, root]);
+  }, [open, root, familiarId]);
 
   useEffect(() => {
     if (open) requestAnimationFrame(() => inputRef.current?.focus());

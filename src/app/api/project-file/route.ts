@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import fs from "node:fs";
 import path from "node:path";
 import { resolveAllowedProjectSubpath } from "@/lib/server/project-paths";
+import {
+  assertProjectApiAccess,
+  projectAccessDeniedBody,
+} from "@/lib/server/project-permission-requests";
+import { ProjectAccessDeniedError } from "@/lib/project-permissions";
 
 const MAX_TEXT_SIZE = 512 * 1024; // 512KB
 const MAX_IMAGE_SIZE = 8 * 1024 * 1024; // 8MB
@@ -154,7 +159,21 @@ export function projectFileResult(filePath: string | null): ProjectFileResult {
 }
 
 export async function GET(req: NextRequest) {
-  const result = projectFileResult(req.nextUrl.searchParams.get("path"));
+  const filePath = req.nextUrl.searchParams.get("path");
+  try {
+    await assertProjectApiAccess({
+      familiarId: req.nextUrl.searchParams.get("familiarId"),
+      path: filePath,
+      surface: "file-read",
+    });
+  } catch (error) {
+    if (error instanceof ProjectAccessDeniedError) {
+      const result = projectAccessDeniedBody(error);
+      return NextResponse.json(result.body, { status: result.status });
+    }
+    throw error;
+  }
+  const result = projectFileResult(filePath);
   return NextResponse.json(result.body, { status: result.status });
 }
 
@@ -227,13 +246,26 @@ export function projectFileWrite(filePath: string | null, content: unknown): Pro
 }
 
 export async function POST(req: NextRequest) {
-  let payload: { path?: unknown; content?: unknown };
+  let payload: { path?: unknown; content?: unknown; familiarId?: unknown };
   try {
-    payload = (await req.json()) as { path?: unknown; content?: unknown };
+    payload = (await req.json()) as { path?: unknown; content?: unknown; familiarId?: unknown };
   } catch {
     return NextResponse.json({ ok: false, error: "invalid JSON body" }, { status: 400 });
   }
   const filePath = typeof payload.path === "string" ? payload.path : null;
+  try {
+    await assertProjectApiAccess({
+      familiarId: typeof payload.familiarId === "string" ? payload.familiarId : null,
+      path: filePath,
+      surface: "file-write",
+    });
+  } catch (error) {
+    if (error instanceof ProjectAccessDeniedError) {
+      const result = projectAccessDeniedBody(error);
+      return NextResponse.json(result.body, { status: result.status });
+    }
+    throw error;
+  }
   const result = projectFileWrite(filePath, payload.content);
   return NextResponse.json(result.body, { status: result.status });
 }

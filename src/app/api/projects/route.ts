@@ -1,13 +1,23 @@
 import { NextResponse } from "next/server";
 
 import { createProject, loadProjects, seedDefaultProjectsIfEmpty } from "@/lib/cave-projects";
+import { filterProjectsForFamiliar } from "@/lib/project-permissions";
+import { isValidFamiliarId } from "@/lib/server/familiar-id";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: Request) {
   await seedDefaultProjectsIfEmpty();
   const projects = await loadProjects();
-  return NextResponse.json({ ok: true, projects });
+  const familiarId = new URL(req.url).searchParams.get("familiarId")?.trim() || null;
+  if (!familiarId) return NextResponse.json({ ok: true, projects });
+  if (!isValidFamiliarId(familiarId)) {
+    return NextResponse.json({ ok: false, error: "invalid familiar id" }, { status: 400 });
+  }
+  return NextResponse.json({
+    ok: true,
+    projects: await filterProjectsForFamiliar(projects, familiarId),
+  });
 }
 
 export async function POST(req: Request) {
