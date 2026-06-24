@@ -3,7 +3,14 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
-    exclude: ["**/.next/**", "**/node_modules/**"],
+    passWithNoTests: true,
+    exclude: [
+      "**/.next/**",
+      "**/.worktrees/**",
+      "**/node_modules/**",
+      "**/src-tauri/gen/**",
+      "**/src-tauri/target/**",
+    ],
   },
   resolve: {
     alias: {
