@@ -211,6 +211,8 @@ export const SUITES = {
     "src/components/familiars-memory-view-scroll-collapse.test.ts",
     "src/app/globals.css.test.ts",
     "src/components/familiar-roster-card.test.ts",
+    "src/lib/familiar-growth-signals.test.ts",
+    "src/lib/familiar-growth-route-wiring.test.ts",
     "src/components/familiars-view-stats.test.ts",
     "src/components/automations-detail-inputs.test.ts",
     "src/components/automations-view.test.ts",
@@ -597,6 +599,8 @@ const ALIAS_LOADER = new Set([
   "src/lib/server/automation-log-paths.test.ts",
   "src/lib/session-project-scope.test.ts",
   "src/lib/theme-token-hex.test.ts",
+  "src/lib/familiar-growth-signals.test.ts",
+  "src/lib/familiar-growth-route-wiring.test.ts",
 ]);
 
 /** Build the `node` argv (flags + file) for a single test path. */
