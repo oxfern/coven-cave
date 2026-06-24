@@ -42,6 +42,12 @@ assert.match(
   "ChatRouter should render the projects sidebar next to ChatView while a chat is open",
 );
 
+assert.match(
+  source,
+  /const chatFamiliar = selectedViewFamiliar \?\? sessionFamiliar \?\? familiar \?\? null/,
+  "ChatRouter should render an opened session with its own familiar before the parent active familiar catches up",
+);
+
 // ── CHAT-D9-01: URL deep links (#chat-<sessionId>) ───────────────────────────
 
 const workspaceSource = readFileSync(new URL("./workspace.tsx", import.meta.url), "utf8");

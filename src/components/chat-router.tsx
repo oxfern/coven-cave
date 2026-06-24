@@ -120,7 +120,7 @@ export const ChatRouter = forwardRef<ChatRouterHandle, Props>(function ChatRoute
   const sessionFamiliar = activeSession?.familiarId
     ? familiars.find((entry) => entry.id === activeSession.familiarId) ?? null
     : null;
-  const chatFamiliar = familiar ?? selectedViewFamiliar ?? sessionFamiliar ?? null;
+  const chatFamiliar = selectedViewFamiliar ?? sessionFamiliar ?? familiar ?? null;
   const fallbackFamiliarId = familiar?.id ?? familiars[0]?.id ?? null;
   const { projects } = useProjects();
   const projectOverrides = useProjectOverrides();
