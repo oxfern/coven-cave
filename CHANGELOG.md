@@ -7,17 +7,91 @@ breaking config changes; patch releases stay additive.
 
 ## [Unreleased]
 
-A coding-experience arc: turning the Projects/Code surfaces into a Codex/Cursor-class workspace where familiars (the coding agents) sit beside the files, editor, terminal, and change review.
+## [0.0.112] - 2026-06-24
+
+A huge release across the board: 168 PRs that bring the **iOS app to feature parity** with the desktop on chat, tasks, library, reminders, GitHub, and theming; promote the **Gantt** to a real planning surface; layer **bulk actions + undo toasts** across every list-driven view; and add a **familiar `Calls` surface** that visualizes delegation activity.
+
+_Note: this entry also folds in roughly two dozen UI/automations/permissions PRs that shipped in v0.0.109–0.0.111 without their own CHANGELOG entries (#1574–#1592 range). Future releases should keep `[Unreleased]` up to date as work lands._
 
 ### Added
-- **Code workspace** — a top-level Code surface (⌘0) that places a familiar chat beside the project's file tree, editable preview, terminal, search, and git change review in one resizable IDE-like layout, with a Chat/Code switcher on mobile (#939, #944).
-- **Project search** — ripgrep-backed search across the open project with a regex toggle and results grouped by file; clicking a match opens the file, scrolled to and briefly highlighting the matched line (#932, #934).
-- **In-app editing** — files can be edited in place and saved through a CodeMirror editor with syntax highlighting and line numbers themed to the app palette; `Cmd/Ctrl+S` saves, `Esc` cancels (#937, #942, #943). `.mjs`/`.cjs` files are previewable and editable (#950).
-- **Change review** — a Files/Changes toggle surfaces the project's git diff, per-file revert, and checkpoints right beside the files (#940).
-- **Chat ↔ editor links** — file paths in a familiar's tool calls (#941) and in its prose, e.g. `src/foo.ts:42` (#946), are clickable and open the file in the Code workspace at the referenced line.
+
+#### iOS — chat
+- **Liquid-glass theming arc** — theme-tinted glass chrome across chats first (#1770), then sheets/cards/connection surface (#1776), overlays/menus/tab chrome (#1772), sheets (#1757), inset-grouped lists (#1752), detail & settings screens (#1771), and a second depth pass that replaces remaining system fills (#1777).
+- **Desktop theme follow-through** — the iOS app consumes `/api/theme` so the chrome matches the desktop (#1720); the desktop theme background shows behind the chat transcript (#1760) and through browse lists (#1746); inline-code in chat picks up the desktop theme colour (#1769).
+- **Appearance controls** — "System" option that follows the device (#1756), independent light/dark override (#1747), and per-token theme overrides with a manual Resync to phone button (#1754).
+- **Chat thread management** — pin (#1665), archive (#1663), mute notifications (#1673), rename (#1655), duplicate (#1682), browse by familiar (#1636), reorder familiars in the Chats tab (#1662), search threads from the Chats tab (#1669), search messages within a thread (#1715), persist unsent drafts per thread (#1697), bulk-delete threads in a familiar's chat list, bulk-select to archive or delete many (#1694), and date dividers between messages from different days (#1721).
+- **Chat composer & display** — swipe-to-reply quotes a message into the composer (#1775); chat empty state + surface pull-to-refresh errors (#1736); chat message timestamps and editable task title & dates (#1708); expand & copy code blocks (#1640); attach multiple images plus hardware-keyboard shortcuts (#1699); landscape support in chat with tap-to-enlarge tables/diagrams/images (#1615); live streaming markdown, user-message markdown, native image zoom, and Reader upgrades (#1658); full-screen Reader for assistant replies and task notes (#1641, #1633); thread-list swipe parity, delete confirmation, return-to-send (#1660); native `/model` slash command to switch the chat model on the phone (#1744); per-chat model control — see and change a chat's model (#1730); familiar presence dots on the chat list & header (#1773); unread activity badges on the chat list (#1779).
+- **Chat import/export** — export a thread as Markdown (#1678), export all chats as a `.zip` (#1685), export selected threads as a `.zip` from bulk-select (#1695), and import a thread from Markdown (#1680).
+
+#### iOS — tasks, reminders, library, GitHub
+- **Reminders** — Reminders view with bulk-select delete (#1728), reminder actions (done, snooze, dismiss) (#1737), bulk actions on selected reminders (#1740), select reminders by status in bulk-select (#1743).
+- **Tasks** — manage status, priority, steps, and delete from the Tasks tab (#1635); group Tasks by Status/Project/Familiar/Priority (#1630); edit task notes from the detail view (#1651) with markdown rendering and full-screen Reader (#1638); add, remove & reorder checklist steps in a task (#1714); search tasks within their familiar scope (#1661); search the GitHub tab and sort tasks within groups (#1677).
+- **Library** — Read sort, chat pull-to-refresh, terminal/icon a11y labels (#1679); add a "Chat with this doc" tab to the library viewer; bulk-select for the Bookmarks & GitHub lists (#1723); bulk-select to remove many reading items at once (#1705).
+- **GitHub on iOS** — drop familiar-tagging from GitHub comments and add file attachments (#1648).
+- **Settings & navigation** — restore Settings as a tab with About/version, disconnect confirm, and step haptics (#1687); Dynamic Type for toast/menu text plus Reduce Motion gating (#1774); remove the Canvas bottom tab and open on Chats (#1644); polish code browser file tree.
+
+#### Desktop — board & gantt
+- **Gantt evolution** — Day/Week/Month zoom plus Jump to Today (#1631); "group by Task" with step bars and click-to-focus groups (#1626); Familiar grouping in the All-familiars scope (#1628); show owner in task-grouped Gantt and colour bars by familiar (#1666); flush-left timeline plus drop redundant Owner column in by-familiar view (#1664); remove the Owner column from Gantt views (#1671); familiar colour legend in the by-familiar Gantt (#1670); make unscheduled tasks an expandable, schedulable tray (#1632); widen the task column so titles aren't truncated (#1675); drag bar edges to resize task start/end dates (#1624); clearer, narrower timeline-zoom control (#1683); auto-center on today, quick-schedule presets, status filter (#1690); month band, weekend shading & today-column highlight (#1702); overdue bar markers plus drag a tray task onto the timeline (#1719); re-center on zoom change plus keyboard reschedule (#1732); pinch / ⌘-scroll to zoom the timeline continuously (#1778); undo a gantt drag-reschedule (#1727).
+- **Board** — bulk-select cards to move/assign/delete many at once (#1659).
+
+#### Desktop — chat, projects, library, workflows
+- **Bulk actions + undo toasts** — bulk-select to delete chats in a project card (#1602); bulk-select to delete/archive many chats (#1694); make chat & project bulk-delete undoable (#1759); make library bulk-delete undoable (#1735); bulk triage in the dashboard action inbox (#1742); a delete button on the chat session header (#1603).
+- **Projects** — right-click context menus on projects and sessions (#1706); type-ahead jump in the keyboard navigation (#1724); "Move to project" submenu in the session context menu (#1729); rich session rows + project stat line (#1696); keyboard navigation + touch-visible row actions (#1700); motion polish + cross-project-move undo toast (#1712); persist expand/collapse and add a list-density toggle (#1689); virtualize session rows via `content-visibility` (#1718).
+- **Chat — model & branching** — move model selection into the `/model` slash command (#1739); inline conversation branching on web (#1645); rename the Familiars tab to Chat, and scope sessions/projects by familiar grants (#1657).
+- **Library** — "Chat with this doc" tab in the library viewer.
+- **Workflows** — attach skills, MCP servers & API calls with inherited permissions (#1681); live per-step run progress with per-step debug detail (#1684).
+- **Automations** — familiar scope (persisted field, row avatars, multi-select filter) (#1577); create + delete + skill picker (#1580); run-now plus run history (#1583); expandable run logs plus outcome-colored last-run badge (#1584); live-poll runs while in flight, with a visible cmd-click filter hint (#1590).
+
+#### Desktop — calls, calendar, palette, dashboard, docs
+- **Familiar Calls surface** — wire the Calls (familiar activity + delegation traces) surface into navigation (#1711); ⌘⇧C shortcut and active-call badge for the Calls surface (#1716); 3D trace-graph and coven calls visualization (#1701); render-virtualize for performance.
+- **Calendar** — click an empty month day to pre-fill the add form (#1764); bug-fixes + polish for all-day overflow, month sorting, live now-line (#1751).
+- **Palette** — switch board view + recency-sort tasks (#1710).
+- **Familiars scope** — multiselect familiar scope in the top-bar avatar strip (#1625); extend multiselect scope to Calendar + Journal (#1627).
+- **Docs** — add an in-app Docs surface embedding `docs.opencoven.ai` (#1595).
+- **Schedules** — bulk-select reminders.
+
+#### Cross-cutting UI
+- **Time & density** — compact/verbose timestamp density preference (#1586); subscribe timestamp surfaces to density pref so the toggle applies live (#1591, #1596, #1597, #1599); unify category-B bare-compact timestamps onto canonical `relativeTime` (#1601); exact-time hover tooltips on bare relative timestamps (#1607, #1608).
+- **Empty states & skeletons** — actionable empty states for GitHub + Workflows surfaces (#1604); skeleton loading states on 5 more surfaces (#1610); adopt skeleton/empty/relative-time conventions in 3 stragglers (#1672).
+- **Shortcuts** — complete the keyboard-shortcut catalog (Terminal + Browser groups) (#1605); cover the keyboard-shortcuts sheet (⌘/ and ?) in e2e tests (#1619).
+- **Menu-bar** — show all familiars in the top bar, not just 6 (#1588); standardize top-bar icons + buttons smaller/on-token (#1592); "Avatars shown" appearance setting; default to pinned-only (#1598).
+- **Reports** — shared hover-able sparkline on cockpit + daily-report metrics (#1585).
+- **Tooltips** — hover tooltips on truncated names/titles so full text is recoverable (#1612).
+
+### Changed
+- **OpenClaw bridge** — defined the bridge contract (#1693) and extracted bridge helpers (#1614) to firm up the boundary between Cave and OpenClaw.
+- **Projects view** — split the monolith into a component tree (#1734).
+- **Terminal** — dedup xterm setup + touch Find + a11y label (#1763).
+- **Stores** — DRY four hand-rolled atomic writes onto `writeJsonAtomic` (#1621).
+- **Security guard** — centralize the duplicated `isLocalOrigin` route guard (#1618).
 
 ### Fixed
-- **Code workspace** — the unified surface now shows the coding panes (file tree, editor, search, change review), not just a terminal (#949).
+- **Accessibility** — keyboard + screen-reader semantics across library, browser, calendar, workflows (#1767); arrow-key navigation for library list rows (browse mode) and drop `as any` casts (#1768); VoiceOver labels for status icons in chat / reading / tasks (#1753); GitHub keyboard row nav + memoization + polling pause (#1765); file-tree a11y + resilient loading on project-tree (#1761); markdown renders inline formatting inside table cells (#1629).
+- **Theme** — make the theme-store path env-overridable (`COVEN_THEME_PATH`) (#1758); publish `/api/theme` tokens as resolved sRGB hex (#1733); rasterise theme tokens to sRGB hex (fixes ineffective #1733) (#1738).
+- **iOS** — readable chat markdown in light mode (#1741); centre content on iPad instead of stretching edge-to-edge (#1762); render assistant replies — never blank when markdown bundle missing (#1639); hide desktop slash commands; drop the non-interactive GitHub user chip from the Developer tab (#1766); remove duplicate `notesHeight`/`notesReader` `@State` in `TaskDetailView` (#1643); streamline mobile chat and maintenance.
+- **Chat** — order chat list by last message, not last viewed (#1642); branch the first exchange and validate switch target (#1647); remove the redundant delete from the overflow menu (#1606); allow familiars to roam granted projects; style voice call overlay.
+- **Calendar/Gantt/Board** — gantt cleanup: dead CSS, coalesced keyboard reschedule, task-mode steps, memo (#1748); standardize tasks toolbar control heights to 30px (#1755); gantt legend labels match the board's actual statuses (#1668); standardize gantt toolbar control styling (#1709); enlarge the gantt status legend dots (#1713).
+- **Permissions** — let the local human browse projects without a familiar (#1676); let the human browse familiar workspaces (project-tree 403) (#1698); bootstrap legacy familiar project grants (#1589); add project permission checks and grant APIs; guard mobile project API access; guard library chat document reads.
+- **Stores** — atomic JSON writes for the inbox/config/runs/prefs file stores (#1617).
+- **Familiar Studio** — clarify inherited runtimes; stop truncating the section-tab labels (#1703).
+- **Capabilities** — backfill harnesses the daemon aggregate omits (#1616).
+- **API** — add API contract entry for `/library/chat` (un-red main) (#1692).
+- **Cave-projects** — eliminate ReDoS in `normalizeRoot` (CodeQL #65) (#1686).
+- **Copy** — route GitHub copy buttons through context-safe `copyText` and add `useCopy` hook (#1611).
+- **Menu-bar** — size top-bar action icons to the text (1.15em, not 22px) (#1578); bump top-bar action + search icons to 1.35em (#1579); match top-bar icons to the sidepanel toggle size (#1581); standardize top-chrome icons to the avatar size (16px) (#1582); shrink top-bar avatar tiles to match the compact chrome (#1594); size avatar tiles to match the action-button height (28px) (#1600).
+- **Settings** — remove duplicate timestamp-density toggle (#1587).
+- **Projects** — context-menu focus-return + dedup the undo toast (#1745).
+
+### Performance
+- **Calls** — remove the Three.js 3D delegation graph (drop the `three` dep) (#1722).
+- **Projects** — render-virtualize session rows via `content-visibility` (#1718).
+
+### Refactor / Chore
+- **Dead code removal** — 8 dead component files (#1620); orphaned `CovenFloor` + `FamiliarStatusCard` (#1609); the dead `ShellNav*` cluster + unused `SkeletonGrid` export (#1622); the dead pre-cockpit dashboard cluster (#1623); rip out dormant Canvas feature on iOS.
+- **UI underline tabs** — migrate Familiar Studio drawer + Inspector tab rows onto shared underline Tabs (#1574).
+- **UI focus-return + CSS-driven undo toast** — deeper context-menu focus-return (#1750).
+- **Docs** — define workflow-first branch hygiene (#1646).
+- **Tests** — guard desktop theme adoption on iOS (#1725); allow notes task updates on iOS.
 
 ## [0.0.108] - 2026-06-20
 
@@ -43,6 +117,20 @@ Patch release: a desktop UX pass on the left sidebar and the top menu bar, plus 
 
 ### Fixed
 - **Top search bar** — the desktop menu-bar search no longer clips or strands its icon under screen magnification: the bar grows to fit and the search icon scales with the text and stays centered (#1034).
+
+## [0.0.105] - 2026-06-18
+
+A coding-experience arc: turning the Projects/Code surfaces into a Codex/Cursor-class workspace where familiars (the coding agents) sit beside the files, editor, terminal, and change review.
+
+### Added
+- **Code workspace** — a top-level Code surface (⌘0) that places a familiar chat beside the project's file tree, editable preview, terminal, search, and git change review in one resizable IDE-like layout, with a Chat/Code switcher on mobile (#939, #944).
+- **Project search** — ripgrep-backed search across the open project with a regex toggle and results grouped by file; clicking a match opens the file, scrolled to and briefly highlighting the matched line (#932, #934).
+- **In-app editing** — files can be edited in place and saved through a CodeMirror editor with syntax highlighting and line numbers themed to the app palette; `Cmd/Ctrl+S` saves, `Esc` cancels (#937, #942, #943). `.mjs`/`.cjs` files are previewable and editable (#950).
+- **Change review** — a Files/Changes toggle surfaces the project's git diff, per-file revert, and checkpoints right beside the files (#940).
+- **Chat ↔ editor links** — file paths in a familiar's tool calls (#941) and in its prose, e.g. `src/foo.ts:42` (#946), are clickable and open the file in the Code workspace at the referenced line.
+
+### Fixed
+- **Code workspace** — the unified surface now shows the coding panes (file tree, editor, search, change review), not just a terminal (#949).
 
 ## [0.0.104] - 2026-06-18
 
