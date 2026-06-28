@@ -54,4 +54,20 @@ assert.match(source, /description\.trim\(\) \?/, "description should be sent onl
 // chrome <Icon>), so any Phosphor glyph displays.
 assert.match(source, /FamiliarGlyph/, "dialog should render glyph swatches with FamiliarGlyph");
 
+// Optional avatar upload: a file input feeds an object-URL preview, and the
+// image is POSTed to the avatar route AFTER the familiar exists (it's keyed by
+// id). The upload is best-effort so it never blocks creation.
+assert.match(source, /type="file"/, "dialog should offer a file input for an avatar");
+assert.match(
+  source,
+  /fetch\(`\/api\/familiars\/\$\{encodeURIComponent\(newId\)\}\/avatar`/,
+  "dialog should upload the avatar to the per-familiar avatar route after create",
+);
+assert.match(source, /if \(avatarFile\)/, "avatar upload should only run when an image was chosen");
+// The selected file is confirmed by name (no <img> sink — avoids rendering a
+// file-derived object URL, which CodeQL flags as DOM-XSS; the real avatar shows
+// on the roster card after create via the server-origin GET route).
+assert.doesNotMatch(source, /<img\b/, "dialog must not render the picked file as an <img>");
+assert.match(source, /Photo attached/, "dialog should confirm an attached photo by name");
+
 console.log("create-familiar-dialog.test.ts: ok");
