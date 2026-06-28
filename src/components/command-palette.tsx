@@ -791,18 +791,59 @@ export function CommandPalette({
     }
   };
 
+  // Click-through dismissal. Pressing the scrim closes the palette AND forwards
+  // that same press to whatever interactive control sits underneath, so a user
+  // reaching past the open palette for (say) a top-bar familiar avatar gets the
+  // selection in one gesture. Without this the full-viewport backdrop swallowed
+  // the first click as a throwaway dismiss, and the real target only registered
+  // on a second click ("doesn't grab unless I unfocus first").
+  const onScrimPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    const { clientX, clientY, button } = e;
+    const scrim = e.currentTarget;
+    let target: HTMLElement | null = null;
+    // Only a primary (left) press forwards through; secondary/middle just close.
+    // Presses inside the dialog never reach here (it stops propagation), so the
+    // hit point is always over the backdrop itself.
+    if (button === 0) {
+      // Make the scrim transparent to hit-testing so elementFromPoint reports
+      // the app control beneath it, then restore it before unmounting.
+      const prev = scrim.style.pointerEvents;
+      scrim.style.pointerEvents = "none";
+      const under = document.elementFromPoint(clientX, clientY);
+      scrim.style.pointerEvents = prev;
+      target =
+        under?.closest<HTMLElement>(
+          'a[href], button:not([disabled]), input, textarea, select, [role="button"], [role="option"], [role="menuitem"], [role="tab"], [role="link"], [role="checkbox"], [role="switch"]',
+        ) ?? null;
+    }
+    onClose();
+    if (!target) return;
+    // Defer activation until the overlay has unmounted so the forwarded click
+    // lands with the palette already gone (and any close side-effects settled).
+    requestAnimationFrame(() => {
+      const tag = target!.tagName.toLowerCase();
+      if (tag === "input" || tag === "textarea" || tag === "select") target!.focus();
+      else target!.click();
+    });
+  };
+
   if (!open) return null;
 
   return (
     <div
-      onClick={onClose}
+      // Dismiss on press (pointerdown), not click, so the backdrop never lingers
+      // "armed" to swallow the next click. onScrimPointerDown also forwards the
+      // press to the control underneath (click-through) — see its definition.
+      onPointerDown={onScrimPointerDown}
       role="presentation"
       className="fixed inset-0 z-50 flex items-start justify-center bg-[var(--backdrop-scrim)] backdrop-blur-sm"
       style={{ animation: "ui-modal-fade-in var(--duration-fast) var(--ease-decelerate)" }}
     >
       <div
         ref={dialogRef}
-        onClick={(e) => e.stopPropagation()}
+        // Keep presses inside the dialog from bubbling to the backdrop's
+        // pointerdown dismissal (matches the dismissal event above).
+        onPointerDown={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-label="Command palette"
