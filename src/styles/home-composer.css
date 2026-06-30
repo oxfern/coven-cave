@@ -84,6 +84,7 @@
   width: 100%;
   max-width: min(1200px, 100%);
   margin-inline: auto;
+  container-type: inline-size;
 }
 
 /* ── Composer card ───────────────────────────────────────────────────────── */
@@ -137,13 +138,46 @@
   opacity: 0.5;
 }
 
-/* ── Action bar ──────────────────────────────────────────────────────────── */
+/* ── Action bar ──────────────────────────────────────────────────────────────
+ *   One balanced row: a compact "who" cluster anchored left, the intent pills
+ *   centered, and the "run" config cluster anchored right. Only the centre
+ *   group grows to absorb slack, so the side clusters stay tight to the edges
+ *   instead of stretching open big interior gaps. The larger column gap (vs the
+ *   intra-group gap) reads the three clusters as distinct without a divider. */
 .hc-action-bar {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 8px 14px;
   padding: 10px 14px 14px;
+}
+
+/* Groups never split internally — a cluster wraps as a whole unit (so Speed and
+ * the send button can't orphan onto their own line, as they did before). */
+.hc-control-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* Side clusters are content-sized (no grow → no trailing/leading gap). */
+.hc-control-group--who {
+  flex: 0 1 auto;
+}
+
+/* The intent group is the only one that grows; it absorbs all the slack and
+ * centres the destination pills between the two side clusters. */
+.hc-control-group--intent {
+  flex: 1 1 auto;
+  justify-content: center;
+}
+
+.hc-control-group--run {
+  flex: 0 1 auto;
+  justify-content: flex-end;
+  margin-left: auto;
 }
 
 /* ── "＋" command launcher ───────────────────────────────────────────────── */
@@ -206,12 +240,25 @@
   display: flex;
   align-items: center;
   gap: 5px;
+  min-height: 30px;
+  box-sizing: border-box;
   background: color-mix(in oklch, var(--accent-presence) 10%, var(--bg-base));
   border: 1px solid color-mix(in oklch, var(--accent-presence) 25%, transparent);
   border-radius: 8px;
   padding: 3px 7px 3px 6px;
   flex: 0 1 auto;
   min-width: 0;
+}
+
+.hc-command-select {
+  gap: 6px;
+}
+
+.hc-command-select .hc-command-select-label {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 550;
+  color: var(--text-muted);
 }
 
 .hc-familiar-glyph {
@@ -256,19 +303,21 @@
 /* ── Destination pills ───────────────────────────────────────────────────── */
 .hc-dest-pills {
   display: flex;
-  gap: 3px;
-  flex: 1 1 140px;
-  flex-wrap: wrap;
+  gap: 4px;
+  flex: 0 0 auto;
+  min-width: 0;
 }
 
 .hc-dest-pill {
   display: flex;
   align-items: center;
   gap: 4px;
+  min-height: 30px;
+  box-sizing: border-box;
   font-size: 11px;
   font-weight: 450;
-  padding: 3px 9px;
-  border-radius: 7px;
+  padding: 3px 11px;
+  border-radius: 8px;
   border: 1px solid transparent;
   background: transparent;
   color: var(--text-muted);
@@ -351,6 +400,74 @@
   }
 }
 
+@container (max-width: 620px) {
+  .hc-action-bar {
+    align-items: stretch;
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .hc-control-group {
+    flex: 1 0 100%;
+    width: 100%;
+    align-items: stretch;
+    justify-content: stretch;
+  }
+
+  .hc-control-group--who,
+  .hc-control-group--run {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .hc-control-group--intent {
+    order: 3;
+  }
+
+  .hc-control-group--run {
+    order: 4;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) var(--touch-target);
+    margin-left: 0;
+  }
+
+  .hc-familiar-selector {
+    min-height: var(--touch-target);
+    padding: 0 30px 0 10px;
+  }
+
+  .hc-command-select .hc-command-select-label {
+    display: none;
+  }
+
+  .hc-familiar-select {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    min-height: var(--touch-target);
+    font-size: 13px;
+  }
+
+  .hc-dest-pills {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: 8px;
+  }
+
+  .hc-dest-pill {
+    min-height: var(--touch-target);
+    justify-content: center;
+    border-color: var(--border-hairline);
+    background: color-mix(in oklch, var(--bg-base) 72%, transparent);
+  }
+
+  .hc-send-btn {
+    min-height: var(--touch-target);
+    width: var(--touch-target);
+    height: var(--touch-target);
+  }
+}
+
 /* ── Send button (circular, icon-only — matches the Codex-style composer) ──── */
 .hc-send-btn {
   display: inline-flex;
@@ -368,6 +485,10 @@
   margin-left: auto;
   flex-shrink: 0;
   transition: background 0.15s ease, opacity 0.15s ease, transform 0.1s ease;
+}
+
+.hc-control-group--run .hc-send-btn {
+  margin-left: 0;
 }
 
 .hc-send-btn:hover:not(:disabled) {
