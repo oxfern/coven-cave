@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import {
   COMMAND_RESPONSE_SPEED_OPTIONS,
   COMMAND_THINKING_OPTIONS,
@@ -11,6 +11,12 @@ import { Icon } from "@/lib/icon";
 import { useQuickChat } from "@/lib/use-quick-chat";
 import type { Familiar } from "@/lib/types";
 
+type Props = {
+  open: boolean;
+  onClose: () => void;
+  onOpenFullSession?: (sessionId: string, familiarId?: string | null) => void;
+};
+
 function initials(familiar: Familiar): string {
   return (familiar.display_name || familiar.id)
     .split(/\s+/)
@@ -20,7 +26,7 @@ function initials(familiar: Familiar): string {
     .toUpperCase();
 }
 
-export function TrayQuickChat() {
+export function QuickChatOverlay({ open, onClose, onOpenFullSession }: Props) {
   const {
     familiars,
     selectedFamiliarId,
@@ -43,7 +49,20 @@ export function TrayQuickChat() {
 
   const sending = sendState === "sending";
 
-  const onKeyDown = useCallback(
+  // Escape closes the popover while it's open.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.stopPropagation();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  const onTextareaKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
       if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
         event.preventDefault();
@@ -53,24 +72,33 @@ export function TrayQuickChat() {
     [send, sending],
   );
 
-  const openFullSession = useCallback(async () => {
+  const openFull = useCallback(() => {
     if (!sessionId) return;
-    try {
-      const { emit } = await import("@tauri-apps/api/event");
-      await emit("quick-chat:open-session", { sessionId, familiarId: selectedFamiliarId });
-    } catch {
-      window.location.href = `/#chat-${encodeURIComponent(sessionId)}`;
-    }
-  }, [selectedFamiliarId, sessionId]);
+    onOpenFullSession?.(sessionId, selectedFamiliarId);
+    onClose();
+  }, [onClose, onOpenFullSession, selectedFamiliarId, sessionId]);
+
+  if (!open) return null;
 
   return (
-    <main className="min-h-screen bg-[var(--bg-base)] text-[var(--fg-primary)]">
-      <section className="flex min-h-screen flex-col border border-[var(--border-hairline)] bg-[var(--bg-panel)]">
+    <>
+      <div
+        className="quick-chat-overlay-backdrop"
+        style={{ position: "fixed", inset: 0 }}
+        onClick={onClose}
+        aria-hidden
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Quick chat"
+        className="quick-chat-overlay"
+      >
         <header className="flex items-center justify-between border-b border-[var(--border-hairline)] px-4 py-3">
           <div className="flex min-w-0 items-center gap-2">
             <Icon name="ph:chat-circle-dots" width={18} aria-hidden />
             <div className="min-w-0">
-              <h1 className="truncate text-sm font-semibold">Quick Chat</h1>
+              <h2 className="truncate text-sm font-semibold">Quick chat</h2>
               <p className="truncate text-xs text-[var(--fg-muted)]">
                 {selectedFamiliar ? `@${selectedFamiliar.id}` : "No familiar selected"}
               </p>
@@ -78,13 +106,12 @@ export function TrayQuickChat() {
           </div>
           <button
             type="button"
-            onClick={openFullSession}
-            disabled={!sessionId}
-            aria-label="Open in CovenCave"
-            title="Open in CovenCave"
-            className="ui-icon-btn ui-icon-btn--sm disabled:cursor-not-allowed disabled:opacity-40"
+            onClick={onClose}
+            aria-label="Close quick chat"
+            title="Close"
+            className="ui-icon-btn ui-icon-btn--sm"
           >
-            <Icon name="ph:arrow-square-out" width={12} aria-hidden />
+            <Icon name="ph:x" width={14} aria-hidden />
           </button>
         </header>
 
@@ -134,7 +161,7 @@ export function TrayQuickChat() {
           </select>
         </div>
 
-        <div className="flex-1 overflow-auto px-4 py-3">
+        <div className="px-4 py-3">
           {selectedFamiliar ? (
             <div className="mb-3 flex items-center gap-2 text-xs text-[var(--fg-muted)]">
               {selectedFamiliar.avatarUrl ? (
@@ -152,17 +179,17 @@ export function TrayQuickChat() {
             </div>
           ) : null}
 
-          <label className="block text-xs font-medium text-[var(--fg-muted)]" htmlFor="quick-chat-draft">
+          <label className="block text-xs font-medium text-[var(--fg-muted)]" htmlFor="quick-chat-overlay-draft">
             Message
           </label>
           <textarea
-            id="quick-chat-draft"
+            id="quick-chat-overlay-draft"
             value={draft}
             autoFocus
             onChange={(event) => setDraft(event.target.value)}
-            onKeyDown={onKeyDown}
+            onKeyDown={onTextareaKeyDown}
             placeholder="@sage summarize what needs attention"
-            className="mt-2 h-28 w-full resize-none rounded-md border border-[var(--border-hairline)] bg-[var(--bg-base)] px-3 py-2 text-sm outline-none focus:border-[var(--accent-presence)]"
+            className="mt-2 h-24 w-full resize-none rounded-md border border-[var(--border-hairline)] bg-[var(--bg-base)] px-3 py-2 text-sm outline-none focus:border-[var(--accent-presence)]"
           />
 
           {error ? (
@@ -180,7 +207,7 @@ export function TrayQuickChat() {
           ) : null}
 
           <div
-            className="mt-3 min-h-32 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-base)] p-3 text-sm"
+            className="mt-3 max-h-48 min-h-24 overflow-auto rounded-md border border-[var(--border-hairline)] bg-[var(--bg-base)] p-3 text-sm"
             aria-live="polite"
           >
             {answer ? (
@@ -194,9 +221,15 @@ export function TrayQuickChat() {
         </div>
 
         <footer className="flex items-center justify-between gap-3 border-t border-[var(--border-hairline)] px-4 py-3">
-          <p className="min-w-0 truncate text-xs text-[var(--fg-muted)]">
-            Use @id to switch familiars. ⌘↵ to send.
-          </p>
+          <button
+            type="button"
+            onClick={openFull}
+            disabled={!sessionId}
+            className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border-hairline)] px-2.5 py-2 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Icon name="ph:arrow-square-out" width={12} aria-hidden />
+            Open in full chat
+          </button>
           <div className="flex items-center gap-2">
             {sending ? (
               <button
@@ -218,7 +251,7 @@ export function TrayQuickChat() {
             </button>
           </div>
         </footer>
-      </section>
-    </main>
+      </div>
+    </>
   );
 }
