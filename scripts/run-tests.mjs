@@ -522,6 +522,7 @@ export const SUITES = {
     "src/components/board-clear-done.test.ts",
     "src/components/board-schedule-window.test.ts",
     "src/lib/server/automation-runner.test.ts",
+    "src/lib/session-pins.test.ts",
   ],
   api: [
     "scripts/dependency-policy.test.mjs",
