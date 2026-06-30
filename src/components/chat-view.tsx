@@ -52,6 +52,7 @@ import { ThinkingIndicator } from "@/components/ui/thinking-indicator";
 import { useFocusTrap } from "@/lib/use-focus-trap";
 import { DebugPane } from "@/components/debug-pane";
 import { modelSlashOptions, resolveModelArg, formatModelList } from "@/lib/slash-model";
+import { catalogForRuntime } from "@/lib/runtime-models";
 import { clearChatDebugState, publishChatDebugState } from "@/lib/chat-debug-store";
 import { Popover, PopoverBody, PopoverItem, PopoverLabel, PopoverSeparator } from "@/components/ui/popover";
 import { VoiceCallOverlay } from "./voice-call-overlay";
@@ -80,7 +81,10 @@ import {
   COMMAND_CONTROL_DEFAULTS,
   COMMAND_RESPONSE_SPEED_OPTIONS,
   COMMAND_THINKING_OPTIONS,
+  DEFAULT_PERMISSION_MODE,
+  PERMISSION_MODES,
   normalizeCommandControls,
+  type CommandPermissionMode,
   type CommandResponseSpeed,
   type CommandThinkingEffort,
   type InitialCommandControls,
@@ -257,6 +261,9 @@ type Props = {
   onOpenTask?: (cardId: string) => void;
   onOpenUrl?: (url: string) => void;
   onProjectRootChange?: (projectRoot: string | null) => void;
+  /** Which surface embeds this ChatView ("code" for the Codex coding split).
+   *  Surface-aware composer copy and styling key off it. */
+  surface?: string;
 };
 
 export type ChatViewHandle = {
@@ -355,26 +362,31 @@ const CHAT_ATTACHMENT_ACCEPT = [
 function readComposerPrefs(): {
   thinkingEffort: ComposerThinkingEffort;
   responseSpeed: ComposerResponseSpeed;
+  permissionMode: CommandPermissionMode;
 } {
-  if (typeof window === "undefined") return COMMAND_CONTROL_DEFAULTS;
+  if (typeof window === "undefined") return { ...COMMAND_CONTROL_DEFAULTS, permissionMode: DEFAULT_PERMISSION_MODE };
   try {
     const raw = window.localStorage.getItem(COMPOSER_PREFS_KEY);
-    const parsed = raw ? JSON.parse(raw) as Partial<{ thinkingEffort: string; responseSpeed: string }> : {};
+    const parsed = raw ? JSON.parse(raw) as Partial<{ thinkingEffort: string; responseSpeed: string; permissionMode: string }> : {};
     const thinkingEffort = THINKING_OPTIONS.some((option) => option.value === parsed.thinkingEffort)
       ? parsed.thinkingEffort as ComposerThinkingEffort
       : COMMAND_CONTROL_DEFAULTS.thinkingEffort;
     const responseSpeed = SPEED_OPTIONS.some((option) => option.value === parsed.responseSpeed)
       ? parsed.responseSpeed as ComposerResponseSpeed
       : COMMAND_CONTROL_DEFAULTS.responseSpeed;
-    return { thinkingEffort, responseSpeed };
+    const permissionMode = PERMISSION_MODES.some((mode) => mode.value === parsed.permissionMode)
+      ? parsed.permissionMode as CommandPermissionMode
+      : DEFAULT_PERMISSION_MODE;
+    return { thinkingEffort, responseSpeed, permissionMode };
   } catch {
-    return COMMAND_CONTROL_DEFAULTS;
+    return { ...COMMAND_CONTROL_DEFAULTS, permissionMode: DEFAULT_PERMISSION_MODE };
   }
 }
 
 function writeComposerPrefs(prefs: {
   thinkingEffort: ComposerThinkingEffort;
   responseSpeed: ComposerResponseSpeed;
+  permissionMode: CommandPermissionMode;
 }) {
   if (typeof window === "undefined") return;
   try {
@@ -2045,7 +2057,7 @@ function MobileChatActionStrip({
 // ── ChatView ──────────────────────────────────────────────────────────────────
 
 export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
-  { familiar, sessionId, session, projectRoot, initialPrompt, initialControls, origin, openFindQuery, openFindNonce, daemonRunning, onSessionStarted, onSessionsChanged, onBack, onSlashCommand, onOpenOnboarding, onOpenTask, onOpenUrl, onProjectRootChange },
+  { familiar, sessionId, session, projectRoot, initialPrompt, initialControls, origin, openFindQuery, openFindNonce, daemonRunning, onSessionStarted, onSessionsChanged, onBack, onSlashCommand, onOpenOnboarding, onOpenTask, onOpenUrl, onProjectRootChange, surface },
   ref,
 ) {
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -2189,6 +2201,7 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
   const [usagePlan, setUsagePlan] = useState<ChatUsagePlanSnapshot | null>(null);
   const [thinkingEffort, setThinkingEffort] = useState<ComposerThinkingEffort>(() => readComposerPrefs().thinkingEffort);
   const [responseSpeed, setResponseSpeed] = useState<ComposerResponseSpeed>(() => readComposerPrefs().responseSpeed);
+  const [permissionMode, setPermissionMode] = useState<CommandPermissionMode>(() => readComposerPrefs().permissionMode);
   const [input, setInput] = useState(() => readComposerDraft());
   // CHAT-D11-04: Input history navigation (↑↓), matching HomeComposer pattern
   const [inputHistory, setInputHistory] = useState<string[]>(() => readComposerHistory(COMPOSER_HISTORY_KEY));
@@ -2350,8 +2363,8 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
   }, [refreshUsagePlan]);
 
   useEffect(() => {
-    writeComposerPrefs({ thinkingEffort, responseSpeed });
-  }, [thinkingEffort, responseSpeed]);
+    writeComposerPrefs({ thinkingEffort, responseSpeed, permissionMode });
+  }, [thinkingEffort, responseSpeed, permissionMode]);
 
   // Persist a model choice through the existing channels: session scope when a
   // chat exists (writes the conversation's modelIntent), else familiar-default.
@@ -2640,6 +2653,16 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
     () => (slashDismissed ? null : modelSlashOptions(input, modelHarness)),
     [input, modelHarness, slashDismissed],
   );
+  // Stable model menu for the composer chip (independent of the /model
+  // autocomplete above, which is null outside `/model <arg>` position).
+  const composerModelOptions = useMemo(
+    () => catalogForRuntime(modelHarness)?.models ?? [],
+    [modelHarness],
+  );
+  const composerModelValue =
+    modelState?.effectiveModel && modelState.effectiveModel !== "unknown"
+      ? modelState.effectiveModel
+      : composerModelOptions[0]?.id ?? "";
   const modelMenuActive = (modelOptions?.length ?? 0) > 0;
   // The slash-command and /model pickers are mutually exclusive inline listboxes
   // sharing one listbox id, so the composer's combobox ARIA tracks whichever is
@@ -3359,6 +3382,9 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
           projectRoot: activeProjectRoot,
           reasoningEffort: controlsOverride?.thinkingEffort ?? thinkingEffort,
           responseSpeed: controlsOverride?.responseSpeed ?? responseSpeed,
+          // Advisory permission mode for the picked access level; the daemon may
+          // ignore it if the harness doesn't support per-turn permission scoping.
+          permissionMode,
           // Forward the picked model explicitly so it reaches `coven run
           // --model` for THIS turn — don't rely on the PATCH to model-state
           // having persisted to the conversation file before this send (a
@@ -4753,7 +4779,7 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
                 const text = e.clipboardData.getData("text/plain");
                 if (looksLikeCsv(text)) { setCsvRaw(text); }
               }}
-              placeholder={busy ? "Streaming… (esc to cancel)" : `Message ${familiar.display_name}…  ↵ to send`}
+              placeholder={busy ? "Streaming… (esc to cancel)" : surface === "code" ? "Ask for follow-up changes" : `Message ${familiar.display_name}…  ↵ to send`}
               rows={1}
               inputMode="text"
               enterKeyHint="send"
@@ -4839,6 +4865,16 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
                 >
                   <Icon name="ph:plus-bold" width={14} />
                 </button>
+                <button
+                  type="button"
+                  className="cave-composer-icon-button focus-ring grid h-7 w-7 place-items-center rounded-md border border-[var(--border-hairline)] hover:bg-[var(--bg-raised)] disabled:opacity-40"
+                  title="Voice"
+                  aria-label="Voice"
+                  disabled={!sessionId}
+                  onClick={() => setVoiceCallOpen(true)}
+                >
+                  <Icon name="ph:microphone" width={15} aria-hidden />
+                </button>
                 {/* Vertical separator between the attach control and the
                     inline response selectors (was a horizontal rule when the
                     controls stacked into two rows). */}
@@ -4860,6 +4896,24 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
                     disabled={busy}
                     onChange={setResponseSpeed}
                   />
+                  <ComposerControlSelect
+                    label="Access"
+                    icon="ph:shield-warning"
+                    value={permissionMode}
+                    options={PERMISSION_MODES.map((m) => ({ value: m.value, label: m.label }))}
+                    disabled={busy}
+                    onChange={setPermissionMode}
+                  />
+                  {composerModelOptions.length > 0 ? (
+                    <ComposerControlSelect
+                      label="Model"
+                      icon="ph:lightning-bold"
+                      value={composerModelValue}
+                      options={composerModelOptions.map((m) => ({ value: m.id, label: m.label }))}
+                      disabled={busy}
+                      onChange={(id) => handleSelectModel(id)}
+                    />
+                  ) : null}
                 </div>
                 {busy ? (
                   <button
@@ -5233,6 +5287,14 @@ function TurnRowImpl({
                   pending={turn.pending}
                   isError={turn.error}
                   label={familiar.display_name}
+                  messageId={turn.id}
+                  onShare={() => {
+                    try {
+                      void navigator.clipboard?.writeText(typeof visible === "string" ? visible : "");
+                    } catch {
+                      /* clipboard unavailable */
+                    }
+                  }}
                   onRegenerate={onRegenerate}
                   onReply={onReply}
                   onOpenUrl={onOpenUrl}
@@ -5259,7 +5321,7 @@ function TurnRowImpl({
             {/* Agent-produced inline attachments (file chips → lightbox). */}
             {turn.attachments?.length ? <AttachmentList attachments={turn.attachments} /> : null}
             {turn.progress?.length ? <ProgressGroup progress={turn.progress} pending={!!turn.pending} /> : null}
-            {reasoning ? <ReasoningBlock reasoning={reasoning} /> : null}
+            {reasoning ? <ReasoningBlock reasoning={reasoning} durationMs={turn.durationMs} /> : null}
             {/* Designated "Tool activity" section: on every settled turn that
                 used tools, collect them into one collapsed group below the prose
                 (which renders uninterrupted above). Streaming turns show tools
@@ -5307,7 +5369,7 @@ function TurnRowImpl({
   );
 }
 
-function ReasoningBlock({ reasoning }: { reasoning: string }) {
+function ReasoningBlock({ reasoning, durationMs }: { reasoning: string; durationMs?: number }) {
   // The global "Show thinking" toggle (header) opens every reasoning block at
   // once; an individual block can still be collapsed/expanded locally. The
   // disclosure stays default-collapsed in markup — `open` is driven by the
@@ -5329,7 +5391,9 @@ function ReasoningBlock({ reasoning }: { reasoning: string }) {
           Thinking
         </span>
         <span className="ml-auto font-mono text-[10px] normal-case tracking-normal text-[var(--text-muted)]">
-          {wordCount} {wordCount === 1 ? "word" : "words"}
+          {typeof durationMs === "number" && durationMs > 0
+            ? `Worked for ${fmtDuration(durationMs)}`
+            : `${wordCount} ${wordCount === 1 ? "word" : "words"}`}
         </span>
       </summary>
       <div className="cave-reasoning-body mt-2 border-t border-[var(--border-hairline)]/70 pt-2 text-[12px] leading-5 text-[var(--text-secondary)]">
