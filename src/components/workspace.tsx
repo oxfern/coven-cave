@@ -77,6 +77,10 @@ import { useShellBanners } from "@/lib/shell-banners";
 import { TopBar } from "@/components/top-bar";
 import { FamiliarMenuBar } from "@/components/familiar-menu-bar";
 import type { PendingChatAction } from "@/lib/pending-chat-action";
+import {
+  OPEN_IN_APP_BROWSER_EVENT,
+  PENDING_IN_APP_BROWSER_URL_KEY,
+} from "@/lib/open-external";
 
 type WorkspaceMode = WorkspaceModeFromDaemon;
 
@@ -244,6 +248,7 @@ export function Workspace() {
   const companionBrowserPaneRef = useRef<BrowserPaneHandle>(null);
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [rightPanel, setRightPanel] = useState<RightPanelKind | null>(null);
+  const [codeRightView, setCodeRightView] = useState<"files" | "changes">("files");
   const [railTab, setRailTab] = useState<CompanionTab>(() => {
     if (typeof window === "undefined") return "chat";
     const stored = window.localStorage.getItem("cave:rail.tab");
@@ -1741,28 +1746,38 @@ export function Workspace() {
     requestAnimationFrame(() => shellRef.current?.openFamiliar());
   }, [familiarPanelOpen, railTab]);
 
-  // Open a link in the user's real system browser. On desktop (Tauri) we hand
-  // the URL to the `shell_open` Rust command so it lands in Safari/Chrome; in
-  // plain browser dev (and as a fallback if the invoke fails) we fall back to
-  // window.open. This is the path every feed/chat/board "open link" button hits
-  // via onOpenUrl.
-  const openUrlExternally = useCallback((url: string) => {
-    const openExternally = () => window.open(url, "_blank", "noopener,noreferrer");
-    // @ts-expect-error Tauri injects this at runtime
-    const inTauri = typeof window !== "undefined" && !!window.__TAURI_INTERNALS__;
-    if (!inTauri) {
-      openExternally();
-      return;
-    }
-    void (async () => {
-      try {
-        const { invoke } = await import("@tauri-apps/api/core");
-        await invoke("shell_open", { url });
-      } catch {
-        openExternally();
-      }
-    })();
+  const openUrlInAppBrowser = useCallback((url: string) => {
+    if (!url) return;
+    setMode("browser");
+    shellRef.current?.dismissNavMobile();
+    window.setTimeout(() => browserPaneRef.current?.navigateTo(url), 0);
   }, []);
+
+  useEffect(() => {
+    const openPendingBrowserUrl = () => {
+      const pending = window.sessionStorage.getItem(PENDING_IN_APP_BROWSER_URL_KEY);
+      if (pending) {
+        window.sessionStorage.removeItem(PENDING_IN_APP_BROWSER_URL_KEY);
+        openUrlInAppBrowser(pending);
+        return;
+      }
+      if (window.location.hash === "#browser") setMode("browser");
+    };
+    const onOpenBrowserUrl = (event: Event) => {
+      const detail = (event as CustomEvent<{ url?: string }>).detail;
+      if (detail?.url) {
+        window.sessionStorage.removeItem(PENDING_IN_APP_BROWSER_URL_KEY);
+        openUrlInAppBrowser(detail.url);
+      }
+    };
+    openPendingBrowserUrl();
+    window.addEventListener(OPEN_IN_APP_BROWSER_EVENT, onOpenBrowserUrl);
+    window.addEventListener("hashchange", openPendingBrowserUrl);
+    return () => {
+      window.removeEventListener(OPEN_IN_APP_BROWSER_EVENT, onOpenBrowserUrl);
+      window.removeEventListener("hashchange", openPendingBrowserUrl);
+    };
+  }, [openUrlInAppBrowser]);
 
   const openProjectChat = useCallback((projectRoot: string) => {
     startFamiliarChat(activeId, projectRoot);
@@ -1845,6 +1860,10 @@ export function Workspace() {
         shellRef.current?.dismissNavMobile();
       }}
       onNewChat={openCodeProjectChat}
+      onDeleteSession={async (session) => {
+        await fetch(`/api/chat/conversation/${encodeURIComponent(session.id)}`, { method: "DELETE" });
+        await loadSessions();
+      }}
     />
   );
 
@@ -1889,7 +1908,7 @@ export function Workspace() {
           window.location.hash = `memory:${encodeURIComponent(path)}`;
         }}
         onOpenOnboarding={openOnboarding}
-        onOpenUrl={openUrlExternally}
+        onOpenUrl={openUrlInAppBrowser}
         onFamiliarCreated={(id) => {
           void loadFamiliars();
           selectFamiliar(id);
@@ -1923,13 +1942,13 @@ export function Workspace() {
         onInboxItemChanged={refreshInbox}
         onSessionsChanged={loadSessions}
         onOpenTask={(cardId) => onPaletteIntent({ kind: "focus-card", cardId })}
-        onOpenUrl={openUrlExternally}
+        onOpenUrl={openUrlInAppBrowser}
       />
     ) : mode === "groupchat" ? (
       <GroupChatView
         familiars={resolvedFamiliars}
         onSessionStarted={loadSessions}
-        onOpenUrl={openUrlExternally}
+        onOpenUrl={openUrlInAppBrowser}
       />
     ) : mode === "code" ? (
       <CodeView
@@ -1962,7 +1981,7 @@ export function Workspace() {
             onInboxItemChanged={refreshInbox}
             onSessionsChanged={loadSessions}
             onOpenTask={(cardId) => onPaletteIntent({ kind: "focus-card", cardId })}
-            onOpenUrl={openUrlExternally}
+            onOpenUrl={openUrlInAppBrowser}
           />
         }
         comux={
@@ -1970,6 +1989,8 @@ export function Workspace() {
             view="projects"
             active={mode === "code"}
             storageNamespace=":code"
+            rightView={codeRightView}
+            onRightViewChange={setCodeRightView}
             hideProjectNavigator
             hideFileTree
             sessions={sessions}
@@ -1982,7 +2003,7 @@ export function Workspace() {
       />
     ) : mode === "library" ? (
       <LibraryView
-        onOpenUrl={openUrlExternally}
+        onOpenUrl={openUrlInAppBrowser}
         sessions={sessions}
         onOpenSession={openFamiliarSession}
         onNewProjectChat={openProjectChat}
@@ -1993,7 +2014,7 @@ export function Workspace() {
         sessions={sessions}
         activeFamiliarId={activeId}
         scopeFamiliarIds={scopeIds}
-        onOpenUrl={openUrlExternally}
+        onOpenUrl={openUrlInAppBrowser}
         onJumpToSession={(sessionId, familiarId) => {
           openFamiliarSession(sessionId, familiarId);
         }}
@@ -2012,7 +2033,7 @@ export function Workspace() {
           if (item.sourceSessionKey) {
             openFamiliarSession(item.sourceSessionKey);
           } else if (item.sourceUrl) {
-            window.open(item.sourceUrl, "_blank", "noopener");
+            openUrlInAppBrowser(item.sourceUrl);
           }
         }}
         familiars={familiars}
