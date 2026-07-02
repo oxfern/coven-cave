@@ -7,11 +7,12 @@ breaking config changes; patch releases stay additive.
 
 ## [Unreleased]
 
-## [0.0.131] - 2026-07-01
+## [0.0.131] - 2026-07-02
 
 Patch release on top of v0.0.130. Headline: eval analysis is easier to scan,
-board attachments are clearer in follow-up task context, and quick chat opens
-on the workspace's active familiar.
+board attachments are clearer from table to dispatch, quick chat opens on the
+workspace's active familiar, and no-project chat sessions stay rooted in their
+own workspace.
 
 ### Added
 
@@ -20,6 +21,9 @@ on the workspace's active familiar.
 - **Board attachments** - show attachment counts in board table rows and carry
   attachment names into follow-up task-chat context without inlining file
   bodies.
+- **Board attachments** - drop files directly onto the inspector's Attachments
+  section to stage them on a card.
+- **Library** - show language and license icons in GitHub repository rows.
 
 ### Changed
 
@@ -31,13 +35,26 @@ on the workspace's active familiar.
   only-changes empty hint to the compare tab.
 - **Marketplace** - defaulted non-sensitive Netdata and Nuxt MCP URL fields in
   the setup modal while keeping sensitive API keys unset.
+- **Shell** - made Marketplace and Evals split-pane layouts respond to their
+  pane width instead of the full viewport.
+- **Board attachments** - mark dispatched image attachments as metadata-only
+  when the body is intentionally not inlined.
 
 ### Fixed
 
 - **Evals** - keyed failure rows by stable case id and preserved non-zero
-  proportional bar widths for small failure ratios.
+  proportional bar widths for small failure ratios; moved the new failure bars
+  onto the shared eval CSS path.
 - **Chat** - stopped `project access denied` 403s when a familiar continues
   chatting from its own workspace in a no-project thread.
+- **Chat** - keep unregistered-cwd sessions and explicit **No project**
+  selections rootless instead of falling back to the first registered project
+  or the opener root.
+- **Chat bridge** - preserve richer daemon error details in chat failures.
+- **Quick-chat** - show loading placeholders while the familiar roster loads,
+  including the tray picker.
+- **Board attachments** - prevent browser file-drop navigation even when the
+  inspector drop target is disabled or already at its attachment cap.
 
 ## [0.0.130] - 2026-07-01
 
