@@ -39,8 +39,8 @@ assert.match(
 );
 assert.match(
   chatView,
-  /const activeProjectRoot = selectedProject\?\.root \?\? session\?\.project_root \?\? projectRoot \?\? ""/,
-  "ChatView sends the selected project's configured root",
+  /const activeProjectRoot =\s*resolvedProjectId === NO_PROJECT_ID \? "" : \(selectedProject\?\.root \?\? session\?\.project_root \?\? projectRoot \?\? ""\)/,
+  "ChatView keeps an explicit No-project selection rootless instead of falling back to the opener/session root",
 );
 assert.match(
   chatView,
