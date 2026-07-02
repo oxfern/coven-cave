@@ -2248,7 +2248,8 @@ export const ChatView = forwardRef<ChatViewHandle, Props>(function ChatView(
   });
   const resolvedProjectId = projectSelection.projectId;
   const selectedProject = projectSelection.project;
-  const activeProjectRoot = selectedProject?.root ?? session?.project_root ?? projectRoot ?? "";
+  const activeProjectRoot =
+    resolvedProjectId === NO_PROJECT_ID ? "" : (selectedProject?.root ?? session?.project_root ?? projectRoot ?? "");
   // Root asserted to the server on send. A session's recorded cwd is NOT an
   // explicit project choice: a no-project chat boots in the familiar's own
   // workspace and the daemon records that dir as project_root. Echoing it back
