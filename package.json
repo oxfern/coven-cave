@@ -104,6 +104,9 @@
   },
   "packageManager": "pnpm@10.34.0",
   "pnpm": {
+    "overrides": {
+      "enhanced-resolve": "5.23.0"
+    },
     "supportedArchitectures": {
       "os": [
         "linux",
