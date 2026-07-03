@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useFocusTrap } from "@/lib/use-focus-trap";
+import { useMinuteTick } from "@/lib/use-minute-tick";
 import { Icon, type IconName } from "@/lib/icon";
 import { sessionRailTitle } from "@/lib/session-rail-title";
 import { relativeTime } from "@/lib/relative-time";
@@ -18,7 +20,12 @@ import {
   isSessionPinned,
   readPinnedSessions,
   togglePinnedSession,
+  readChatSidebarView,
+  writeChatSidebarView,
+  type ChatSidebarView,
 } from "@/lib/chat-session-prefs";
+import { deriveChatRecencyBuckets } from "@/lib/chat-recency";
+import { Popover, PopoverBody, PopoverItem, PopoverLabel } from "@/components/ui/popover";
 import { addChatProject, projectNameForRoot } from "@/lib/chat-add-project";
 
 type Props = {
@@ -37,8 +44,8 @@ type Props = {
 
 const THREADS_PREVIEW = 6;
 
-function compactTime(iso: string): string {
-  return relativeTime(iso, Date.now(), "compact");
+function bareTime(iso: string): string {
+  return relativeTime(iso, Date.now(), "bare");
 }
 
 function statusDotClass(status: string): string {
@@ -69,6 +76,108 @@ function folderIcon(group: ChatProjectGroup, expanded: boolean): IconName {
   return "ph:folder-simple-dashed";
 }
 
+type ThreadRowProps = {
+  session: SessionRow;
+  active: boolean;
+  pinned: boolean;
+  confirming: boolean;
+  deleting: boolean;
+  /** "folder" indents under a project folder; "flat" aligns with section headers. */
+  indent: "folder" | "flat";
+  onOpen: () => void;
+  onTogglePin: () => void;
+  onRequestDelete: () => void;
+  onCancelDelete: () => void;
+  onConfirmDelete: () => void;
+};
+
+function ThreadRow({
+  session,
+  active,
+  pinned,
+  confirming,
+  deleting,
+  indent,
+  onOpen,
+  onTogglePin,
+  onRequestDelete,
+  onCancelDelete,
+  onConfirmDelete,
+}: ThreadRowProps) {
+  const title = sessionRailTitle(session);
+  return (
+    <div
+      className={[
+        "group/thread flex min-h-[34px] w-full items-center gap-1.5 transition-colors",
+        active
+          ? "bg-[var(--bg-raised)] text-[var(--text-primary)]"
+          : "text-[var(--text-secondary)] hover:bg-[var(--bg-raised)]/50 hover:text-[var(--text-primary)]",
+      ].join(" ")}
+    >
+      <button
+        type="button"
+        aria-current={active ? "page" : undefined}
+        onClick={onOpen}
+        className={`focus-ring flex min-h-[34px] min-w-0 flex-1 items-center gap-1.5 rounded py-2 ${indent === "folder" ? "pl-4" : "pl-3"} pr-1 text-left text-[12px]`}
+      >
+        <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${statusDotClass(session.status)}`} aria-hidden />
+        <span className="min-w-0 flex-1 truncate" title={title}>{title}</span>
+        {confirming ? null : (
+          <span className="shrink-0 font-mono text-[10px] text-[var(--text-muted)] group-hover/thread:hidden">
+            {bareTime(session.updated_at || session.created_at)}
+          </span>
+        )}
+      </button>
+      {confirming ? (
+        <span className="flex shrink-0 items-center gap-1 pr-1">
+          <button
+            type="button"
+            onClick={onCancelDelete}
+            className="focus-ring rounded px-1.5 py-0.5 text-[10px] text-[var(--text-muted)] hover:bg-[var(--bg-hover)]"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={deleting}
+            onClick={onConfirmDelete}
+            className="focus-ring rounded border border-[var(--color-danger)]/50 bg-[var(--color-danger)]/10 px-1.5 py-0.5 text-[10px] text-[var(--color-danger)] hover:bg-[var(--color-danger)]/15 disabled:opacity-50"
+          >
+            {deleting ? "Deleting..." : "Delete"}
+          </button>
+        </span>
+      ) : (
+        <>
+          <button
+            type="button"
+            title={pinned ? "Unpin thread" : "Pin thread"}
+            aria-label={pinned ? `Unpin ${title}` : `Pin ${title}`}
+            aria-pressed={pinned}
+            onClick={onTogglePin}
+            className={[
+              "touch-always-visible focus-ring grid h-5 w-5 shrink-0 place-items-center rounded transition-all hover:text-[var(--accent-presence)]",
+              pinned
+                ? "text-[var(--accent-presence)] opacity-100"
+                : "text-[var(--text-muted)] opacity-0 focus-visible:opacity-100 group-hover/thread:opacity-100",
+            ].join(" ")}
+          >
+            <Icon name={pinned ? "ph:bookmark-simple-fill" : "ph:bookmark-simple"} width={12} aria-hidden />
+          </button>
+          <button
+            type="button"
+            title="Delete thread"
+            aria-label={`Delete thread ${title}`}
+            onClick={onRequestDelete}
+            className="touch-always-visible focus-ring mr-1 grid h-5 w-5 shrink-0 place-items-center rounded text-[var(--text-muted)] opacity-0 transition-opacity hover:bg-[var(--bg-raised)] hover:text-[var(--color-danger)] focus-visible:opacity-100 group-hover/thread:opacity-100"
+          >
+            <Icon name="ph:x-bold" width={10} aria-hidden />
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function ChatSidebar({
   sessions,
   activeFamiliarId = null,
@@ -82,6 +191,7 @@ export function ChatSidebar({
 }: Props) {
   const { projects, createProject, reload } = useProjects({ familiarId: activeFamiliarId });
   const overrides = useProjectOverrides();
+  const minuteTick = useMinuteTick();
   const searchRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [collapsedKeys, setCollapsedKeys] = useState<Set<string>>(() => new Set());
@@ -92,11 +202,21 @@ export function ChatSidebar({
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
   const [registeringRoot, setRegisteringRoot] = useState<string | null>(null);
   const [registerError, setRegisterError] = useState<string | null>(null);
+  const [view, setView] = useState<ChatSidebarView>("recent");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuAnchorRef = useRef<HTMLButtonElement>(null);
+  const menuBodyRef = useRef<HTMLDivElement>(null);
 
-  // Pins load after mount so SSR and first client render agree (same idiom as
-  // the chat list). The store is shared with the chat surface's other lists.
+  // Trap focus inside the Organize menu while it is open (same convention as
+  // the GitHub action popover, #2288). Also hydrates the organize-view preference.
+  useFocusTrap(menuOpen, menuBodyRef, { onEscape: () => setMenuOpen(false) });
+
+  // Pins and the organize-view preference load after mount so SSR and first
+  // client render agree (same idiom as the chat list). The store is shared
+  // with the chat surface's other lists.
   useEffect(() => {
     setPinnedIds(readPinnedSessions());
+    setView(readChatSidebarView());
     setHydrated(true);
   }, []);
   useEffect(() => {
@@ -137,6 +257,23 @@ export function ChatSidebar({
       );
   }, [groups, query]);
 
+  // Recent view: search filters rows (empty buckets drop out via derive).
+  const recentSessions = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return visibleSessions;
+    return visibleSessions.filter((s) => sessionRailTitle(s).toLowerCase().includes(q));
+  }, [visibleSessions, query]);
+
+  // Buckets depend on wall-clock day boundaries, and the sessions poll bails
+  // out identity-unchanged when content is identical — so a data refresh alone
+  // will NOT re-derive after midnight. The minute tick keeps the day buckets
+  // (and the bare row times rendered each pass) on the same clock.
+  const recentBuckets = useMemo(
+    () => (view === "recent" ? deriveChatRecencyBuckets(recentSessions, Date.now()) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- minuteTick is the clock dependency
+    [view, recentSessions, minuteTick],
+  );
+
   const toggleCollapse = (key: string) => {
     setCollapsedKeys((cur) => {
       const next = new Set(cur);
@@ -149,6 +286,22 @@ export function ChatSidebar({
   const togglePin = (sessionId: string) => {
     setPinnedIds((prev) => togglePinnedSession(prev, sessionId));
   };
+
+  const selectView = (next: ChatSidebarView) => {
+    setView(next);
+    writeChatSidebarView(next);
+    setMenuOpen(false);
+  };
+
+  async function handleDeleteSession(session: SessionRow) {
+    setDeletingSessionId(session.id);
+    try {
+      await onDeleteSession(session);
+      setConfirmingSessionId(null);
+    } finally {
+      setDeletingSessionId(null);
+    }
+  }
 
   async function handleRegister(group: ChatProjectGroup) {
     if (!group.projectRoot) return;
@@ -196,8 +349,42 @@ export function ChatSidebar({
           </button>
           <div className="min-w-0">
             <div className="truncate text-[12px] font-semibold text-[var(--text-primary)]">Chats</div>
-            <div className="truncate text-[10px] uppercase tracking-[0.12em] text-[var(--text-muted)]">Projects</div>
+            <div className="truncate text-[10px] uppercase tracking-[0.12em] text-[var(--text-muted)]">
+              {view === "recent" ? "Recent chats" : "Projects"}
+            </div>
           </div>
+          <button
+            ref={menuAnchorRef}
+            type="button"
+            aria-label="Sidebar options"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            title="Sidebar options"
+            onClick={() => setMenuOpen((cur) => !cur)}
+            className="focus-ring ml-auto grid h-7 w-7 shrink-0 place-items-center rounded-md text-[var(--text-muted)] hover:bg-[var(--bg-raised)] hover:text-[var(--text-primary)]"
+          >
+            <Icon name="ph:dots-three-bold" width={14} aria-hidden />
+          </button>
+          <Popover
+            open={menuOpen}
+            onOpenChange={setMenuOpen}
+            anchorRef={menuAnchorRef}
+            placement="bottom-end"
+            minWidth={190}
+            ariaLabel="Sidebar options"
+          >
+            <div ref={menuBodyRef} tabIndex={-1}>
+              <PopoverBody role="menu" ariaLabel="Organize sidebar">
+                <PopoverLabel>Organize sidebar</PopoverLabel>
+                <PopoverItem icon="ph:clock" checked={view === "recent"} onSelect={() => selectView("recent")}>
+                  Recent chats
+                </PopoverItem>
+                <PopoverItem icon="ph:folder" checked={view === "projects"} onSelect={() => selectView("projects")}>
+                  By project
+                </PopoverItem>
+              </PopoverBody>
+            </div>
+          </Popover>
         </header>
 
         <nav aria-label="Chat navigation" className="shrink-0 border-b border-[var(--border-hairline)] px-1.5 py-1.5">
@@ -255,11 +442,12 @@ export function ChatSidebar({
           </div>
         ) : null}
 
-        <nav aria-label="Chat projects and threads" className="min-h-0 flex-1 overflow-y-auto pb-2">
+        <nav aria-label="Chat threads" className="min-h-0 flex-1 overflow-y-auto pb-2">
           {!hasSearch && pinnedSessions.length > 0 ? (
             <section aria-label="Pinned threads" className="border-b border-[var(--border-hairline)] py-1">
               <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">Pinned</div>
               <ul>
+                {/* Pinned rail uses a compact read-only row; ThreadRow is the full interactive row. */}
                 {pinnedSessions.map((session) => {
                   const title = sessionRailTitle(session);
                   const active = activeSessionId === session.id;
@@ -281,7 +469,58 @@ export function ChatSidebar({
             </section>
           ) : null}
 
-          {visibleGroups.length === 0 ? (
+          {view === "recent" ? (
+            recentBuckets.length === 0 ? (
+              <p className="px-3 py-4 text-center text-[11px] text-[var(--text-muted)]">
+                {hasSearch ? "No threads match your search." : "No conversations yet."}
+              </p>
+            ) : (
+              recentBuckets.map((bucket) => {
+                const key = `bucket:${bucket.key}`;
+                const rows =
+                  showAllByKey.has(key) || hasSearch
+                    ? bucket.sessions
+                    : bucket.sessions.slice(0, THREADS_PREVIEW);
+                return (
+                  <section key={bucket.key} aria-label={bucket.label} className="py-1">
+                    <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
+                      {bucket.label}
+                    </div>
+                    <ul>
+                      {rows.map((session) => (
+                        <li key={session.id}>
+                          <ThreadRow
+                            session={session}
+                            active={activeSessionId === session.id}
+                            pinned={isSessionPinned(pinnedIds, session.id)}
+                            confirming={confirmingSessionId === session.id}
+                            deleting={deletingSessionId === session.id}
+                            indent="flat"
+                            onOpen={() => onOpenSession(session)}
+                            onTogglePin={() => togglePin(session.id)}
+                            onRequestDelete={() => setConfirmingSessionId(session.id)}
+                            onCancelDelete={() => setConfirmingSessionId(null)}
+                            onConfirmDelete={() => void handleDeleteSession(session)}
+                          />
+                        </li>
+                      ))}
+                      {bucket.sessions.length > THREADS_PREVIEW && !showAllByKey.has(key) && !hasSearch ? (
+                        <li>
+                          <button
+                            type="button"
+                            onClick={() => setShowAllByKey((cur) => new Set(cur).add(key))}
+                            className="focus-ring w-full py-1.5 pl-7 pr-3 text-left text-[11px] text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
+                          >
+                            Show {bucket.sessions.length - THREADS_PREVIEW} more
+                          </button>
+                        </li>
+                      ) : null}
+                    </ul>
+                  </section>
+                );
+              })
+            )
+          ) : visibleGroups.length === 0 ? (
             <p className="px-3 py-4 text-center text-[11px] text-[var(--text-muted)]">
               {hasSearch ? "No threads match your search." : "No conversations yet."}
             </p>
@@ -340,94 +579,23 @@ export function ChatSidebar({
                         <p className="py-1 pl-8 pr-3 text-[11px] text-[var(--text-muted)]">No threads yet.</p>
                       ) : (
                         <ul>
-                          {rows.map((session) => {
-                            const title = sessionRailTitle(session);
-                            const active = activeSessionId === session.id;
-                            const pinned = isSessionPinned(pinnedIds, session.id);
-                            const confirming = confirmingSessionId === session.id;
-                            const deleting = deletingSessionId === session.id;
-                            return (
-                              <li key={session.id}>
-                                <div
-                                  className={[
-                                    "group/thread flex min-h-[34px] w-full items-center gap-1.5 transition-colors",
-                                    active
-                                      ? "bg-[var(--bg-raised)] text-[var(--text-primary)]"
-                                      : "text-[var(--text-secondary)] hover:bg-[var(--bg-raised)]/50 hover:text-[var(--text-primary)]",
-                                  ].join(" ")}
-                                >
-                                  <button
-                                    type="button"
-                                    aria-current={active ? "page" : undefined}
-                                    onClick={() => onOpenSession(session)}
-                                    className="focus-ring flex min-h-[34px] min-w-0 flex-1 items-center gap-1.5 rounded py-2 pl-4 pr-1 text-left text-[12px]"
-                                  >
-                                    <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${statusDotClass(session.status)}`} aria-hidden />
-                                    <span className="min-w-0 flex-1 truncate" title={title}>{title}</span>
-                                    {confirming ? null : (
-                                      <span className="shrink-0 font-mono text-[10px] text-[var(--text-muted)] group-hover/thread:hidden">
-                                        {compactTime(session.updated_at || session.created_at)}
-                                      </span>
-                                    )}
-                                  </button>
-                                  {confirming ? (
-                                    <span className="flex shrink-0 items-center gap-1 pr-1">
-                                      <button
-                                        type="button"
-                                        onClick={() => setConfirmingSessionId(null)}
-                                        className="focus-ring rounded px-1.5 py-0.5 text-[10px] text-[var(--text-muted)] hover:bg-[var(--bg-hover)]"
-                                      >
-                                        Cancel
-                                      </button>
-                                      <button
-                                        type="button"
-                                        disabled={deleting}
-                                        onClick={async () => {
-                                          setDeletingSessionId(session.id);
-                                          try {
-                                            await onDeleteSession(session);
-                                            setConfirmingSessionId(null);
-                                          } finally {
-                                            setDeletingSessionId(null);
-                                          }
-                                        }}
-                                        className="focus-ring rounded border border-[var(--color-danger)]/50 bg-[var(--color-danger)]/10 px-1.5 py-0.5 text-[10px] text-[var(--color-danger)] hover:bg-[var(--color-danger)]/15 disabled:opacity-50"
-                                      >
-                                        {deleting ? "Deleting..." : "Delete"}
-                                      </button>
-                                    </span>
-                                  ) : (
-                                    <>
-                                      <button
-                                        type="button"
-                                        title={pinned ? "Unpin thread" : "Pin thread"}
-                                        aria-label={pinned ? `Unpin ${title}` : `Pin ${title}`}
-                                        aria-pressed={pinned}
-                                        onClick={() => togglePin(session.id)}
-                                        className={[
-                                          "touch-always-visible focus-ring grid h-5 w-5 shrink-0 place-items-center rounded transition-all hover:text-[var(--accent-presence)]",
-                                          pinned
-                                            ? "text-[var(--accent-presence)] opacity-100"
-                                            : "text-[var(--text-muted)] opacity-0 focus-visible:opacity-100 group-hover/thread:opacity-100",
-                                        ].join(" ")}
-                                      >
-                                        <Icon name={pinned ? "ph:bookmark-simple-fill" : "ph:bookmark-simple"} width={12} aria-hidden />
-                                      </button>
-                                      <button
-                                        type="button"
-                                        title="Delete thread"
-                                        aria-label={`Delete thread ${title}`}
-                                        onClick={() => setConfirmingSessionId(session.id)}
-                                        className="touch-always-visible focus-ring mr-1 grid h-5 w-5 shrink-0 place-items-center rounded text-[var(--text-muted)] opacity-0 transition-opacity hover:bg-[var(--bg-raised)] hover:text-[var(--color-danger)] focus-visible:opacity-100 group-hover/thread:opacity-100"
-                                      >
-                                        <Icon name="ph:x-bold" width={10} aria-hidden />
-                                      </button>
-                                    </>
-                                  )}
-                                </div>
-                              </li>
-                            );
-                          })}
+                          {rows.map((session) => (
+                            <li key={session.id}>
+                              <ThreadRow
+                                session={session}
+                                active={activeSessionId === session.id}
+                                pinned={isSessionPinned(pinnedIds, session.id)}
+                                confirming={confirmingSessionId === session.id}
+                                deleting={deletingSessionId === session.id}
+                                indent="folder"
+                                onOpen={() => onOpenSession(session)}
+                                onTogglePin={() => togglePin(session.id)}
+                                onRequestDelete={() => setConfirmingSessionId(session.id)}
+                                onCancelDelete={() => setConfirmingSessionId(null)}
+                                onConfirmDelete={() => void handleDeleteSession(session)}
+                              />
+                            </li>
+                          ))}
                           {group.sessions.length > THREADS_PREVIEW && !showAllByKey.has(key) && !hasSearch ? (
                             <li>
                               <button
