@@ -25,6 +25,7 @@ struct GitHubView: View {
                 .searchable(text: $query, prompt: "Search issues & PRs")
                 .refreshable { await load() }
                 .task { await load() }
+                .sidebarColumn()
         } detail: {
             if let selection {
                 NavigationStack { GitHubItemDetailView(item: selection) }
@@ -215,6 +216,7 @@ struct GitHubItemDetailView: View {
                 }
             }
             .padding(16)
+            .readableWidth(720)
         }
         .background(chrome.bgBase.ignoresSafeArea())
         .navigationTitle(item.number.map { "#\($0)" } ?? "Item")
