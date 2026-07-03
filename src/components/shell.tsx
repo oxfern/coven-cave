@@ -122,6 +122,7 @@ function ShellInner({
   splitSide = "right",
   onCloseSplit,
   onCloseSplitTile,
+  onPromoteSplitTile,
   onDropSplitPage,
   onNavOpenChange,
   panelShortcutOverrides,
@@ -136,6 +137,7 @@ function ShellInner({
   splitSide?: "left" | "right";
   onCloseSplit?: () => void;
   onCloseSplitTile?: (id: string) => void;
+  onPromoteSplitTile?: (id: string) => void;
   onDropSplitPage?: (mode: string, side: "left" | "right") => void;
   /** Mobile/tablet-only bottom tab bar. Rendered after `.shell-body`
    *  inside `.shell-frame`, but only when the viewport matches the
@@ -494,6 +496,7 @@ function ShellInner({
             secondarySide={splitSide}
             onClose={() => onCloseSplit?.()}
             onCloseTile={(id) => onCloseSplitTile?.(id)}
+            onPromoteTile={(id) => onPromoteSplitTile?.(id)}
             onDropPage={(mode, side) => onDropSplitPage?.(mode, side)}
             enableDrop={!isMobile}
           />
