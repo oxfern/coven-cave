@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
@@ -56,6 +56,31 @@ test("DMG packaging retries transient hdiutil resource-busy failures", () => {
     releaseScript.indexOf("create_dmg_with_retry") <
       releaseScript.indexOf('echo "==> Signing DMG container"'),
   );
+});
+
+test("DMG packaging applies a branded Finder background and icon layout", () => {
+  const dmgBackgroundUrl = new URL("../src-tauri/assets/dmg-background.png", import.meta.url);
+
+  assert.equal(existsSync(dmgBackgroundUrl), true, "branded DMG background asset should exist");
+  assert.deepEqual(
+    [...readFileSync(dmgBackgroundUrl).subarray(0, 8)],
+    [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
+    "DMG background should be a PNG",
+  );
+  assert.match(releaseScript, /DMG_BACKGROUND="src-tauri\/assets\/dmg-background\.png"/);
+  assert.match(releaseScript, /require_file "\$DMG_BACKGROUND"/);
+  assert.match(releaseScript, /mkdir -p "\$DMG_STAGE\/\.background"/);
+  assert.match(
+    releaseScript,
+    /cp "\$DMG_BACKGROUND" "\$DMG_STAGE\/\.background\/coven-cave-dmg\.png"/,
+  );
+  assert.match(releaseScript, /hdiutil create[\s\S]*-format UDRW[\s\S]*"\$DMG_RW_PATH"/);
+  assert.match(releaseScript, /hdiutil attach "\$DMG_RW_PATH"[\s\S]*-mountpoint "\$DMG_MOUNT"/);
+  assert.match(releaseScript, /set background picture of opts to file "\.background:coven-cave-dmg\.png"/);
+  assert.match(releaseScript, /set icon size of opts to 96/);
+  assert.match(releaseScript, /set position of item "CovenCave\.app" to \{168, 252\}/);
+  assert.match(releaseScript, /set position of item "Applications" to \{568, 252\}/);
+  assert.match(releaseScript, /hdiutil convert "\$DMG_RW_PATH"[\s\S]*-format UDZO[\s\S]*"\$DMG_PATH"/);
 });
 
 test("Linux release job forces AppImage extract-and-run mode", () => {

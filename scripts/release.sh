@@ -6,6 +6,7 @@ APP_NAME="CovenCave"
 BUILD_DIR="src-tauri/target/release/bundle"
 DMG_DIR="release"
 DMG_PATH="$DMG_DIR/${APP_NAME}-v${VERSION}.dmg"
+DMG_BACKGROUND="src-tauri/assets/dmg-background.png"
 # Use the SHA1 hash because the keychain has two identities sharing the
 # "Developer ID Application: Soul Protocol LLC (9LR8Z8UQ9X)" display name
 # and codesign refuses to disambiguate by name.
@@ -118,37 +119,88 @@ cleanup_dmg_artifacts() {
       awk -v app="$APP_NAME" '$NF ~ ("^/Volumes/" app) { print $NF }'
   )
 }
+style_dmg_finder_window() {
+  local mount="$1"
+
+  osascript <<APPLESCRIPT
+tell application "Finder"
+  tell disk "$APP_NAME"
+    open
+    set current view of container window to icon view
+    set toolbar visible of container window to false
+    set statusbar visible of container window to false
+    set bounds of container window to {120, 120, 780, 500}
+    set opts to icon view options of container window
+    set arrangement of opts to not arranged
+    set icon size of opts to 96
+    set background picture of opts to file ".background:coven-cave-dmg.png"
+    set position of item "CovenCave.app" to {168, 252}
+    set position of item "Applications" to {568, 252}
+    close
+    open
+    update without registering applications
+    delay 1
+  end tell
+end tell
+APPLESCRIPT
+
+  sync "$mount" >/dev/null 2>&1 || sync
+}
 create_dmg_with_retry() {
   local attempt
   local max_attempts=4
+  local temp_root
+  local DMG_RW_PATH
+  local DMG_MOUNT
   local output
   local status
 
   for attempt in $(seq 1 "$max_attempts"); do
     output=$(mktemp)
+    temp_root=$(mktemp -d -t covencave-dmg-build)
+    DMG_RW_PATH="$temp_root/${APP_NAME}-rw.dmg"
+    DMG_MOUNT="$temp_root/mount"
+    mkdir -p "$DMG_MOUNT"
     cleanup_dmg_artifacts
     set +e
-    hdiutil create \
-      -volname "${APP_NAME}" \
-      -srcfolder "$DMG_STAGE" \
-      -ov \
-      -format UDZO \
-      "$DMG_PATH" >"$output" 2>&1
+    {
+      hdiutil create \
+        -volname "${APP_NAME}" \
+        -srcfolder "$DMG_STAGE" \
+        -ov \
+        -format UDRW \
+        "$DMG_RW_PATH"
+      hdiutil attach "$DMG_RW_PATH" \
+        -readwrite \
+        -noverify \
+        -noautoopen \
+        -mountpoint "$DMG_MOUNT"
+      style_dmg_finder_window "$DMG_MOUNT"
+      hdiutil detach "$DMG_MOUNT"
+      hdiutil convert "$DMG_RW_PATH" \
+        -format UDZO \
+        -imagekey zlib-level=9 \
+        -o "$DMG_PATH"
+    } >"$output" 2>&1
     status=$?
     set -e
 
     if [ "$status" -eq 0 ]; then
+      rm -rf "$temp_root"
       rm -f "$output"
       return 0
     fi
 
-    echo "    hdiutil create failed on attempt ${attempt}/${max_attempts}:"
+    hdiutil detach "$DMG_MOUNT" -force >/dev/null 2>&1 || true
+    echo "    DMG packaging failed on attempt ${attempt}/${max_attempts}:"
     cat "$output"
     if ! grep -qi "Resource busy" "$output" || [ "$attempt" -eq "$max_attempts" ]; then
+      rm -rf "$temp_root"
       rm -f "$output"
       return "$status"
     fi
 
+    rm -rf "$temp_root"
     rm -f "$output"
     sleep "$((attempt * 3))"
   done
@@ -160,10 +212,12 @@ require_tool pnpm
 require_tool codesign
 require_tool xcrun
 require_tool hdiutil
+require_tool osascript
 require_tool spctl
 require_tool shasum
 require_tool openssl
 require_file "$NODE_ENTITLEMENTS"
+require_file "$DMG_BACKGROUND"
 
 if [ -n "$NOTARY_APPLE_ID" ] && [ -n "$NOTARY_APPLE_PASSWORD" ] && [ -n "$NOTARY_TEAM_ID" ]; then
   NOTARY_AUTH_MODE="apple-id"
@@ -270,6 +324,8 @@ DMG_STAGE=$(mktemp -d -t covencave-dmg)
 trap 'rm -rf "$DMG_STAGE"' EXIT
 cp -R "$APP_PATH" "$DMG_STAGE/"
 ln -s /Applications "$DMG_STAGE/Applications"
+mkdir -p "$DMG_STAGE/.background"
+cp "$DMG_BACKGROUND" "$DMG_STAGE/.background/coven-cave-dmg.png"
 create_dmg_with_retry
 
 echo "==> Signing DMG container"
