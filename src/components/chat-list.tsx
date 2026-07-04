@@ -767,9 +767,9 @@ export function ChatList({ familiar, familiars = [], sessions, daemonRunning, on
               type="button"
               onClick={() => onNewChat(undefined, fallbackFamiliarId)}
               disabled={!fallbackFamiliarId}
-              className="chat-list-new-button mt-0.5 flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-[var(--accent-presence)] px-3 text-[12px] font-semibold text-white shadow-[0_1px_8px_color-mix(in_oklch,var(--accent-presence)_35%,transparent)] transition-all hover:opacity-90 hover:shadow-[0_2px_12px_color-mix(in_oklch,var(--accent-presence)_50%,transparent)] active:scale-95"
+              className="chat-list-new-button mt-0.5 flex h-7 shrink-0 items-center gap-1 rounded-md bg-[var(--accent-presence)] px-2.5 text-[12px] font-semibold text-white shadow-[0_1px_6px_color-mix(in_oklch,var(--accent-presence)_30%,transparent)] transition-all hover:opacity-90 hover:shadow-[0_2px_10px_color-mix(in_oklch,var(--accent-presence)_42%,transparent)] active:scale-95"
             >
-              <Icon name="ph:plus-bold" width={11} />
+              <Icon name="ph:plus-bold" width={10} />
               Session
             </button>
           </div>
@@ -779,7 +779,7 @@ export function ChatList({ familiar, familiars = [], sessions, daemonRunning, on
         {/* Stats removed for sidepanel optimization */}
 
         {/* Search + filter row */}
-        <div className="mt-3 flex items-center gap-2 px-4 pb-3">
+        <div className="chat-list-toolbar flex items-center gap-1.5 px-3 py-1.5">
           {!compact && !sidebarOpen && (
             <button
               type="button"
@@ -787,13 +787,13 @@ export function ChatList({ familiar, familiars = [], sessions, daemonRunning, on
               title="Show sessions"
               aria-label="Show sessions"
               aria-expanded={false}
-              className="chat-list-reopen-rail focus-ring hidden h-8 w-8 shrink-0 place-items-center rounded-lg border border-[var(--border-hairline)] text-[var(--text-muted)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-secondary)] lg:grid"
+              className="chat-list-reopen-rail focus-ring hidden h-7 w-7 shrink-0 place-items-center rounded-md border border-[var(--border-hairline)] text-[var(--text-muted)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-secondary)] lg:grid"
             >
-              <Icon name="ph:sidebar-simple" width={14} aria-hidden />
+              <Icon name="ph:sidebar-simple" width={13} aria-hidden />
             </button>
           )}
-          <label className="chat-list-search-control flex h-8 min-w-0 flex-1 items-center gap-2 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-raised)]/60 px-2.5 transition-colors focus-within:border-[var(--accent-presence)]/50 focus-within:bg-[var(--bg-raised)]">
-            <Icon name="ph:magnifying-glass" width={13} className="shrink-0 text-[var(--text-muted)]" />
+          <label className="chat-list-search-control flex h-7 min-w-0 flex-1 items-center gap-1.5 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-raised)]/50 px-2 transition-colors focus-within:border-[var(--accent-presence)]/45 focus-within:bg-[var(--bg-raised)]">
+            <Icon name="ph:magnifying-glass" width={12} className="shrink-0 text-[var(--text-muted)]" />
             <input
               ref={searchRef}
               type="text"
@@ -823,59 +823,61 @@ export function ChatList({ familiar, familiars = [], sessions, daemonRunning, on
                 className="shrink-0 text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
                 aria-label="Clear chat search"
               >
-                <Icon name="ph:x" width={12} />
+                <Icon name="ph:x" width={11} />
               </button>
             )}
           </label>
 
-          <button
-            type="button"
-            onClick={() => setUnreadsOnly((v) => !v)}
-            title={unreadsOnly ? "Show all sessions" : "Show active only"}
-            aria-label={unreadsOnly ? "Show all sessions" : "Show active only"}
-            className={[
-              "chat-list-filter-button focus-ring grid h-8 w-8 shrink-0 place-items-center rounded-lg border transition-colors",
-              unreadsOnly
-                ? "border-[color-mix(in_oklch,var(--color-success)_40%,transparent)] bg-[color-mix(in_oklch,var(--color-success)_15%,transparent)] text-[var(--color-success)]"
-                : "border-[var(--border-hairline)] text-[var(--text-muted)] hover:border-[var(--border-strong)] hover:text-[var(--text-secondary)]",
-            ].join(" ")}
-          >
-            {unreadsOnly
-              ? <span className="h-2 w-2 rounded-full bg-[var(--color-success)]" />
-              : <Icon name="ph:circle" width={12} />}
-          </button>
+          <div className="chat-list-filter-cluster flex shrink-0 items-center gap-0.5 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-raised)]/35 p-px">
+            <button
+              type="button"
+              onClick={() => setUnreadsOnly((v) => !v)}
+              title={unreadsOnly ? "Show all sessions" : "Show active only"}
+              aria-label={unreadsOnly ? "Show all sessions" : "Show active only"}
+              className={[
+                "chat-list-filter-button focus-ring grid h-7 w-7 shrink-0 place-items-center rounded-md border border-transparent transition-colors",
+                unreadsOnly
+                  ? "bg-[color-mix(in_oklch,var(--color-success)_15%,transparent)] text-[var(--color-success)]"
+                  : "text-[var(--text-muted)] hover:bg-[var(--bg-raised)] hover:text-[var(--text-secondary)]",
+              ].join(" ")}
+            >
+              {unreadsOnly
+                ? <span className="h-2 w-2 rounded-full bg-[var(--color-success)]" />
+                : <Icon name="ph:circle" width={11} />}
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setShowArchived((v) => !v)}
-            aria-pressed={showArchived}
-            aria-label={showArchived ? "Hide archived sessions" : "Show archived sessions"}
-            title={showArchived ? "Hide archived sessions" : "Show archived sessions"}
-            className={[
-              "chat-list-filter-button focus-ring grid h-8 w-8 shrink-0 place-items-center rounded-lg border transition-colors",
-              showArchived
-                ? "border-[color-mix(in_oklch,var(--accent-presence)_40%,transparent)] bg-[color-mix(in_oklch,var(--accent-presence)_15%,transparent)] text-[var(--accent-presence)]"
-                : "border-[var(--border-hairline)] text-[var(--text-muted)] hover:border-[var(--border-strong)] hover:text-[var(--text-secondary)]",
-            ].join(" ")}
-          >
-            <Icon name="ph:archive" width={12} aria-hidden />
-          </button>
+            <button
+              type="button"
+              onClick={() => setShowArchived((v) => !v)}
+              aria-pressed={showArchived}
+              aria-label={showArchived ? "Hide archived sessions" : "Show archived sessions"}
+              title={showArchived ? "Hide archived sessions" : "Show archived sessions"}
+              className={[
+                "chat-list-filter-button focus-ring grid h-7 w-7 shrink-0 place-items-center rounded-md border border-transparent transition-colors",
+                showArchived
+                  ? "bg-[color-mix(in_oklch,var(--accent-presence)_15%,transparent)] text-[var(--accent-presence)]"
+                  : "text-[var(--text-muted)] hover:bg-[var(--bg-raised)] hover:text-[var(--text-secondary)]",
+              ].join(" ")}
+            >
+              <Icon name="ph:archive" width={11} aria-hidden />
+            </button>
 
-          <button
-            type="button"
-            onClick={() => { setSelectMode((v) => !v); setSelectedIds(new Set()); }}
-            aria-pressed={selectMode}
-            aria-label={selectMode ? "Exit select mode" : "Select multiple chats"}
-            title={selectMode ? "Exit select" : "Select multiple"}
-            className={[
-              "chat-list-filter-button focus-ring grid h-8 w-8 shrink-0 place-items-center rounded-lg border transition-colors",
-              selectMode
-                ? "border-[color-mix(in_oklch,var(--accent-presence)_40%,transparent)] bg-[color-mix(in_oklch,var(--accent-presence)_15%,transparent)] text-[var(--accent-presence)]"
-                : "border-[var(--border-hairline)] text-[var(--text-muted)] hover:border-[var(--border-strong)] hover:text-[var(--text-secondary)]",
-            ].join(" ")}
-          >
-            <Icon name="ph:list-checks-bold" width={12} aria-hidden />
-          </button>
+            <button
+              type="button"
+              onClick={() => { setSelectMode((v) => !v); setSelectedIds(new Set()); }}
+              aria-pressed={selectMode}
+              aria-label={selectMode ? "Exit select mode" : "Select multiple chats"}
+              title={selectMode ? "Exit select" : "Select multiple"}
+              className={[
+                "chat-list-filter-button focus-ring grid h-7 w-7 shrink-0 place-items-center rounded-md border border-transparent transition-colors",
+                selectMode
+                  ? "bg-[color-mix(in_oklch,var(--accent-presence)_15%,transparent)] text-[var(--accent-presence)]"
+                  : "text-[var(--text-muted)] hover:bg-[var(--bg-raised)] hover:text-[var(--text-secondary)]",
+              ].join(" ")}
+            >
+              <Icon name="ph:list-checks-bold" width={11} aria-hidden />
+            </button>
+          </div>
 
           {/* With the identity row hidden, the + Session CTA lives here */}
           {familiar && (
@@ -883,9 +885,9 @@ export function ChatList({ familiar, familiars = [], sessions, daemonRunning, on
               type="button"
               onClick={() => onNewChat(undefined, fallbackFamiliarId)}
               disabled={!fallbackFamiliarId}
-              className="chat-list-new-button flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-[var(--accent-presence)] px-3 text-[12px] font-semibold text-white shadow-[0_1px_8px_color-mix(in_oklch,var(--accent-presence)_35%,transparent)] transition-all hover:opacity-90 hover:shadow-[0_2px_12px_color-mix(in_oklch,var(--accent-presence)_50%,transparent)] active:scale-95"
+              className="chat-list-new-button flex h-7 shrink-0 items-center gap-1 rounded-md bg-[var(--accent-presence)] px-2.5 text-[12px] font-semibold text-white shadow-[0_1px_6px_color-mix(in_oklch,var(--accent-presence)_30%,transparent)] transition-all hover:opacity-90 hover:shadow-[0_2px_10px_color-mix(in_oklch,var(--accent-presence)_42%,transparent)] active:scale-95"
             >
-              <Icon name="ph:plus-bold" width={11} />
+              <Icon name="ph:plus-bold" width={10} />
               Session
             </button>
           )}

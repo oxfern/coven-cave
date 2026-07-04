@@ -24,9 +24,14 @@ Expected lifecycle:
 1. Fetch latest `origin/main`.
 2. Create a scoped worktree/branch from `origin/main`.
 3. Make the diff PR-shaped: focused scope, relevant tests, and no unrelated churn.
-4. Open a PR with the verification performed and any known follow-up work.
+4. Open a PR with the owning bead, context, verification performed, risks, and any known follow-up work.
 5. Merge through the protected PR path after checks pass.
 6. Delete the remote branch and remove the local worktree/branch.
+
+Familiar-owned PRs also follow the operating protocol in
+[`docs/workflows/beads-familiars.md`](beads-familiars.md), including draft PR
+creation, review handling, CI failure triage, merge authority, and bead close
+evidence.
 
 Branches should not remain open as:
 
@@ -53,4 +58,3 @@ Release work should start only after branch consolidation:
 2. Confirm `origin/main` is current and local `main` is clean.
 3. Run the release or TestFlight verification from `main`.
 4. Record the build/version, verification, upload artifact, and any App Store Connect status in the release handoff.
-

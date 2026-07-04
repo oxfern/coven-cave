@@ -3290,10 +3290,13 @@ textarea.required-inputs-control {
 .project-avatar {
   width: var(--pa-size, 20px);
   height: var(--pa-size, 20px);
+  min-width: var(--pa-size, 20px);
+  max-width: var(--pa-size, 20px);
+  flex: 0 0 var(--pa-size, 20px);
+  box-sizing: border-box;
   border-radius: calc(var(--pa-size, 20px) * 0.29);
   display: grid;
   place-items: center;
-  flex-shrink: 0;
   overflow: hidden;
   color: color-mix(in oklch, var(--tile, var(--accent-presence)) 65%, var(--text-primary));
   background: color-mix(in oklch, var(--tile, var(--accent-presence)) 14%, transparent);
@@ -8099,12 +8102,12 @@ a.mobile-handoff__link:hover {
 }
 
 .chat-scope-tabs--minimal {
-  min-height: 38px;
+  min-height: 32px;
   background: color-mix(in oklch, var(--bg-raised) 72%, transparent);
 }
 
 .chat-scope-tabs--minimal [role="tab"] {
-  padding-block: 8px;
+  padding-block: 6px;
 }
 
 /* Dynamic viewport units for layout shell + modals — `100vh` on iOS
@@ -11434,7 +11437,7 @@ a.dr-row:hover .dr-row__open { color: var(--accent-presence); transform: transla
   min-width: 0;
   text-align: left;
 }
-.ui-popover.cave-project-picker__popover .ui-popover-item > span {
+.ui-popover.cave-project-picker__popover .ui-popover-item > span:not(.project-avatar) {
   flex: 1 1 auto;
   min-width: 0;
 }

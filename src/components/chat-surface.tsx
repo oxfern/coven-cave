@@ -462,10 +462,11 @@ export function ChatSurface({
             Code keeps its Sessions/Memory pair because the comux pane owns
             project/file navigation there. */}
         {isCodeSurface ? (
-          <div className="chat-scope-tabs chat-scope-tabs--minimal flex shrink-0 items-center justify-between gap-3 border-b border-[var(--border-hairline)] px-4">
+          <div className="chat-scope-tabs chat-scope-tabs--minimal flex shrink-0 items-center justify-between gap-3 border-b border-[var(--border-hairline)] px-3">
             <div className="flex min-w-0 items-center gap-3">
               <Tabs<FamiliarsScope>
                 bordered={false}
+                size="sm"
                 value={scope}
                 onChange={(s) => {
                   setScope(s);
@@ -482,9 +483,10 @@ export function ChatSurface({
             <CodeInlineToolbar />
           </div>
         ) : !isCodeSurface ? (
-          <div className="chat-scope-tabs chat-scope-tabs--minimal flex shrink-0 items-center justify-between gap-3 border-b border-[var(--border-hairline)] px-4">
+          <div className="chat-scope-tabs chat-scope-tabs--minimal flex shrink-0 items-center justify-between gap-3 border-b border-[var(--border-hairline)] px-3">
             <Tabs<FamiliarsScope>
               bordered={false}
+              size="sm"
               value={scope}
               onChange={(s) => {
                 setScope(s);

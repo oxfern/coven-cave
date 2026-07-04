@@ -33,5 +33,10 @@ assert.doesNotMatch(homeComposer, /<select[\s\S]*?aria-label="Choose project"/, 
 // ── Styled ──────────────────────────────────────────────────────────────────
 assert.match(css, /\.cave-project-picker__trigger/, "trigger styled");
 assert.match(css, /\.cave-project-picker__option-root/, "root subtitle styled");
+assert.match(
+  css,
+  /\.ui-popover\.cave-project-picker__popover \.ui-popover-item > span:not\(\.project-avatar\)/,
+  "project picker grows the text column without stretching avatar badges",
+);
 
 console.log("project-picker.test.ts OK");

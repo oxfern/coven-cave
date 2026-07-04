@@ -1,9 +1,9 @@
 name: Close external PRs
 
-# Coven Cave is not accepting external pull requests through July 1st, 2026.
+# Coven Cave uses staged external PR intake during the July 4, 2026 event.
 # This workflow auto-closes any PR whose author isn't on the allow-list and
-# posts a friendly comment pointing them at CONTRIBUTING.md and the issue
-# tracker. See CONTRIBUTING.md for the full policy.
+# points them at CONTRIBUTING.md and the issue tracker. See CONTRIBUTING.md for
+# the full policy.
 
 on:
   pull_request_target:
@@ -37,13 +37,15 @@ jobs:
           body=$(cat <<EOF
           Thank you for the contribution, @${PR_AUTHOR}.
 
-          Coven Cave is **not accepting external pull requests through July 1st, 2026**.
+          Coven Cave is using **staged external PR intake** for the July 4, 2026 OpenCoven Independence Day PR Event.
           See [CONTRIBUTING.md](https://github.com/${REPO}/blob/main/CONTRIBUTING.md)
           for the full policy.
 
-          Closing this PR per the freeze. Please **open a GitHub issue** describing
-          the change instead — the technical context here will not be lost, and a
-          maintainer may pick the work up in-house or revisit it after July 1st.
+          This account is not currently on the PR allow-list, so automation is
+          closing the PR and routing the work through an issue first. Please
+          **open a GitHub issue** describing the change instead; the technical
+          context here will not be lost, and a maintainer may ask you to reopen
+          a focused PR when it fits the event queue.
 
           For security issues, please follow [SECURITY.md](https://github.com/${REPO}/blob/main/SECURITY.md)
           instead of opening a public issue.

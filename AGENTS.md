@@ -10,6 +10,13 @@
 - Do not push directly to `main`; use the protected PR path for repository changes.
 - Before release or TestFlight work, reconcile through clean `main`, then verify from that state.
 
+## PR-Ready Agent Handoff
+
+- Follow `docs/workflows/beads-familiars.md` for the familiar PR lifecycle: bead intake, branch/worktree setup, draft PR, review loop, CI failure handling, merge gate, cleanup, and bead close evidence.
+- Every PR must name the owning bead, source context, branch/worktree, meaningful changes, verification, risks, and follow-up work in `.github/PULL_REQUEST_TEMPLATE.md`.
+- Open draft PRs when useful for early CI, but mark ready only after the diff is scoped, the branch is current with `origin/main`, local verification is recorded, and known review blockers are handled.
+- For PR-heavy sessions, triage existing GitHub PRs against Beads before opening new work; every open PR should map to a bead or have a documented exception.
+- If merge authority is not explicit, leave the PR ready and report the exact merge command instead of merging.
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:970c3bf2 -->
 ## Beads Issue Tracker
