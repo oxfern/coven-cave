@@ -25,6 +25,8 @@ export const SUITES = {
     "src/lib/session-list-equal.test.ts",
     "src/lib/tool-edit-stat.test.ts",
     "src/lib/split-snap.test.ts",
+    "src/lib/code-rail.test.ts",
+    "src/lib/use-code-rail.test.ts",
     "src/lib/workspace-tiles.test.ts",
     "src/lib/page-drag.test.ts",
     "src/components/chat-view-render-cap.test.ts",
@@ -66,6 +68,8 @@ export const SUITES = {
     "src/lib/secret-validators.test.ts",
     "src/components/chat-project-sidebar-dnd.test.ts",
     "src/components/chat-sidebar-wiring.test.ts",
+    "src/components/workspace-rail.test.ts",
+    "src/components/workspace-rail-wiring.test.ts",
     "src/lib/workflows.test.ts",
     "src/lib/familiar-multiselect.test.ts",
     "src/lib/codex-automation-form.test.ts",
@@ -749,6 +753,7 @@ const STRIP_TYPES_MJS = new Set([
 // Tests whose import graph reaches the "@/..." path alias and therefore need
 // the alias-resolving loader (`scripts/test-alias-register.mjs`).
 const ALIAS_LOADER = new Set([
+  "src/lib/use-code-rail.test.ts",
   "src/lib/cave-familiar-images.test.ts",
   "src/lib/cave-project-images.test.ts",
   "src/lib/user-avatar-image.test.ts",
