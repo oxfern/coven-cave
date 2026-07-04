@@ -11430,8 +11430,13 @@ a.dr-row:hover .dr-row__open { color: var(--accent-presence); transform: transla
   display: flex;
   flex-direction: column;
   gap: 1px;
+  width: 100%;
   min-width: 0;
   text-align: left;
+}
+.ui-popover.cave-project-picker__popover .ui-popover-item > span {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .cave-project-picker__option-name {
   overflow: hidden;

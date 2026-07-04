@@ -410,11 +410,29 @@
   min-width: 0;
 }
 
+.hc-home-select-trigger {
+  border: 1px solid color-mix(in oklch, var(--accent-presence) 25%, transparent);
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+}
+
+.hc-home-select-trigger:hover:not(:disabled),
+.home-composer-card .cave-project-picker__trigger.hc-project-selector:hover:not(:disabled) {
+  background: color-mix(in oklch, var(--accent-presence) 14%, var(--bg-base));
+  border-color: color-mix(in oklch, var(--accent-presence) 36%, transparent);
+}
+
+.hc-home-select-trigger:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
 .hc-command-select {
   gap: 6px;
 }
 
-.hc-runtime-model-selector .hc-familiar-select {
+.hc-runtime-model-selector {
   max-width: 172px;
 }
 
@@ -442,32 +460,66 @@
   object-fit: cover;
 }
 
-.hc-familiar-select {
+.hc-home-select-value {
+  min-width: 0;
+  max-width: 132px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 12px;
   font-weight: 500;
   color: var(--text-primary);
-  background: transparent;
-  border: none;
-  outline: none;
-  appearance: none;
-  -webkit-appearance: none;
-  cursor: pointer;
   padding-right: 14px;
-  max-width: 132px;
 }
 
-/* The dropdown popup of a native <select> is drawn on the OS's own surface
-   (white on macOS), but its <option>/<optgroup> text inherits the control's
-   light dark-theme color — leaving every item invisible until the OS hover
-   highlight lands on it. Pin an explicit, theme-aware background + color so the
-   model / familiar / project menus stay readable in every theme. */
-.hc-familiar-select option,
-.hc-familiar-select optgroup {
-  background-color: var(--bg-elevated);
-  color: var(--text-primary);
+.hc-runtime-model-selector .hc-home-select-value {
+  max-width: 142px;
 }
-.hc-familiar-select optgroup {
-  font-weight: 600;
+
+.hc-home-select-popover {
+  min-width: 220px;
+}
+
+.hc-home-select-group + .hc-home-select-group {
+  border-top: 1px solid var(--border-hairline);
+  margin-top: 4px;
+  padding-top: 4px;
+}
+
+.hc-home-select-popover .ui-popover-item > span {
+  min-width: 0;
+}
+
+.hc-home-select-option {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  text-align: left;
+}
+
+.hc-home-select-option__label,
+.hc-home-select-option__detail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hc-home-select-option__detail {
+  font-size: 10.5px;
+  color: var(--text-secondary);
+}
+
+.home-composer-card .cave-project-picker__trigger.hc-project-selector {
+  min-height: 30px;
+  max-width: 178px;
+  padding: 3px 22px 3px 6px;
+  border-color: color-mix(in oklch, var(--accent-presence) 25%, transparent);
+  border-radius: 8px;
+  background: color-mix(in oklch, var(--accent-presence) 10%, var(--bg-base));
+}
+
+.home-composer-card .cave-project-picker__trigger.hc-project-selector .cave-project-picker__trigger-label {
+  max-width: 132px;
 }
 
 .hc-select-caret {
@@ -571,11 +623,23 @@
     height: 20px;
   }
 
-  .hc-familiar-select {
+  .hc-home-select-value {
     width: 100%;
     max-width: none;
     min-height: var(--touch-target);
     font-size: 15px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .home-composer-card .cave-project-picker__trigger.hc-project-selector {
+    max-width: none;
+    min-height: var(--touch-target);
+    padding: 0 34px 0 12px;
+  }
+
+  .home-composer-card .cave-project-picker__trigger.hc-project-selector .cave-project-picker__trigger-label {
+    max-width: none;
   }
 
   .hc-select-caret {
@@ -647,12 +711,25 @@
     display: none;
   }
 
-  .hc-familiar-select {
+  .hc-home-select-value {
     width: 100%;
     max-width: none;
     min-width: 0;
     min-height: var(--touch-target);
     font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .home-composer-card .cave-project-picker__trigger.hc-project-selector {
+    width: 100%;
+    max-width: none;
+    min-height: var(--touch-target);
+    padding: 0 30px 0 10px;
+  }
+
+  .home-composer-card .cave-project-picker__trigger.hc-project-selector .cave-project-picker__trigger-label {
+    max-width: none;
   }
 
   .hc-dest-pills {
@@ -928,7 +1005,8 @@
 .home-feed__retry,
 .hc-add-btn,
 .hc-model-chip,
-.hc-familiar-select {
+.hc-home-select-trigger,
+.home-composer-card .cave-project-picker__trigger.hc-project-selector {
   outline: none;
 }
 .hc-dest-pill:focus-visible,
@@ -938,12 +1016,13 @@
 .home-feed__refresh:focus-visible,
 .home-feed__retry:focus-visible,
 .hc-add-btn:focus-visible,
-.hc-model-chip:focus-visible {
+.hc-model-chip:focus-visible,
+.hc-home-select-trigger:focus-visible,
+.home-composer-card .cave-project-picker__trigger.hc-project-selector:focus-visible {
   outline: var(--ring-width) solid var(--ring-focus);
   outline-offset: var(--ring-offset);
 }
-/* The familiar selector is a pill (glyph + borderless native <select>). Ring the
-   whole pill when the select is focused, not just the inner rectangular control. */
+/* Ring the whole selector pill when a custom trigger is focused. */
 .hc-familiar-selector:focus-within {
   outline: var(--ring-width) solid var(--ring-focus);
   outline-offset: var(--ring-offset);
