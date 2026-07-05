@@ -47,7 +47,7 @@ export function buildReviewArtifact(opts: {
  * and appending new privileged familiar instructions.
  */
 function asPromptData(value: string): string {
-  return value.replace(/```/g, "`\u200b``");
+  return value.replace(/`{3,}/g, (fence) => fence.replace(/`/g, "`\u200b"));
 }
 
 /** Build the prompt that asks a familiar to review the PR (Markdown output). */
