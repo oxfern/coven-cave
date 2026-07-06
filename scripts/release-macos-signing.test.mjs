@@ -85,11 +85,31 @@ test("DMG packaging applies a branded Finder background and icon layout", () => 
 
 test("Linux release job forces AppImage extract-and-run mode", () => {
   assert.match(releaseWorkflow, /APPIMAGE_EXTRACT_AND_RUN:/);
-  assert.match(releaseWorkflow, /matrix\.platform == 'ubuntu-22\.04'/);
+  assert.match(releaseWorkflow, /matrix\.family == 'linux'/);
   assert.match(
     releaseWorkflow,
-    /label: Linux \(AppImage\)[\s\S]*args: '-vv --bundles appimage/,
+    /label: Linux \(AppImage, ubuntu-22\.04\)[\s\S]*args: '-vv --bundles appimage/,
     "Linux AppImage packaging should keep verbose linuxdeploy logs available",
+  );
+  assert.match(
+    releaseWorkflow,
+    /label: Linux \(AppImage, ubuntu-24\.04\)[\s\S]*args: '-vv --bundles appimage/,
+    "Linux AppImage packaging should also build on ubuntu-24.04",
+  );
+});
+
+test("Linux AppImage dist suffix is applied before updater signing", () => {
+  assert.match(releaseWorkflow, /dist_suffix: ubuntu-22\.04/);
+  assert.match(releaseWorkflow, /dist_suffix: ubuntu-24\.04/);
+  assert.match(releaseWorkflow, /name: Suffix Linux AppImage with dist tag/);
+  assert.match(releaseWorkflow, /mv "\$src" "\$dst"/);
+  assert.match(releaseWorkflow, /gh release upload "\$RELEASE_TAG" "\$dst" --clobber/);
+  assert.match(releaseWorkflow, /gh release delete-asset "\$RELEASE_TAG" "\$base" --yes \|\| true/);
+  assert.match(releaseWorkflow, /pnpm exec tauri signer sign "\$artifact"/);
+  assert(
+    releaseWorkflow.indexOf("name: Suffix Linux AppImage with dist tag") <
+      releaseWorkflow.indexOf("name: Sign Linux/Windows updater artifact"),
+    "AppImage must be renamed before signing so final assets have matching .sig names",
   );
 });
 
