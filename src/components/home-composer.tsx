@@ -35,7 +35,10 @@ import {
 } from "@/lib/slash-prompt";
 import { BUILTIN_PROMPTS } from "@/lib/prompt-defaults";
 import { SkillDetailPreview } from "@/components/skill-detail-preview";
-import { readComposerHistory, writeComposerHistory } from "@/lib/composer-history";
+import { useAutogrowTextarea } from "@/lib/use-autogrow-textarea";
+import { readComposerDraft, useDraftPersistence } from "@/lib/use-composer-draft";
+import { useComposerHistory } from "@/lib/use-composer-history";
+import { useAttachmentStaging } from "@/lib/use-attachment-staging";
 import { canonicalize, matchSlash, type SlashCommand } from "@/lib/slash-commands";
 import { useArchivedFamiliars } from "@/lib/cave-familiar-archive";
 import { useResolvedFamiliars } from "@/lib/familiar-resolve";
@@ -56,10 +59,7 @@ import { useHomeModelState } from "@/components/home/use-home-model-state";
 import { useAnnouncer } from "@/components/ui/live-region";
 import {
   attachmentIcon,
-  fileToAttachment,
-  hasDraggedFiles,
   type ChatAttachment,
-  type ComposerAttachment,
 } from "@/lib/chat-attachments";
 import {
   COMMAND_CONTROL_DEFAULTS,
@@ -121,25 +121,6 @@ const HOME_HISTORY_KEY = "cave:home-composer-history:v1";
 // Composer textarea growth cap — mirrors the chat composer (13 lines + padding).
 const HOME_COMPOSER_MAX_HEIGHT = 332;
 
-function readHomeDraft(): string {
-  if (typeof window === "undefined") return "";
-  try {
-    return window.localStorage.getItem(HOME_DRAFT_KEY) ?? "";
-  } catch {
-    return "";
-  }
-}
-
-function writeHomeDraft(text: string) {
-  if (typeof window === "undefined") return;
-  try {
-    if (text) window.localStorage.setItem(HOME_DRAFT_KEY, text);
-    else window.localStorage.removeItem(HOME_DRAFT_KEY);
-  } catch {
-    /* best effort */
-  }
-}
-
 // ─── HomeComposer ─────────────────────────────────────────────────────────────
 
 export function HomeComposer({
@@ -153,11 +134,12 @@ export function HomeComposer({
   onSlash,
   onOpenSession,
 }: Props) {
-  const [text, setText] = useState(() => readHomeDraft());
+  const [text, setText] = useState(() => readComposerDraft(HOME_DRAFT_KEY));
   const [destination, setDestination] = useState<Destination>("chat");
   const [sending, setSending] = useState(false);
-  const [history, setHistory] = useState<string[]>(() => readComposerHistory(HOME_HISTORY_KEY));
-  const [historyIdx, setHistoryIdx] = useState<number>(-1);
+  // Persisted ↑/↓ prompt-history recall — shared hook (use-composer-history);
+  // home records slash commands in history too, so pushes stay at call sites.
+  const { push: pushHistory, handleArrowKey } = useComposerHistory(HOME_HISTORY_KEY);
   const [slashIdx, setSlashIdx] = useState(0);
   // Escape dismisses the inline slash/model/skill menus (they otherwise stay
   // open purely as a function of the text). Reset whenever the text changes so
@@ -174,13 +156,23 @@ export function HomeComposer({
   // so ids must be unique across simultaneously mounted composers.
   const slashListboxId = useId();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  // Attachments staged in the composer; handed to the opened chat on submit.
-  const [attachments, setAttachments] = useState<ComposerAttachment[]>([]);
+  // Attachments staged in the composer (cap 10, mirroring the chat composer);
+  // handed to the opened chat on submit. Shared hook — home adds the limit
+  // toast + SR announce and defers refocus a tick (the chat composer is silent).
+  const {
+    attachments,
+    addFiles,
+    removeAttachment,
+    clearAttachments,
+    handlePaste,
+    dropActive,
+    dropHandlers,
+  } = useAttachmentStaging({
+    onLimit: () => onToast("Attachment limit reached (10)."),
+    onAdded: (count) => announce(`Attached ${count} file${count === 1 ? "" : "s"}`, "polite"),
+    focus: () => setTimeout(() => textareaRef.current?.focus(), 0),
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
-  // Drag-and-drop onto the composer card. dragDepthRef counts enter/leave pairs
-  // so moving across child elements doesn't flicker the overlay.
-  const [dropActive, setDropActive] = useState(false);
-  const dragDepthRef = useRef(0);
   // Prompt enhancement (mirrors the chat composer's Enhance): the pre-enhance
   // text is kept so the user can revert in one tap.
   const [enhanceStatus, setEnhanceStatus] = useState<"idle" | "loading" | "error">("idle");
@@ -413,18 +405,10 @@ export function HomeComposer({
   }, [text]);
 
   // Persist the draft so a reload restores it; cleared when the input empties
-  // (e.g. after a send), so sent prompts don't reappear.
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      writeHomeDraft(text);
-    }, HOME_DRAFT_WRITE_DELAY_MS);
-    return () => window.clearTimeout(timer);
-  }, [text]);
+  // (e.g. after a send), so sent prompts don't reappear. Shared hook —
+  // debounce + remove-on-empty semantics live in use-composer-draft.
+  const { clearNow: clearDraft } = useDraftPersistence(HOME_DRAFT_KEY, text, HOME_DRAFT_WRITE_DELAY_MS);
 
-  // Persist the ↑/↓ prompt-history so past prompts survive a reload.
-  useEffect(() => {
-    writeComposerHistory(HOME_HISTORY_KEY, history);
-  }, [history]);
 
   // Focus on mount — unless a modal dialog (e.g. the onboarding wizard) is
   // open. The 80ms delay means this fires AFTER a dialog's focus trap has
@@ -444,42 +428,10 @@ export function HomeComposer({
     return m;
   }, [familiars]);
 
-  // Auto-grow textarea — chat-composer sizing: start at one line, grow with
-  // content, and hand overflow to a scrollbar past the max-height cap.
-  const autoGrow = useCallback(() => {
-    const el = textareaRef.current;
-    if (!el) return;
-    const computedMaxHeight = Number.parseFloat(window.getComputedStyle(el).maxHeight);
-    const maxHeight = Number.isFinite(computedMaxHeight) ? computedMaxHeight : HOME_COMPOSER_MAX_HEIGHT;
-    el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, maxHeight)}px`;
-    el.style.overflowY = el.scrollHeight > maxHeight ? "auto" : "hidden";
-  }, []);
-
-  useEffect(() => {
-    autoGrow();
-  }, [text, autoGrow]);
-
-  // ── Attachments ──────────────────────────────────────────────────────────
-  // Paperclip stages picked files (cap 10, mirroring the chat composer); they
-  // ride along to the opened chat on submit. Slash commands still open by
-  // typing "/" in the composer, so the retired "+" launcher loses nothing.
-  const addFiles = useCallback(async (files: FileList | File[] | null) => {
-    if (!files?.length) return;
-    const room = Math.max(0, 10 - attachments.length);
-    const selected = Array.from(files).slice(0, room);
-    if (selected.length === 0) {
-      onToast("Attachment limit reached (10).");
-      return;
-    }
-    const next = await Promise.all(selected.map(fileToAttachment));
-    setAttachments((prev) => [...prev, ...next]);
-    announce(`Attached ${next.length} file${next.length === 1 ? "" : "s"}`, "polite");
-    setTimeout(() => textareaRef.current?.focus(), 0);
-  }, [attachments.length, onToast, announce]);
-  const removeAttachment = useCallback((id: string) => {
-    setAttachments((prev) => prev.filter((a) => a.id !== id));
-  }, []);
+  // Auto-grow textarea — chat-composer sizing, shared hook (use-autogrow-textarea).
+  const { resize: autoGrow } = useAutogrowTextarea(textareaRef, text, {
+    fallbackMaxHeight: HOME_COMPOSER_MAX_HEIGHT,
+  });
 
   // ── Enhance ──────────────────────────────────────────────────────────────
   // Rewrite the draft through the shared pure enhancer (mirrors the chat
@@ -564,8 +516,7 @@ export function HomeComposer({
       const command = canonicalize(rawCmd) ?? rawCmd;
       const args = rest.join(" ");
       if (command === "/model") {
-        setHistory((prev) => [...prev, prompt]);
-        setHistoryIdx(-1);
+        pushHistory(prompt);
         setText("");
         if (!args.trim()) {
           const current =
@@ -585,8 +536,7 @@ export function HomeComposer({
         return;
       }
       if (command === "/skill" || command === "/skills") {
-        setHistory((prev) => [...prev, prompt]);
-        setHistoryIdx(-1);
+        pushHistory(prompt);
         if (!args.trim()) {
           setText("");
           onToast("Type /skill <name>, or pick one from the menu.");
@@ -602,8 +552,7 @@ export function HomeComposer({
         return;
       }
       if (command === "/prompt" || command === "/prompts") {
-        setHistory((prev) => [...prev, prompt]);
-        setHistoryIdx(-1);
+        pushHistory(prompt);
         if (!args.trim()) {
           setText("");
           onToast("Type /prompt <name>, or pick one from the menu.");
@@ -619,8 +568,7 @@ export function HomeComposer({
         return;
       }
       if (onSlash) {
-        setHistory((prev) => [...prev, prompt]);
-        setHistoryIdx(-1);
+        pushHistory(prompt);
         setText("");
         onSlash(command, args);
       } else {
@@ -629,8 +577,7 @@ export function HomeComposer({
       return;
     }
 
-    setHistory((prev) => [...prev, prompt]);
-    setHistoryIdx(-1);
+    pushHistory(prompt);
     setSending(true);
     try {
       switch (destination) {
@@ -648,8 +595,8 @@ export function HomeComposer({
           // composer, which cancels the debounced draft-write effect before it
           // can flush the empty text — otherwise the sent prompt resurrects on
           // the next Home visit.
-          writeHomeDraft("");
-          setAttachments([]);
+          clearDraft();
+          clearAttachments();
           setEnhanceOriginal(null);
           onStartChat(prompt, selectedFamiliarId, selectedProject?.root ?? null, {
             initialControls: { thinkingEffort, responseSpeed, ...(runtimeHost ? { runtimeHost } : {}) },
@@ -677,7 +624,7 @@ export function HomeComposer({
             }),
           });
           const json = (await res.json().catch(() => ({ ok: false }))) as { ok: boolean };
-          if (json.ok) { setText(""); writeHomeDraft(""); setAttachments([]); setEnhanceOriginal(null); onNavigateToBoard(); }
+          if (json.ok) { setText(""); clearDraft(); clearAttachments(); setEnhanceOriginal(null); onNavigateToBoard(); }
           else onToast("Board card creation failed.");
           break;
         }
@@ -697,6 +644,8 @@ export function HomeComposer({
     responseSpeed,
     sending,
     attachments,
+    clearDraft,
+    pushHistory,
     handleSelectModel,
     onSlash,
     onStartChat,
@@ -803,31 +752,12 @@ export function HomeComposer({
         void handleSubmit();
         return;
       }
-      if (e.key === "ArrowUp" && text === "" && history.length > 0) {
-        e.preventDefault();
-        const idx = historyIdx < history.length - 1 ? historyIdx + 1 : historyIdx;
-        setHistoryIdx(idx);
-        setText(history[history.length - 1 - idx] ?? "");
-        return;
-      }
-      if (e.key === "ArrowDown" && historyIdx > 0) {
-        e.preventDefault();
-        const idx = historyIdx - 1;
-        setHistoryIdx(idx);
-        setText(history[history.length - 1 - idx] ?? "");
-        return;
-      }
-      if (e.key === "ArrowDown" && historyIdx === 0) {
-        e.preventDefault();
-        setHistoryIdx(-1);
-        setText("");
-      }
+      if (handleArrowKey(e, text, setText)) return;
     },
     [
       handleSubmit,
       handleSelectModel,
-      history,
-      historyIdx,
+      handleArrowKey,
       modelMenuActive,
       modelOptions,
       skillMenuActive,
@@ -958,28 +888,7 @@ export function HomeComposer({
 
         <div
           className={`home-composer-card cave-composer-panel${dropActive ? " is-drop-active" : ""}`}
-          onDragEnter={(e) => {
-            if (!hasDraggedFiles(e.dataTransfer.types)) return;
-            e.preventDefault();
-            dragDepthRef.current += 1;
-            setDropActive(true);
-          }}
-          onDragOver={(e) => {
-            if (!hasDraggedFiles(e.dataTransfer.types)) return;
-            e.preventDefault();
-          }}
-          onDragLeave={(e) => {
-            if (!hasDraggedFiles(e.dataTransfer.types)) return;
-            dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
-            if (dragDepthRef.current === 0) setDropActive(false);
-          }}
-          onDrop={(e) => {
-            dragDepthRef.current = 0;
-            setDropActive(false);
-            if (!hasDraggedFiles(e.dataTransfer.types)) return;
-            e.preventDefault();
-            void addFiles(e.dataTransfer.files);
-          }}
+          {...dropHandlers}
         >
           {dropActive ? (
             <div className="hc-drop-overlay" aria-hidden="true">
@@ -999,7 +908,7 @@ export function HomeComposer({
               <button
                 type="button"
                 className="hc-attachments-clear"
-                onClick={() => setAttachments([])}
+                onClick={clearAttachments}
                 disabled={sending}
               >
                 Clear all
@@ -1041,19 +950,7 @@ export function HomeComposer({
           rows={1}
           value={text}
           onChange={(e) => { setText(e.target.value); if (enhanceOriginal != null) setEnhanceOriginal(null); }}
-          onPaste={(e) => {
-            // Paste-to-attach: clipboard files (screenshots, copied files) stage
-            // as attachments. Only preventDefault when files were consumed so a
-            // plain-text paste is untouched.
-            const pastedFiles = Array.from(e.clipboardData.items)
-              .filter((item) => item.kind === "file")
-              .map((item) => item.getAsFile())
-              .filter((file): file is File => file !== null);
-            if (pastedFiles.length > 0) {
-              e.preventDefault();
-              void addFiles(pastedFiles);
-            }
-          }}
+          onPaste={handlePaste}
           onKeyDown={handleKeyDown}
           disabled={sending}
           aria-label="Ask anything"

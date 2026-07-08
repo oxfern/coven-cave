@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const source = await readFile(new URL("./home-composer.tsx", import.meta.url), "utf8");
+const draftHook = await readFile(new URL("../lib/use-composer-draft.ts", import.meta.url), "utf8");
+const attachHook = await readFile(new URL("../lib/use-attachment-staging.ts", import.meta.url), "utf8");
 const homeSelect = await readFile(new URL("./home/home-select.tsx", import.meta.url), "utf8");
 const modelStateHook = await readFile(new URL("./home/use-home-model-state.ts", import.meta.url), "utf8");
 const css = await readFile(new URL("../styles/home-composer.css", import.meta.url), "utf8");
@@ -183,7 +185,7 @@ assert.match(
 
 assert.match(
   source,
-  /if \(json\.ok\) \{ setText\(""\); writeHomeDraft\(""\); setAttachments\(\[\]\); setEnhanceOriginal\(null\); onNavigateToBoard\(\); \}/,
+  /if \(json\.ok\) \{ setText\(""\); clearDraft\(\); clearAttachments\(\); setEnhanceOriginal\(null\); onNavigateToBoard\(\); \}/,
   "HomeComposer should clear staged attachments (and the persisted draft) after a successful board card creation",
 );
 
@@ -469,15 +471,17 @@ assert.doesNotMatch(
 
 // The home prompt draft survives a reload: text initialises from localStorage,
 // is written back on change, and is removed when emptied (e.g. after a send).
+// The plumbing lives in the shared use-composer-draft hook (parity with chat);
+// these pins hold the call sites, the hook test holds the semantics.
 assert.match(
   source,
-  /const \[text, setText\] = useState\(\(\) => readHomeDraft\(\)\)/,
+  /const \[text, setText\] = useState\(\(\) => readComposerDraft\(HOME_DRAFT_KEY\)\)/,
   "home composer text initialises from the persisted draft",
 );
 assert.match(
   source,
-  /useEffect\(\(\) => \{\s*const timer = window\.setTimeout\(\(\) => \{\s*writeHomeDraft\(text\);\s*\}, HOME_DRAFT_WRITE_DELAY_MS\);\s*return \(\) => window\.clearTimeout\(timer\);\s*\}, \[text\]\)/,
-  "the home draft is debounced so mobile typing does not write localStorage on every keystroke",
+  /const \{ clearNow: clearDraft \} = useDraftPersistence\(HOME_DRAFT_KEY, text, HOME_DRAFT_WRITE_DELAY_MS\)/,
+  "the home draft persists through the shared debounced hook (no per-keystroke localStorage writes)",
 );
 // A send unmounts the composer (mode switches to chat/board), which cancels the
 // debounced draft-write before it can flush the cleared text — so the submit
@@ -485,25 +489,26 @@ assert.match(
 // resurrects on the next Home visit.
 assert.match(
   source,
-  /setText\(""\);\s*(?:\/\/[^\n]*\n\s*)*writeHomeDraft\(""\);/,
+  /setText\(""\);\s*(?:\/\/[^\n]*\n\s*)*clearDraft\(\);/,
   "the chat send path clears the persisted draft synchronously (not only via the debounced effect)",
 );
 assert.match(
-  source,
-  /if \(text\) window\.localStorage\.setItem\(HOME_DRAFT_KEY, text\);\s*else window\.localStorage\.removeItem\(HOME_DRAFT_KEY\)/,
-  "an emptied home draft removes the key (sent prompts don't reappear on reload)",
+  draftHook,
+  /if \(text\) window\.localStorage\.setItem\(key, text\);\s*else window\.localStorage\.removeItem\(key\)/,
+  "an emptied draft removes the key (sent prompts don't reappear on reload)",
 );
 
-// The ↑/↓ prompt-history also survives a reload.
+// The ↑/↓ prompt-history also survives a reload — shared hook; the pin holds
+// the keyed call site, the hook test holds the recall/persist semantics.
 assert.match(
   source,
-  /const \[history, setHistory\] = useState<string\[\]>\(\(\) => readComposerHistory\(HOME_HISTORY_KEY\)\)/,
-  "home prompt history initialises from the persisted recall stack",
+  /const \{ push: pushHistory, handleArrowKey \} = useComposerHistory\(HOME_HISTORY_KEY\)/,
+  "home prompt history rides the shared persisted recall stack",
 );
 assert.match(
   source,
-  /writeComposerHistory\(HOME_HISTORY_KEY, history\)/,
-  "home prompt history is persisted when it changes",
+  /if \(handleArrowKey\(e, text, setText\)\) return;/,
+  "↑/↓ recall is delegated to the shared hook from the home keyboard handler",
 );
 
 // ── Attachments ─────────────────────────────────────────────────────────────
@@ -552,14 +557,22 @@ assert.match(
 // Enhance undo UI removed from toolbar; revertEnhance callback remains in code.
 
 // ── Drag-and-drop attachments ───────────────────────────────────────────────
+// The staging state machine (cap, dragDepth-counted overlay, files-win paste)
+// lives in the shared use-attachment-staging hook; these pins hold home's
+// wiring, the hook test holds the semantics.
 assert.match(
   source,
-  /onDrop=\{\(e\) => \{[\s\S]*?hasDraggedFiles\(e\.dataTransfer\.types\)[\s\S]*?void addFiles\(e\.dataTransfer\.files\)/,
-  "dropping files onto the composer card routes through addFiles",
+  /home-composer-card cave-composer-panel\$\{dropActive \? " is-drop-active" : ""\}`\}\s*\{\.\.\.dropHandlers\}/,
+  "the composer card is the drop target (drag handlers attach to the card, not the page)",
 );
 assert.match(
-  source,
-  /onDragEnter=\{\(e\) => \{[\s\S]*?setDropActive\(true\)/,
+  attachHook,
+  /onDrop: \(e: DragEvent\) => \{[\s\S]*?hasDraggedFiles\(e\.dataTransfer\.types\)[\s\S]*?void addFiles\(e\.dataTransfer\.files\)/,
+  "dropping files routes through addFiles",
+);
+assert.match(
+  attachHook,
+  /onDragEnter: \(e: DragEvent\) => \{[\s\S]*?setDropActive\(true\)/,
   "a file drag arms the drop overlay",
 );
 assert.match(
@@ -571,8 +584,13 @@ assert.match(
 // ── Paste-to-attach ─────────────────────────────────────────────────────────
 assert.match(
   source,
-  /onPaste=\{\(e\) => \{[\s\S]*?e\.clipboardData\.items[\s\S]*?item\.kind === "file"[\s\S]*?void addFiles\(pastedFiles\)/,
-  "pasting files into the composer stages them as attachments",
+  /onPaste=\{handlePaste\}/,
+  "pasting into the composer routes through the shared files-win-over-text handler",
+);
+assert.match(
+  source,
+  /onLimit: \(\) => onToast\("Attachment limit reached \(10\)\."\)/,
+  "home surfaces the attachment cap as a toast (chat stays silent — deliberate asymmetry)",
 );
 
 // ── Image attachment thumbnails ─────────────────────────────────────────────
@@ -595,7 +613,7 @@ assert.match(
 );
 assert.match(
   source,
-  /hc-attachments-clear[\s\S]*?onClick=\{\(\) => setAttachments\(\[\]\)\}[\s\S]*?Clear all/,
+  /hc-attachments-clear[\s\S]*?onClick=\{clearAttachments\}[\s\S]*?Clear all/,
   "a Clear all control empties the staged attachments",
 );
 
@@ -642,6 +660,6 @@ assert.match(
 );
 assert.match(
   source,
-  /Attached \$\{next\.length\} file/,
+  /onAdded: \(count\) => announce\(`Attached \$\{count\} file/,
   "adding attachments is announced (there is no toast on the success path)",
 );
