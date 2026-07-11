@@ -126,7 +126,7 @@ test("Windows release reports and enforces bounded MSI tables", async () => {
   }
   assert.match(budget, /\$rowBudget = 64/);
   assert.match(budget, /\$byteBudget = 256MB/);
-  assert.match(budget, /expected exactly one server\.tar\.gz File row/);
+  assert.match(budget, /expected exactly one server\.tar\.zst File row/);
   assert.match(
     workflow,
     /Build Windows MSI without publishing[\s\S]*Measure and enforce Windows MSI budget[\s\S]*Publish validated Windows MSI/,

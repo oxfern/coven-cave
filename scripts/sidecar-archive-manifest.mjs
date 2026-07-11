@@ -2,13 +2,12 @@
 import { createHash } from "node:crypto";
 import { once } from "node:events";
 import { createReadStream, createWriteStream } from "node:fs";
-import { lstat, mkdir, open, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { pipeline } from "node:stream/promises";
 import { fileURLToPath } from "node:url";
-import { createGzip } from "node:zlib";
+import zlib from "node:zlib";
 
-export const SIDECAR_ARCHIVE_SCHEMA_VERSION = 2;
+export const SIDECAR_ARCHIVE_SCHEMA_VERSION = 3;
 export const SIDECAR_ARCHIVE_BUDGETS = Object.freeze({
   archiveBytes: 80 * 1024 * 1024,
   unpackedBytes: 200 * 1024 * 1024 - 1,
@@ -166,27 +165,17 @@ function paddingFor(size) {
   return remainder === 0 ? 0 : TAR_BLOCK_BYTES - remainder;
 }
 
-async function normalizeGzipHeader(archivePath) {
-  const archive = await open(archivePath, "r+");
-  try {
-    const header = Buffer.alloc(10);
-    const { bytesRead } = await archive.read(header, 0, header.length, 0);
-    if (
-      bytesRead !== header.length
-      || header[0] !== 0x1f
-      || header[1] !== 0x8b
-      || header[2] !== 8
-      || header[3] !== 0
-    ) {
-      throw new Error("sidecar archive writer produced an unsupported gzip header");
-    }
-    header.writeUInt32LE(0, 4);
-    header[9] = 0xff;
-    await archive.write(header, 0, header.length, 0);
-    await archive.sync();
-  } finally {
-    await archive.close();
+async function compressCanonicalTar(canonicalTarPath, archivePath) {
+  if (typeof zlib.zstdCompressSync !== "function") {
+    throw new Error("sidecar zstd publication requires Node.js 24 or newer");
   }
+  const canonicalTar = await readFile(canonicalTarPath);
+  const compressed = zlib.zstdCompressSync(canonicalTar, {
+    params: {
+      [zlib.constants.ZSTD_c_compressionLevel]: 3,
+    },
+  });
+  await writeFile(archivePath, compressed, { flag: "wx" });
 }
 
 export async function writeDeterministicSidecarArchive(sourceRoot, archivePath) {
@@ -194,18 +183,18 @@ export async function writeDeterministicSidecarArchive(sourceRoot, archivePath) 
   const metrics = await collectArchiveEntries(source);
   await mkdir(path.dirname(archivePath), { recursive: true });
   await rm(archivePath, { force: true });
+  const canonicalTarPath = `${archivePath}.${process.pid}.canonical.tar`;
+  await rm(canonicalTarPath, { force: true });
 
   // The payload digest covers the canonical uncompressed tar bytes. The
-  // archive digest separately authenticates the exact gzip resource.
+  // archive digest separately authenticates its deterministic zstd envelope.
   const payloadHash = createHash("sha256");
   const treeHash = createHash("sha256");
-  const gzip = createGzip({ level: 9 });
-  const output = createWriteStream(archivePath, { flags: "wx" });
-  const piping = pipeline(gzip, output);
+  const output = createWriteStream(canonicalTarPath, { flags: "wx" });
   const writeTar = async (chunk) => {
     payloadHash.update(chunk);
-    if (!gzip.write(chunk)) {
-      await once(gzip, "drain");
+    if (!output.write(chunk)) {
+      await once(output, "drain");
     }
   };
   const writePadding = async (size) => {
@@ -259,14 +248,15 @@ export async function writeDeterministicSidecarArchive(sourceRoot, archivePath) 
       }
     }
     await writeTar(Buffer.alloc(TAR_END_BYTES));
-    gzip.end();
-    await piping;
-    await normalizeGzipHeader(archivePath);
+    output.end();
+    await once(output, "close");
+    await compressCanonicalTar(canonicalTarPath, archivePath);
   } catch (error) {
-    gzip.destroy();
-    await piping.catch(() => {});
+    output.destroy();
     await rm(archivePath, { force: true });
     throw error;
+  } finally {
+    await rm(canonicalTarPath, { force: true });
   }
 
   const [{ size: archiveBytes }, archiveSha256] = await Promise.all([
@@ -288,6 +278,7 @@ export async function writeSidecarArchiveManifest(sourceRoot, archivePath, outpu
   const archive = await writeDeterministicSidecarArchive(sourceRoot, archivePath);
   const manifest = {
     schemaVersion: SIDECAR_ARCHIVE_SCHEMA_VERSION,
+    archiveFormat: "tar.zst",
     payloadSha256: archive.payloadSha256,
     treeSha256: archive.treeSha256,
     archiveSha256: archive.archiveSha256,

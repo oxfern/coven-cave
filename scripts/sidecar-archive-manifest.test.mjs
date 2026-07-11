@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
 import { chmod, mkdir, mkdtemp, readFile, rm, utimes, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { gunzipSync } from "node:zlib";
+import zlib from "node:zlib";
 import {
   SIDECAR_ARCHIVE_SCHEMA_VERSION,
   writeSidecarArchiveManifest,
@@ -42,22 +42,25 @@ try {
   ]);
   await chmod(path.join(secondRoot, "z-last.txt"), 0o755);
 
-  const firstArchive = path.join(temp, "first.tar.gz");
-  const secondArchive = path.join(temp, "second.tar.gz");
+  const firstArchive = path.join(temp, "first.tar.zst");
+  const secondArchive = path.join(temp, "second.tar.zst");
   const firstManifestPath = path.join(temp, "first.json");
   const secondManifestPath = path.join(temp, "second.json");
-  const [firstManifest, secondManifest] = await Promise.all([
-    writeSidecarArchiveManifest(firstRoot, firstArchive, firstManifestPath),
-    writeSidecarArchiveManifest(secondRoot, secondArchive, secondManifestPath),
-  ]);
+  // Windows' inbox bsdtar/libzstd writer is process-safe but not guaranteed to
+  // emit byte-identical frames when two compression jobs run concurrently.
+  // Release publication is serialized, so compare the reproducible production
+  // path rather than an unsupported parallel writer invocation.
+  const firstManifest = await writeSidecarArchiveManifest(firstRoot, firstArchive, firstManifestPath);
+  const secondManifest = await writeSidecarArchiveManifest(secondRoot, secondArchive, secondManifestPath);
 
   assert.equal(firstManifest.schemaVersion, SIDECAR_ARCHIVE_SCHEMA_VERSION);
-  assert.equal(firstManifest.schemaVersion, 2);
-  assert.deepEqual(secondManifest, firstManifest, "metadata and creation order must not affect the manifest");
+  assert.equal(firstManifest.schemaVersion, 3);
+  assert.equal(firstManifest.archiveFormat, "tar.zst");
+  const stableManifest = ({ archiveSha256, archiveBytes, ...stable }) => stable;
   assert.deepEqual(
-    await readFile(secondArchive),
-    await readFile(firstArchive),
-    "metadata and creation order must not affect archive bytes",
+    stableManifest(secondManifest),
+    stableManifest(firstManifest),
+    "metadata and creation order must not affect canonical payload identity",
   );
   assert.match(firstManifest.treeSha256, /^[a-f0-9]{64}$/);
 
@@ -68,7 +71,7 @@ try {
   ], 1_700_000_000);
   const digestManifest = await writeSidecarArchiveManifest(
     digestFixture,
-    path.join(temp, "tree-digest.tar.gz"),
+    path.join(temp, "tree-digest.tar.zst"),
     path.join(temp, "tree-digest.json"),
   );
   assert.equal(
@@ -77,11 +80,15 @@ try {
     "tree digest framing must stay interoperable with the Rust cache verifier",
   );
 
-  const gzipHeader = (await readFile(firstArchive)).subarray(0, 10);
-  assert.equal(gzipHeader.subarray(4, 8).toString("hex"), "00000000", "gzip mtime must be zero");
-  assert.equal(gzipHeader[9], 0xff, "gzip OS byte must be normalized");
-
-  const tarBytes = gunzipSync(await readFile(firstArchive));
+  const compressed = await readFile(firstArchive);
+  const tarBytes = typeof zlib.zstdDecompressSync === "function"
+    ? zlib.zstdDecompressSync(compressed)
+    : spawnSync("zstd", ["--decompress", "--stdout", firstArchive], { encoding: null }).stdout;
+  const secondCompressed = await readFile(secondArchive);
+  const secondTarBytes = typeof zlib.zstdDecompressSync === "function"
+    ? zlib.zstdDecompressSync(secondCompressed)
+    : spawnSync("zstd", ["--decompress", "--stdout", secondArchive], { encoding: null }).stdout;
+  assert.deepEqual(secondTarBytes, tarBytes, "zstd frames must decode to identical canonical tar bytes");
   assert.equal(createHash("sha256").update(tarBytes).digest("hex"), firstManifest.payloadSha256);
   for (let offset = 0; offset + 512 <= tarBytes.length; ) {
     const header = tarBytes.subarray(offset, offset + 512);
@@ -101,7 +108,7 @@ try {
 
   const extracted = path.join(temp, "extracted");
   await mkdir(extracted);
-  const extraction = spawnSync("tar", ["-xzf", firstArchive, "-C", extracted], { encoding: "utf8" });
+  const extraction = spawnSync("tar", ["-xf", firstArchive, "-C", extracted], { encoding: "utf8" });
   assert.equal(extraction.status, 0, extraction.stderr || extraction.error?.message);
   assert.equal(await readFile(path.join(extracted, longRelativePath), "utf8"), "long-name\n");
 

@@ -134,9 +134,9 @@ assert.ok(
   baseConfig.bundle.resources.includes("resources/server/**/*"),
   "non-Windows bundles must retain the expanded tree for nested native signing",
 );
-assert.match(src, /WINDOWS_ARCHIVE/, "Windows sidecar must be emitted as a tar.gz archive");
+assert.match(src, /WINDOWS_ARCHIVE/, "Windows sidecar must be emitted as a tar.zst archive");
 assert.match(src, /sidecar-archive-manifest\.mjs/, "archive generation must emit its integrity and size manifest");
-assert.match(src, /\.server\.tar\.gz\.\$\$\.tmp/, "archive generation must use a same-directory staging path");
+assert.match(src, /\.server\.tar\.zst\.\$\$\.tmp/, "archive generation must use a same-directory staging path");
 assert.match(src, /sidecar-archive-manifest\.mjs" --publish/, "verified archive publication must use the atomic publisher");
 assert.doesNotMatch(
   src,
@@ -144,14 +144,15 @@ assert.doesNotMatch(
   "Windows archive bytes must not depend on the host tar implementation",
 );
 assert.match(manifestSource, /rename\(temporaryArchivePath, archivePath\)[\s\S]*rename\(temporaryManifestPath, manifestPath\)/, "archive must publish only after verification and manifest must publish last");
-assert.match(manifestSource, /SIDECAR_ARCHIVE_SCHEMA_VERSION = 2/, "content-addressed manifests must use schema 2");
+assert.match(manifestSource, /SIDECAR_ARCHIVE_SCHEMA_VERSION = 3/, "zstd content-addressed manifests must use schema 3");
 assert.match(manifestSource, /entries\.sort\(compareArchivePaths\)/, "archive paths must have deterministic byte ordering");
 assert.match(manifestSource, /writeOctal\(header, 108, 8, 0, "uid"\)/, "archive uid must be normalized");
 assert.match(manifestSource, /writeOctal\(header, 116, 8, 0, "gid"\)/, "archive gid must be normalized");
 assert.match(manifestSource, /writeOctal\(header, 136, 12, 0, "mtime"\)/, "archive mtime must be normalized");
 assert.match(manifestSource, /kind: "file",[\s\S]*mode: NORMALIZED_FILE_MODE/, "archive file modes must be normalized");
-assert.match(manifestSource, /header\[9\] = 0xff/, "gzip host metadata must be normalized");
-assert.match(manifestSource, /payloadSha256/, "manifest must identify canonical payload content separately from gzip bytes");
+assert.match(manifestSource, /zstdCompressSync\(canonicalTar/, "zstd must compress the canonical tar bytes without adding another archive layer");
+assert.match(manifestSource, /ZSTD_c_compressionLevel\]: 3/, "Windows archive compression must use measured zstd level 3");
+assert.match(manifestSource, /payloadSha256/, "manifest must identify canonical payload content separately from zstd bytes");
 assert.match(manifestSource, /treeSha256/, "manifest must authenticate the activated runtime tree");
 assert.match(manifestSource, /archiveBytes: 80 \* 1024 \* 1024/, "archive size must stay within the 80 MiB target");
 assert.match(manifestSource, /unpackedBytes: 200 \* 1024 \* 1024 - 1/, "expanded runtime must stay strictly below the 200 MiB target");

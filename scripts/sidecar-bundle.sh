@@ -24,9 +24,9 @@ esac
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DEST="$ROOT/src-tauri/resources/server"
 WINDOWS_ARCHIVE_DIR="$ROOT/src-tauri/resources/server-archive"
-WINDOWS_ARCHIVE="$WINDOWS_ARCHIVE_DIR/server.tar.gz"
+WINDOWS_ARCHIVE="$WINDOWS_ARCHIVE_DIR/server.tar.zst"
 WINDOWS_ARCHIVE_MANIFEST="$WINDOWS_ARCHIVE_DIR/manifest.json"
-WINDOWS_ARCHIVE_TEMP="$WINDOWS_ARCHIVE_DIR/.server.tar.gz.$$.tmp"
+WINDOWS_ARCHIVE_TEMP="$WINDOWS_ARCHIVE_DIR/.server.tar.zst.$$.tmp"
 WINDOWS_ARCHIVE_MANIFEST_TEMP="$WINDOWS_ARCHIVE_DIR/.manifest.json.$$.tmp"
 BUNDLED_NODE_DIR="$ROOT/src-tauri/resources/node"
 PNPM_STAGE="$(mktemp -d "${TMPDIR:-/tmp}/coven-cave-sidecar-pnpm.XXXXXX")"
@@ -212,7 +212,7 @@ write_windows_sidecar_archive() {
   # and manifest paths remain untouched until the replacement passes all
   # integrity and size gates.
   find "$WINDOWS_ARCHIVE_DIR" -maxdepth 1 -type f -mmin +1440 \( \
-    -name '.server.tar.gz.*.tmp' -o \
+    -name '.server.tar.zst.*.tmp' -o \
     -name '.manifest.json.*.tmp' \
   \) -delete
 
@@ -232,7 +232,7 @@ write_windows_sidecar_archive() {
 
   echo "==> archiving Windows sidecar -> $WINDOWS_ARCHIVE_TEMP"
   # The Node writer emits a canonical tar stream (byte-sorted paths, fixed
-  # uid/gid/mtime/modes) and normalizes the gzip header. Identical payloads
+  # uid/gid/mtime/modes) and wraps it in deterministic zstd level 3. Identical payloads
   # therefore keep the same digest/cache key across release builds and hosts.
   node "$ROOT/scripts/sidecar-archive-manifest.mjs" --publish \
     "$DEST" "$WINDOWS_ARCHIVE_TEMP" \

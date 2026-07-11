@@ -1,4 +1,3 @@
-use flate2::read::GzDecoder;
 use fs2::FileExt as Fs2FileExt;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -8,8 +7,10 @@ use std::path::{Component, Path, PathBuf};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tauri::Manager;
+use zstd::stream::read::Decoder as ZstdDecoder;
 
-const MANIFEST_SCHEMA_VERSION: u32 = 2;
+const MANIFEST_SCHEMA_VERSION: u32 = 3;
+const ARCHIVE_FORMAT: &str = "tar.zst";
 const MAX_ARCHIVE_BYTES: u64 = 80 * 1024 * 1024;
 const MAX_UNPACKED_BYTES: u64 = 200 * 1024 * 1024 - 1;
 const MAX_FILE_COUNT: u64 = 4_999;
@@ -31,6 +32,7 @@ const REQUIRED_RUNTIME_PATHS: [&str; 7] = [
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct SidecarArchiveManifest {
     schema_version: u32,
+    archive_format: String,
     payload_sha256: String,
     tree_sha256: String,
     archive_sha256: String,
@@ -123,6 +125,12 @@ fn read_manifest(path: &Path) -> Result<SidecarArchiveManifest, String> {
             manifest.schema_version
         ));
     }
+    if manifest.archive_format != ARCHIVE_FORMAT {
+        return Err(format!(
+            "unsupported sidecar archive format {}",
+            manifest.archive_format
+        ));
+    }
     if !is_sha256(&manifest.payload_sha256) {
         return Err("sidecar manifest has an invalid payload SHA-256 digest".to_string());
     }
@@ -179,7 +187,7 @@ fn sha256_file(path: &Path) -> Result<String, String> {
 
 fn cache_key(manifest: &SidecarArchiveManifest) -> String {
     // Cache identity follows canonical payload content, not the app version or
-    // gzip envelope, so unchanged runtimes survive consecutive upgrades.
+    // zstd envelope, so unchanged runtimes survive consecutive upgrades.
     format!("v{}-{}", manifest.schema_version, manifest.payload_sha256)
 }
 
@@ -478,7 +486,8 @@ fn extract_archive(
             archive_path.display()
         )
     })?;
-    let decoder = GzDecoder::new(archive_file);
+    let decoder = ZstdDecoder::new(archive_file)
+        .map_err(|error| format!("could not initialize sidecar zstd decoder: {error}"))?;
     let hashing_reader = HashingReader::new(decoder);
     let mut archive = tar::Archive::new(hashing_reader);
     let entries = archive
@@ -804,7 +813,7 @@ pub(crate) fn prepare_sidecar_runtime(
     resource_dir: &Path,
 ) -> Result<PathBuf, String> {
     let archive_dir = resource_dir.join("resources").join("server-archive");
-    let archive_path = archive_dir.join("server.tar.gz");
+    let archive_path = archive_dir.join("server.tar.zst");
     let manifest_path = archive_dir.join("manifest.json");
     let cache_root = app
         .path()
@@ -824,7 +833,7 @@ pub(crate) fn prepare_sidecar_runtime(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use flate2::{write::GzEncoder, Compression};
+    use zstd::stream::{read::Decoder as TestZstdDecoder, write::Encoder as ZstdEncoder};
     use std::sync::{
         atomic::{AtomicUsize, Ordering},
         Arc, Barrier,
@@ -866,23 +875,25 @@ mod tests {
             fs::write(destination, contents).expect("write fixture file");
         }
 
-        let archive_path = root.join("server.tar.gz");
+        let archive_path = root.join("server.tar.zst");
         let archive_file = File::create(&archive_path).expect("create archive");
-        let encoder = GzEncoder::new(archive_file, Compression::default());
+        let encoder = ZstdEncoder::new(archive_file, 3).expect("create zstd encoder");
         let mut archive = tar::Builder::new(encoder);
         archive
             .append_dir_all(".", &source)
             .expect("append fixture tree");
         let encoder = archive.into_inner().expect("finish tar");
-        encoder.finish().expect("finish gzip");
+        encoder.finish().expect("finish zstd");
         let archive_file = File::open(&archive_path).expect("open archive for payload digest");
-        let mut payload_reader = HashingReader::new(GzDecoder::new(archive_file));
+        let decoder = TestZstdDecoder::new(archive_file).expect("open fixture zstd stream");
+        let mut payload_reader = HashingReader::new(decoder);
         io::copy(&mut payload_reader, &mut io::sink()).expect("hash fixture payload");
         let payload_sha256 = payload_reader.finish();
         let (file_count, directory_count, unpacked_bytes, tree_sha256) =
             tree_metrics(&source).expect("fixture metrics");
         let manifest = SidecarArchiveManifest {
             schema_version: MANIFEST_SCHEMA_VERSION,
+            archive_format: ARCHIVE_FORMAT.to_string(),
             payload_sha256,
             tree_sha256,
             archive_sha256: sha256_file(&archive_path).expect("fixture digest"),
@@ -896,6 +907,7 @@ mod tests {
             &manifest_path,
             serde_json::to_vec(&serde_json::json!({
                 "schemaVersion": manifest.schema_version,
+                "archiveFormat": manifest.archive_format.clone(),
                 "payloadSha256": manifest.payload_sha256.clone(),
                 "treeSha256": manifest.tree_sha256.clone(),
                 "archiveSha256": manifest.archive_sha256.clone(),
@@ -949,7 +961,7 @@ mod tests {
         fs::create_dir_all(&version_a).expect("create version a");
         fs::create_dir_all(&version_b).expect("create version b");
         let (archive_a, manifest_a, manifest) = write_fixture(&version_a);
-        let archive_b = version_b.join("server.tar.gz");
+        let archive_b = version_b.join("server.tar.zst");
         let manifest_b = version_b.join("manifest.json");
         fs::copy(&archive_a, &archive_b).expect("copy archive to version b");
         fs::copy(&manifest_a, &manifest_b).expect("copy manifest to version b");
@@ -1117,7 +1129,7 @@ mod tests {
     fn rejects_a_corrupt_archive_without_activating_it() {
         let root = test_root("corrupt");
         let (archive, manifest, _) = write_fixture(&root);
-        fs::write(&archive, b"not a gzip archive").expect("corrupt archive");
+        fs::write(&archive, b"not a zstd archive").expect("corrupt archive");
         let cache = root.join("cache");
         let error = prepare_runtime_from_files(&archive, &manifest, &cache)
             .expect_err("corrupt archive must fail");
@@ -1260,7 +1272,7 @@ mod tests {
         let archive_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("resources")
             .join("server-archive");
-        let archive = archive_dir.join("server.tar.gz");
+        let archive = archive_dir.join("server.tar.zst");
         let manifest = archive_dir.join("manifest.json");
         if !archive.is_file() || !manifest.is_file() {
             // Plain cargo test/check runs do not build release resources. The

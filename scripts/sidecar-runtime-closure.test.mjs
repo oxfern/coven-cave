@@ -171,9 +171,9 @@ try {
     await packageFixture(path.dirname(dependencyRoot), "sharp");
   }
 
-  const publishedArchive = path.join(fixture, "published", "server.tar.gz");
+  const publishedArchive = path.join(fixture, "published", "server.tar.zst");
   const publishedManifest = path.join(fixture, "published", "manifest.json");
-  const interruptedArchive = path.join(fixture, "published", ".server.tar.gz.interrupted.tmp");
+  const interruptedArchive = path.join(fixture, "published", ".server.tar.zst.interrupted.tmp");
   await mkdir(path.dirname(publishedArchive), { recursive: true });
   await writeFile(publishedArchive, "previous archive\n");
   await writeFile(publishedManifest, "previous manifest\n");
@@ -192,7 +192,7 @@ try {
   assert.equal(await readFile(publishedManifest, "utf8"), "previous manifest\n");
   assert.ok(await missing(interruptedArchive), "failed publication must remove its staged archive");
 
-  const verifiedArchive = path.join(fixture, "published", ".server.tar.gz.verified.tmp");
+  const verifiedArchive = path.join(fixture, "published", ".server.tar.zst.verified.tmp");
   await writeFile(verifiedArchive, "verified candidate archive\n");
   const published = await publishSidecarArchive(
     path.join(projectRoot, "public"),
