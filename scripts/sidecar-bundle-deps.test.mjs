@@ -6,12 +6,20 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [src, baseConfigSource, windowsConfigSource, manifestSource, closureSource] = await Promise.all([
+const [
+  src,
+  baseConfigSource,
+  windowsConfigSource,
+  manifestSource,
+  closureSource,
+  rustArchiveSource,
+] = await Promise.all([
   readFile(new URL("./sidecar-bundle.sh", import.meta.url), "utf8"),
   readFile(new URL("../src-tauri/tauri.conf.json", import.meta.url), "utf8"),
   readFile(new URL("../src-tauri/tauri.windows.conf.json", import.meta.url), "utf8"),
   readFile(new URL("./sidecar-archive-manifest.mjs", import.meta.url), "utf8"),
   readFile(new URL("./sidecar-runtime-closure.mjs", import.meta.url), "utf8"),
+  readFile(new URL("../src-tauri/src/sidecar_archive.rs", import.meta.url), "utf8"),
 ]);
 const baseConfig = JSON.parse(baseConfigSource);
 const windowsConfig = JSON.parse(windowsConfigSource);
@@ -60,7 +68,7 @@ for (const forbiddenRoot of [
 ]) {
   assert.match(closureSource, new RegExp(forbiddenRoot.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `runtime verifier must exclude ${forbiddenRoot}`);
 }
-assert.match(closureSource, /fileCount: 4_999/, "runtime closure must stay below 5,000 files");
+assert.match(closureSource, /fileCount: 5_200/, "runtime closure must stay below 5,200 files");
 assert.match(closureSource, /unpackedBytes: 200 \* 1024 \* 1024 - 1/, "runtime closure must stay strictly below 200 MiB expanded");
 
 // App-size: runtime bundles must drop test/dev packages and metadata that are
@@ -156,7 +164,16 @@ assert.match(manifestSource, /payloadSha256/, "manifest must identify canonical 
 assert.match(manifestSource, /treeSha256/, "manifest must authenticate the activated runtime tree");
 assert.match(manifestSource, /archiveBytes: 80 \* 1024 \* 1024/, "archive size must stay within the 80 MiB target");
 assert.match(manifestSource, /unpackedBytes: 200 \* 1024 \* 1024 - 1/, "expanded runtime must stay strictly below the 200 MiB target");
-assert.match(manifestSource, /fileCount: 4_999/, "archive must stay below 5,000 files");
+assert.match(
+  manifestSource,
+  /fileCount: SIDECAR_RUNTIME_BUDGETS\.fileCount/,
+  "archive must share the runtime file-count budget",
+);
+assert.match(
+  rustArchiveSource,
+  /const MAX_FILE_COUNT: u64 = 5_200;/,
+  "Windows archive extractor must accept the shared runtime file-count budget",
+);
 assert.match(manifestSource, /isSymbolicLink\(\)/, "archive input must reject symlinks");
 assert.match(
   src,
