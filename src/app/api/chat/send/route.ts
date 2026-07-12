@@ -1498,6 +1498,14 @@ export async function POST(req: Request) {
       const STDOUT_ERR_KEEP = 10;
       const ERR_LINE_RE =
         /\b(error|failed|denied|unauthori[sz]ed|invalid|refused|missing|not found|401|403|500)\b/i;
+      const recordStdoutErrorTail = (text: string) => {
+        for (const part of text.split(/\r?\n/)) {
+          const trimmed = part.trim();
+          if (!trimmed || !ERR_LINE_RE.test(trimmed)) continue;
+          stdoutErrTail.push(trimmed);
+          if (stdoutErrTail.length > STDOUT_ERR_KEEP) stdoutErrTail.shift();
+        }
+      };
 
       // Set to true when the harness reports its resume failed (rollout DB
       // miss). Triggers a single transparent retry without --continue.
@@ -1528,6 +1536,7 @@ export async function POST(req: Request) {
               is_error?: boolean;
               total_cost_usd?: number;
               usage?: unknown;
+              text?: string;
               message?: {
                 content?: Array<{
                   type?: string;
@@ -1576,6 +1585,19 @@ export async function POST(req: Request) {
                 usage: parseStreamJsonUsage(ev.usage),
                 costUsd: parseCostUsd(ev.total_cost_usd),
               };
+            } else if (ev.type === "output" && typeof ev.text === "string") {
+              // Coven's Windows captured-piped Codex path wraps transcript
+              // bytes as stream-json `output` events so stdout remains a
+              // valid JSONL protocol. Preserve the original chunk boundaries:
+              // AssistantFilter buffers partial lines and exposes only the
+              // assistant phase after stripping Codex's startup transcript.
+              const cleaned = resolveBackspaces(stripAnsi(ev.text));
+              recordStdoutErrorTail(cleaned);
+              const filtered = assistantFilter.push(cleaned);
+              if (filtered) {
+                assistantText += filtered;
+                push({ kind: "assistant_chunk", text: filtered });
+              }
             } else if (
               ev.type === "assistant" &&
               Array.isArray(ev.message?.content)
@@ -1622,12 +1644,9 @@ export async function POST(req: Request) {
           }
         }
         const cleaned = resolveBackspaces(stripAnsi(line));
-        // Snapshot error-looking stdout lines for the empty-response diagnostic.
         const trimmed = cleaned.trim();
-        if (trimmed && ERR_LINE_RE.test(trimmed)) {
-          stdoutErrTail.push(trimmed);
-          if (stdoutErrTail.length > STDOUT_ERR_KEEP) stdoutErrTail.shift();
-        }
+        // Snapshot error-looking stdout lines for the empty-response diagnostic.
+        recordStdoutErrorTail(cleaned);
         // Surface tool-use hook lines as structured events so the chat can
         // render a tool block. Hooks are still discarded by AssistantFilter
         // below, so this is purely additive.
