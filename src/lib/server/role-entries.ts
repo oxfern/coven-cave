@@ -26,12 +26,23 @@ export type RoleEntry = {
   activatedAt?: string;
 };
 
+function compareStrings(a: string, b: string): number {
+  if (a < b) return -1;
+  if (a > b) return 1;
+  return 0;
+}
+
 export async function loadRoleEntries(): Promise<RoleEntry[]> {
   const roles: RoleEntry[] = [];
   const cfg = await loadConfig();
   const roleConfigMap = new Map(cfg.roles.map((r) => [`${r.familiar}:${r.id}`, r]));
+  const roleFiles = (await discoverRoleFiles()).sort((a, b) => (
+    compareStrings(a.familiar, b.familiar)
+    || compareStrings(a.id, b.id)
+    || compareStrings(a.path, b.path)
+  ));
 
-  for (const roleFile of await discoverRoleFiles()) {
+  for (const roleFile of roleFiles) {
     try {
       const text = await readFile(roleFile.path, "utf8");
       const fm = parseRoleFrontmatter(text);

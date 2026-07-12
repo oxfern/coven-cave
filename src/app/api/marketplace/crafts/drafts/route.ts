@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { buildCraftDraftFromRoles } from "@/lib/craft-draft";
+import { buildCraftDraftFromRoles, compareCraftDraftRoles } from "@/lib/craft-draft";
 import { readCraftDrafts, saveCraftDraft } from "@/lib/server/craft-drafts";
 import { loadRoleEntries } from "@/lib/server/role-entries";
 import { readJsonBody, rejectNonLocalRequest } from "@/lib/server/api-security";
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
   const roleIdSet = new Set(roleIds);
   const roles = (await loadRoleEntries()).filter((role) => (
     role.familiar === familiar && roleIdSet.has(role.id)
-  ));
+  )).sort(compareCraftDraftRoles);
   if (roles.length === 0) {
     return NextResponse.json({ ok: false, error: "no matching roles" }, { status: 404 });
   }
