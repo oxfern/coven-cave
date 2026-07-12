@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { readCraftDrafts, saveCraftDraft } from "./craft-drafts.ts";
@@ -38,6 +38,18 @@ try {
   });
 
   await saveCraftDraft(draft, { covenHome: root });
+  await writeFile(
+    path.join(root, "craft-drafts", "broken.json"),
+    JSON.stringify({
+      schemaVersion: "opencoven.craft-draft.v1",
+      id: "broken",
+      plugin: {
+        ...draft.plugin,
+        id: "broken",
+        draftId: "broken",
+      },
+    }),
+  );
   const drafts = await readCraftDrafts({ covenHome: root });
 
   assert.equal(drafts.length, 1);

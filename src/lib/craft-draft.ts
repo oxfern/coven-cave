@@ -50,6 +50,19 @@ export type CraftDraft = {
 
 type MutableLedger = Map<string, { roles: Set<string>; origins: Set<string> }>;
 
+function compareStrings(a: string, b: string): number {
+  if (a < b) return -1;
+  if (a > b) return 1;
+  return 0;
+}
+
+export function compareCraftDraftRoles(a: CraftDraftRoleInput, b: CraftDraftRoleInput): number {
+  const aName = (a.name.trim() || a.id.trim()).toLowerCase();
+  const bName = (b.name.trim() || b.id.trim()).toLowerCase();
+  return compareStrings(aName, bName)
+    || compareStrings(a.id.trim().toLowerCase(), b.id.trim().toLowerCase());
+}
+
 function titleCase(value: string): string {
   return value
     .replace(/[-_]+/g, " ")
@@ -139,9 +152,10 @@ export function buildCraftDraftFromRoles({
   const cleanFamiliar = familiar.trim();
   if (!cleanFamiliar) throw new Error("familiar is required");
   if (roles.length === 0) throw new Error("select at least one role");
+  const orderedRoles = [...roles].sort(compareCraftDraftRoles);
 
-  const roleNames = roles.map((role) => role.name.trim() || role.id);
-  const roleIds = roles.map((role) => role.id.trim()).filter(Boolean);
+  const roleNames = orderedRoles.map((role) => role.name.trim() || role.id);
+  const roleIds = orderedRoles.map((role) => role.id.trim()).filter(Boolean);
   const displayName = `${titleCase(cleanFamiliar)} ${roleNames.join(" + ")}`;
   const id = slugify(`${cleanFamiliar}-${roleNames.join("-")}`);
 
@@ -153,7 +167,7 @@ export function buildCraftDraftFromRoles({
     capabilities: new Map<string, { roles: Set<string>; origins: Set<string> }>(),
   };
 
-  for (const role of roles) {
+  for (const role of orderedRoles) {
     const roleName = role.name.trim() || role.id;
     addEffective(ledgers.skills, role.effective.skills, roleName);
     addDirect(ledgers.skills, role.skills, roleName);
@@ -229,7 +243,7 @@ export function buildCraftDraftFromRoles({
     extraction: {
       familiar: cleanFamiliar,
       generatedAt: now,
-      roles: roles.map((role) => ({
+      roles: orderedRoles.map((role) => ({
         id: role.id,
         name: role.name,
         ...(role.description ? { description: role.description } : {}),
