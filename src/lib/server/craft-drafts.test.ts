@@ -43,7 +43,11 @@ try {
     JSON.stringify({
       schemaVersion: "opencoven.craft-draft.v1",
       id: "broken",
-      plugin: { id: "broken", kind: "craft", draft: true },
+      plugin: {
+        ...draft.plugin,
+        id: "broken",
+        draftId: "broken",
+      },
     }),
   );
   const drafts = await readCraftDrafts({ covenHome: root });

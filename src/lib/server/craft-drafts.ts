@@ -26,6 +26,8 @@ function isCraftDraft(value: unknown): value is CraftDraft {
   if (!value || typeof value !== "object") return false;
   const draft = value as CraftDraft;
   const plugin = draft.plugin;
+  const extraction = draft.extraction;
+  const extractionRoles = extraction?.roles;
   return draft.schemaVersion === "opencoven.craft-draft.v1"
     && typeof draft.id === "string"
     && typeof plugin === "object"
@@ -37,7 +39,22 @@ function isCraftDraft(value: unknown): value is CraftDraft {
     && plugin.draftId === draft.id
     && typeof plugin.displayName === "string"
     && plugin.displayName.trim().length > 0
-    && typeof plugin.description === "string";
+    && typeof plugin.description === "string"
+    && typeof extraction === "object"
+    && extraction !== null
+    && typeof extraction.familiar === "string"
+    && extraction.familiar.trim().length > 0
+    && typeof extraction.generatedAt === "string"
+    && Array.isArray(extractionRoles)
+    && extractionRoles.every((role) => (
+      typeof role === "object"
+      && role !== null
+      && typeof role.id === "string"
+      && role.id.trim().length > 0
+      && typeof role.name === "string"
+      && role.name.trim().length > 0
+      && (role.description === undefined || typeof role.description === "string")
+    ));
 }
 
 export async function readCraftDrafts(opts: CraftDraftStoreOptions = {}): Promise<CraftDraft[]> {
