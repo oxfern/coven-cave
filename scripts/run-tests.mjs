@@ -61,6 +61,7 @@ export const SUITES = {
     "src/components/update-available.test.ts",
     "src-tauri/permissions/desktop-permissions.test.mjs",
     "src-tauri/release-runtime.test.mjs",
+    "scripts/react-compiler-config.test.mjs",
     "src/components/open-coven-tools-update.test.ts",
     "src/lib/opencoven-tools-state.test.ts",
     "src/lib/opencoven-tools-install.test.ts",
