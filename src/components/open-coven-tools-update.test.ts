@@ -24,14 +24,15 @@ assert.match(src, /\/api\/onboarding\/install", \{ cache: "no-store" \}/, "About
 assert.match(src, /Other npm updates are disabled until it finishes/, "About explains the shared npm lock before a second update can start");
 assert.match(src, /disabled=\{blockedByGlobalNpm\}/, "About disables a different tool's update button while npm is busy");
 assert.match(src, /Updating in another Cave window/, "About distinguishes a job reattached from another client surface");
-assert.match(src, /tool\.outdated/, "update buttons are gated to outdated tools");
-assert.match(src, /tool\.compatible/, "tool rows distinguish update availability from Cave compatibility");
-assert.match(src, /tool\.minimumVersion/, "tool rows expose the minimum compatible version");
+assert.match(src, /openCovenToolPresentation\(tool\)/, "tool state presentation is centralized");
+assert.match(src, /data-tool-state=\{presentation\.state\}/, "tool rows expose the truthful state for UI testing");
+assert.match(src, /presentation\.action \? \(/, "missing and unreadable tools expose recovery actions");
+assert.match(src, /openCovenToolActionLabel\(presentation\.action!?, tool\.label\)/, "tool action labels distinguish install, repair, and update");
+assert.match(src, /tool\.outdated/, "tool state still distinguishes available updates");
+assert.match(src, /tool\.compatible/, "tool state still distinguishes Cave compatibility");
+assert.match(src, /tool\.minimumVersion/, "tool state includes the minimum compatible version");
 assert.match(src, /tool\.installCommand/, "tool rows expose a copyable install/update command");
 assert.match(src, /Copy command/, "tool rows can copy the exact update command");
-assert.match(src, /`Update \$\{tool\.label\}`/, "outdated tools expose a clear update button");
-assert.match(src, /function toolVersionText\(tool: ToolStatus\): string/, "tool version text is centralized");
-assert.match(src, /if \(!tool\.current\) return "Installed, version unknown"/, "installed tools with unknown versions should say the version is unknown");
 assert.match(src, /import \{[\s\S]*toolStatusText,[\s\S]*\} from "@\/lib\/opencoven-tools-status-display"/, "tool status text is centralized in the shared verification-state helper");
 assert.match(src, /latestCheckText\(tool, stale\)/, "each tool renders an explicit npm freshness result");
 assert.match(src, /toolFooterStatusText\(\{ tools, checking, error, stale \}\)/, "the footer distinguishes failed or stale latest-version data");
@@ -46,7 +47,9 @@ assert.match(src, /return `Requires >= \$\{tool\.minimumVersion\}`/, "below-mini
 assert.match(statusDisplay, /if \(tool\.packageVerified === false\) return "Unexpected executable"/, "wrong-package launchers remain explicit recovery states");
 assert.match(statusDisplay, /if \(!tool\.current\) return "Version probe failed"/, "installed tools with unknown versions must not claim to be up to date");
 assert.match(src, /toolStatusText\(tool, stale\)/, "stale or unverified latest checks are passed through to the row status");
-assert.match(src, /tool\.outdated \? `\$\{tool\.current\} -> \$\{tool\.latest\}` : tool\.current/, "version line should show an arrow only for actual upgrades");
+assert.match(src, /state: OpenCovenToolState/, "client status includes the server-derived state");
+assert.match(src, /job\.action === "install"/, "progress copy distinguishes installs from updates");
+assert.match(src, /json\.hint \?\?\s*json\.error/, "npm prerequisite and permission errors remain actionable");
 assert.doesNotMatch(src, /tool\.latest\s*\?\s*` -> \$\{tool\.latest\}`/, "version line must not advertise latest when npm latest is older than installed");
 assert.doesNotMatch(src, /tool\.installed \? "Up to date" : "Not found"/, "installed-but-version-unknown tools must not fall through to Up to date");
 assert.match(src, /function installResultFromCompletion/, "post-install result reconciliation is centralized");
@@ -78,6 +81,7 @@ assert.match(src, /Stale data from/, "failed rechecks explicitly mark retained t
 assert.match(src, /Last known/, "each retained tool row identifies last-known data");
 assert.match(src, /TOOL_UPDATE_RECHECK_EVENT/, "a completed in-page update requests a banner revalidation");
 assert.match(src, /window\.dispatchEvent\(new Event\(TOOL_UPDATE_RECHECK_EVENT\)\)/, "successful in-page updates revalidate the banner");
+assert.match(src, /json\.status === "done"[\s\S]*?await load\(\)/, "completed recovery actions recheck the tool status");
 assert.match(src, /dismissBanner\(TOOL_UPDATE_BANNER_ID\)/, "a clean recheck dismisses an obsolete update banner");
 assert.match(src, /Copy diagnostics \(safe\)/, "the copy control discloses that diagnostics are sanitized");
 assert.match(src, /paths, raw output, URL queries, and secrets are omitted or redacted/, "the UI discloses copied-diagnostics redaction");
@@ -114,10 +118,13 @@ assert.match(status, /installCommand: "npm i -g @opencoven\/coven-code@latest"/,
 assert.match(status, /packageName: "@opencoven\/coven-code"/, "coven-code status probes the SCOPED registry package for latest");
 assert.doesNotMatch(status, /packageName: "coven-code"/, "bare coven-code is a different, deprecated npm package — status must never probe it");
 assert.match(status, /const compatible =[\s\S]*packageVerified[\s\S]*!!probe\.version[\s\S]*compareSemver\(probe\.version, tool\.minimumVersion\) >= 0/, "compatibility requires both the expected executable package and the Cave minimum");
+assert.match(status, /const state = openCovenToolState/, "server status derives a truthful explicit state");
+assert.match(status, /state,/, "server status returns the derived state");
 assert.match(status, /verifyOpenCovenToolInstall[\s\S]*refreshCovenSpawnEnv\(\)/, "post-install verification refreshes PATH before probing the selected tool");
 assert.match(settings, /import \{ OpenCovenToolsUpdate \}/, "Settings imports the OpenCoven tools update component");
 assert.match(settings, /<SettingsGroup label="OpenCoven tools">[\s\S]*<OpenCovenToolsUpdate \/>/, "About settings renders the OpenCoven tools group");
 assert.match(runner, /src\/components\/open-coven-tools-update\.test\.ts/, "OpenCoven tools update test is wired into the test:app suite (scripts/run-tests.mjs)");
+assert.match(runner, /src\/lib\/opencoven-tools-state\.test\.ts/, "OpenCoven tool state tests are wired into the test suite");
 assert.match(runner, /src\/lib\/opencoven-tool-verification\.test\.ts/, "post-install verification scenarios are wired into the app test suite");
 
 console.log("open-coven-tools-update.test.ts: ok");

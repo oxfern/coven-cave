@@ -11,6 +11,12 @@ import {
 } from "@/lib/opencoven-tools-status-display";
 import { useShellBanners } from "@/lib/shell-banners";
 import { buildSafeToolDiagnostics } from "@/lib/about-diagnostics";
+import {
+  openCovenToolActionLabel,
+  openCovenToolPresentation,
+  type OpenCovenToolAction,
+  type OpenCovenToolState,
+} from "@/lib/opencoven-tools-state";
 import { relativeTime } from "@/lib/relative-time";
 
 type InstallTarget = "coven-cli" | "coven-code";
@@ -28,6 +34,7 @@ type ToolStatus = {
   latestCheck: LatestCheckDisplay;
   outdated: boolean;
   compatible: boolean;
+  state: OpenCovenToolState;
   packageVerified: boolean;
   executableVerified: boolean;
   packagePath: string | null;
@@ -70,6 +77,7 @@ type InstallJobView = {
     health: "running" | "stopped" | "unknown";
     detail?: string;
   };
+  action?: OpenCovenToolAction;
 };
 
 type InstallResult = {
@@ -136,12 +144,6 @@ function successfulInstallDetail(
 
 function isInstallTarget(id: string): id is InstallTarget {
   return id === "coven-cli" || id === "coven-code";
-}
-
-function toolVersionText(tool: ToolStatus): string {
-  if (!tool.installed) return "Not installed";
-  if (!tool.current) return "Installed, version unknown";
-  return tool.outdated ? `${tool.current} -> ${tool.latest}` : tool.current;
 }
 
 function toolNeedsCompatibilityUpdate(tool: ToolStatus): boolean {
@@ -425,7 +427,10 @@ export function OpenCovenToolsUpdate() {
             await load();
             continue;
           }
-          setInstallJobs((prev) => ({ ...prev, [target]: json }));
+          setInstallJobs((prev) => ({
+            ...prev,
+            [target]: { ...json, action: prev[target]?.action },
+          }));
           if (json.status === "done") {
             const refreshed = await load();
             const result = installResultFromCompletion(
@@ -454,7 +459,7 @@ export function OpenCovenToolsUpdate() {
     };
   }, [load, runningInstallKey]);
 
-  const updateTool = async (target: InstallTarget) => {
+  const updateTool = async (target: InstallTarget, action: OpenCovenToolAction) => {
     setError(null);
     setInstallResults((prev) => {
       const next = { ...prev };
@@ -501,8 +506,13 @@ export function OpenCovenToolsUpdate() {
         ...prev,
         [target]:
           json.status === "running" && typeof json.elapsedMs === "number"
-            ? { status: "running", elapsedMs: json.elapsedMs, tail: json.tail ?? "" }
-            : { status: "running", elapsedMs: 0, tail: "" },
+            ? {
+                status: "running",
+                elapsedMs: json.elapsedMs,
+                tail: json.tail ?? "",
+                action,
+              }
+            : { status: "running", elapsedMs: 0, tail: "", action },
       }));
     } catch (err) {
       setInstallResults((prev) => ({
@@ -584,6 +594,11 @@ export function OpenCovenToolsUpdate() {
         </p>
       ) : null}
       {tools.map((tool) => {
+        const presentation = openCovenToolPresentation(tool);
+        const stateStatusText =
+          presentation.state === "current" || presentation.state === "latest-unknown"
+            ? toolStatusText(tool, stale)
+            : presentation.statusText;
         const job = installJobs[tool.id];
         const busy = job?.status === "running";
         const updatingElsewhere = !busy && npmLane?.target === tool.id;
@@ -591,12 +606,24 @@ export function OpenCovenToolsUpdate() {
         const result = installResults[tool.id];
         const daemon = job?.daemon;
         return (
-          <div key={tool.id} className="flex items-center justify-between gap-4 px-4 py-3">
+          <div
+            key={tool.id}
+            data-tool-state={presentation.state}
+            className="flex items-center justify-between gap-4 px-4 py-3"
+          >
             <div className="min-w-0">
               <p className="text-[12px] text-[var(--text-secondary)]">{tool.label}</p>
               <p className="truncate font-mono text-[11px] text-[var(--text-muted)]">
-                {toolVersionText(tool)}
+                {presentation.versionText}
               </p>
+              <p className="mt-1 text-[11px] text-[var(--text-muted)]">
+                {stateStatusText}
+              </p>
+              {toolCompatibilityText(tool) ? (
+                <p className="mt-1 text-[11px] text-[var(--color-warning)]">
+                  {toolCompatibilityText(tool)}
+                </p>
+              ) : null}
               <p className="mt-1 text-[11px] text-[var(--text-muted)]">
                 {latestCheckText(tool, stale)}
               </p>
@@ -605,13 +632,9 @@ export function OpenCovenToolsUpdate() {
                   Last known · {relativeTime(lastSuccessfulCheckedAt)}
                 </p>
               ) : null}
-              {toolCompatibilityText(tool) ? (
-                <p className="mt-1 text-[11px] text-[var(--color-warning)]">
-                  {toolCompatibilityText(tool)}
-                </p>
-              ) : null}
               {result ? (
                 <p
+                  aria-live="polite"
                   className={`mt-1 text-[11px] ${
                     result.ok ? "text-[var(--color-success)]" : "text-[var(--color-danger)]"
                   }`}
@@ -642,18 +665,23 @@ export function OpenCovenToolsUpdate() {
               {busy ? (
                 <span className="inline-flex items-center gap-1.5 text-[12px] text-[var(--text-muted)]">
                   <Icon name="ph:circle-notch-bold" className="animate-spin" width={12} />
-                  {daemon ? daemonLifecycleText(daemon) : "Updating..."} {formatElapsed(job.elapsedMs)}
+                  {job.action === "install"
+                    ? "Installing"
+                    : job.action === "repair"
+                      ? "Repairing"
+                      : "Updating"}
+                  {daemon ? `; ${daemonLifecycleText(daemon)}` : ""}... {formatElapsed(job.elapsedMs)}
                 </span>
               ) : updatingElsewhere ? (
                 <span className="inline-flex items-center gap-1.5 text-[12px] text-[var(--text-muted)]">
                   <Icon name="ph:circle-notch-bold" className="animate-spin" width={12} />
                   Updating in another Cave window
                 </span>
-              ) : tool.outdated || toolNeedsCompatibilityUpdate(tool) ? (
+              ) : presentation.action ? (
                 <Button
                   variant="primary"
                   size="xs"
-                  onClick={() => void updateTool(tool.id)}
+                  onClick={() => void updateTool(tool.id, presentation.action!)}
                   disabled={blockedByGlobalNpm}
                   title={
                     blockedByGlobalNpm
@@ -661,15 +689,15 @@ export function OpenCovenToolsUpdate() {
                       : undefined
                   }
                   className={accentBtn}
-                  leadingIcon="ph:arrow-down-bold"
+                  leadingIcon={
+                    presentation.action === "repair" ? "ph:wrench-bold" : "ph:arrow-down-bold"
+                  }
                 >
-                  {blockedByGlobalNpm ? `Waiting for ${npmLane?.label}` : `Update ${tool.label}`}
+                  {blockedByGlobalNpm
+                    ? `Waiting for ${npmLane?.label}`
+                    : openCovenToolActionLabel(presentation.action, tool.label)}
                 </Button>
-              ) : (
-                <span className="text-[12px] text-[var(--text-muted)]">
-                  {toolStatusText(tool, stale)}
-                </span>
-              )}
+              ) : null}
               {!busy && !updatingElsewhere ? (
                 <Button
                   variant="secondary"

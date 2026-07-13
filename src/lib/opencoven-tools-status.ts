@@ -5,6 +5,10 @@ import path, { dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { compareSemver } from "./app-update.ts";
 import {
+  openCovenToolState,
+  type OpenCovenToolState,
+} from "./opencoven-tools-state.ts";
+import {
   covenLaunchCommandForBinary,
   covenSpawnEnv,
   pickWindowsLauncher,
@@ -104,6 +108,7 @@ export type OpenCovenToolStatus = {
   latestCheck: NpmLatestCheck;
   outdated: boolean;
   compatible: boolean;
+  state: OpenCovenToolState;
   packageVerified: boolean;
   executableVerified: boolean;
   packagePath: string | null;
@@ -424,6 +429,16 @@ export function composeOpenCovenToolStatus(
     packageVerified &&
     !!probe.version &&
     compareSemver(probe.version, tool.minimumVersion) >= 0;
+  // The six-state model reads the verified probe facts: an unverified package
+  // or failed version probe can never present as current/compatible.
+  const state = openCovenToolState({
+    installed: !!probe.path,
+    current: probe.version,
+    latest,
+    outdated,
+    compatible,
+    minimumVersion: tool.minimumVersion,
+  });
 
   return {
     id: tool.id,
@@ -442,6 +457,7 @@ export function composeOpenCovenToolStatus(
     executableVerified: probe.executableVerified,
     packagePath: probe.packagePath,
     discoveryError: probe.error ?? null,
+    state,
     minimumVersion: tool.minimumVersion,
     installCommand: tool.installCommand,
     checkedAt: latestCheck.checkedAt,
