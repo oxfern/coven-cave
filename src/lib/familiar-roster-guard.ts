@@ -95,10 +95,6 @@ export function filterInstallSeedFamiliars<T extends FamiliarRosterEntry>(
     ? new Set(explicitIdsInput.map(normalizeId))
     : new Set(Array.from(explicitIdsInput, normalizeId));
 
-  if (familiars.every((familiar) => isInstallDefaultFamiliar(familiar) && !hasLiveFamiliarState(familiar))) {
-    return [];
-  }
-
   return familiars.filter((familiar) => {
     if (hasLiveFamiliarState(familiar)) return true;
     const id = normalizeId(familiar.id);

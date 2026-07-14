@@ -26,11 +26,6 @@ assert.match(
 );
 assert.match(
   source,
-  /filterInstallSeedFamiliars\(/,
-  "Familiars API should hide the known first-install default roster before the picker sees it",
-);
-assert.match(
-  source,
   /parseFamiliarsToml/,
   "Familiars API should read the locally-declared familiars so they can be merged and exempted",
 );
@@ -41,7 +36,7 @@ assert.match(
 // remote coven, so it must not run in hub mode.
 assert.match(
   source,
-  /daemonTargetForConfig\(config\)\.mode === "hub"\s*\?\s*\(res\.data \?\? \[\]\)\s*:\s*filterInstallSeedFamiliars\(/,
+  /target\.mode === "hub"\s*\?\s*\(res\.data \?\? \[\]\)\s*:\s*filterInstallSeedFamiliars\(/,
   "hub rosters bypass the local-toml install-seed guard",
 );
 // Familiars declared in the local familiars.toml but missing from the daemon
@@ -56,6 +51,21 @@ assert.match(
   source,
   /\[\.\.\.visibleRoster, \.\.\.declaredOnly\]\.map\(/,
   "daemon roster and declared-only familiars flow through the same enrichment",
+);
+assert.match(
+  source,
+  /const target = daemonTargetForConfig\(config\);/,
+  "Familiars API should resolve the roster authority from the same config snapshot used for the daemon call",
+);
+assert.match(
+  source,
+  /callDaemonTarget[\s\S]{0,80}\(target, \{/,
+  "Familiars API should query the roster against the resolved target, not re-derive it",
+);
+assert.equal(
+  source.match(/const covenDir = covenHome\(\)/g)?.length,
+  2,
+  "Familiars GET and POST should honor a custom COVEN_HOME",
 );
 
 // ── POST: in-app "create a familiar" write path ──────────────────────────────

@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
-import { homedir } from "node:os";
 import path from "node:path";
-import { callDaemon, daemonTargetForConfig } from "@/lib/coven-daemon";
+import { callDaemon, callDaemonTarget, daemonTargetForConfig } from "@/lib/coven-daemon";
 import { bindingFor, loadConfig, saveConfig } from "@/lib/cave-config";
+import { covenHome } from "@/lib/coven-paths";
 import { filterInstallSeedFamiliars } from "@/lib/familiar-roster-guard";
 import { resolveFamiliarAvatar } from "@/lib/server/familiar-avatar";
 import {
@@ -32,13 +32,17 @@ export type DaemonFamiliar = {
 };
 
 export async function GET() {
-  const covenDir = path.join(homedir(), ".coven");
+  const covenDir = covenHome();
   const familiarsToml = path.join(covenDir, "familiars.toml");
-  const [res, config, removedIds, declaredEntries] = await Promise.all([
-    callDaemon<(DaemonFamiliar & { emoji?: string; icon?: string })[]>({
+  // Resolve the daemon target once from a single config snapshot, so the
+  // roster call and the mode-aware shaping below can't disagree about which
+  // authority (local daemon vs Server hub) answered.
+  const config = await loadConfig();
+  const target = daemonTargetForConfig(config);
+  const [res, removedIds, declaredEntries] = await Promise.all([
+    callDaemonTarget<(DaemonFamiliar & { emoji?: string; icon?: string })[]>(target, {
       path: "/api/v1/familiars",
     }),
-    loadConfig(),
     removedFamiliarIds().catch(() => new Set<string>()),
     readFile(familiarsToml, "utf8")
       .then(parseFamiliarsToml)
@@ -97,7 +101,7 @@ export async function GET() {
   //    duplicate check can 409 on is VISIBLE in the list instead of looking
   //    summonable again.
   const daemonRoster =
-    daemonTargetForConfig(config).mode === "hub"
+    target.mode === "hub"
       ? (res.data ?? [])
       : filterInstallSeedFamiliars(res.data ?? [], explicitIds);
   const visibleRoster = daemonRoster.filter((f) => !removedIds.has(f.id));
@@ -193,7 +197,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const covenDir = path.join(homedir(), ".coven");
+  const covenDir = covenHome();
   const familiarsToml = path.join(covenDir, "familiars.toml");
   const adaptersDir = path.join(covenDir, "adapters");
 

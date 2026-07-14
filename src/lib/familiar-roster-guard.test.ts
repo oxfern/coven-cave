@@ -40,6 +40,15 @@ assert.deepEqual(
 
 assert.deepEqual(
   filterInstallSeedFamiliars(
+    installDefaults,
+    new Set(["sage", "forge", "opencode-local"]),
+  ).map((f) => f.id),
+  ["sage", "forge", "opencode-local"],
+  "explicit ids must win even when the complete roster matches the install defaults",
+);
+
+assert.deepEqual(
+  filterInstallSeedFamiliars(
     [
       ...installDefaults,
       { id: "wren", display_name: "Wren", role: "Research" },
