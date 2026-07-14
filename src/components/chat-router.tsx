@@ -4,7 +4,7 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRe
 import { ChatList } from "@/components/chat-list";
 import { ChatProjectSidebar } from "@/components/chat-project-sidebar";
 import { ChatView } from "@/components/chat-view";
-import { ChatSplitHost, type ChatSplitTile } from "@/components/chat-split-host";
+import { ChatSplitHost, CHAT_SPLIT_PANE_ATTR, type ChatSplitTile } from "@/components/chat-split-host";
 import { NewChatLaunch } from "@/components/new-chat-launch";
 import { FamiliarChatoutCodexSurface } from "@/components/familiar-chatout-codex";
 import { caveChatoutCodex } from "@/lib/feature-flags";
@@ -18,12 +18,23 @@ import { applyProjectOverrides } from "@/lib/chat-project-overrides";
 import type { ChatAttachment } from "@/lib/chat-attachments";
 import {
   CHAT_SPLIT_PRIMARY,
+  CHAT_SPLIT_STORAGE_KEY,
+  chatSplitFocusAfterClose,
+  chatSplitFocusTarget,
+  chatSplitKeyboardZone,
   dropSessionIntoChatSplit,
   emptyChatSplitLayout,
+  hasChatSplit,
+  parsePersistedChatSplit,
+  pruneChatSplitPanes,
   removeChatSplitPane,
+  resolveChatSplitFocus,
+  serializeChatSplit,
   type ChatDropZone,
+  type ChatSplitSizes,
 } from "@/lib/chat-split";
 import { sessionRailTitle } from "@/lib/session-rail-title";
+import { useAnnouncer } from "@/components/ui/live-region";
 import { useProjectOverrides } from "@/lib/use-project-overrides";
 import { useArchivedFamiliars } from "@/lib/cave-familiar-archive";
 import { useProjects } from "@/lib/use-projects";
@@ -78,12 +89,19 @@ type Props = {
   compact?: boolean;
   /** Jump from the in-chat project rail to the dedicated Projects tab. */
   onOpenProjectsTab?: () => void;
+  /** Allow split panes (drag/keyboard multi-pane) on this mount. Only the
+   *  full-width main chat surface opts in — the compact companion rail has no
+   *  room, and two mounts must not fight over the persisted layout. */
+  enableSplitPanes?: boolean;
 };
 
 export type ChatRouterHandle = {
   goToList: () => void;
   newChat: (projectRoot?: string, initialPrompt?: string, familiarId?: string | null, origin?: SessionOrigin, initialControls?: InitialCommandControls, initialAttachments?: ChatAttachment[]) => void;
   openSession: (sessionId: string, findQuery?: string) => void;
+  /** Open a conversation in a split pane beside the current chat; falls back
+   *  to a plain open when splits are unavailable (mobile, companion rail). */
+  openSessionInSplit: (sessionId: string) => void;
   currentSessionId: () => string | null;
   clearTranscript: () => void;
   runSlash: (command: string) => void;
@@ -124,6 +142,7 @@ export const ChatRouter = forwardRef<ChatRouterHandle, Props>(function ChatRoute
     syncUrlHash,
     compact = false,
     onOpenProjectsTab,
+    enableSplitPanes = false,
   },
   ref,
 ) {
@@ -133,6 +152,15 @@ export const ChatRouter = forwardRef<ChatRouterHandle, Props>(function ChatRoute
   // below it. Pure layout rules live in @/lib/chat-split; panes for deleted
   // sessions are filtered at render (the id simply stops resolving).
   const [split, setSplit] = useState(() => emptyChatSplitLayout());
+  // Persisted pane sizes (RRP flex weights by pane id). Restored alongside
+  // the layout; {} means "even split".
+  const [splitSizes, setSplitSizes] = useState<ChatSplitSizes>({});
+  // The pane holding logical focus — keyboard target + visible affordance.
+  // Reconciled through resolveChatSplitFocus so a closed/promoted pane's
+  // focus falls back to the always-present primary.
+  const [focusedPane, setFocusedPane] = useState<string | null>(null);
+  const splitHydratedRef = useRef(false);
+  const { announce } = useAnnouncer();
   // Set when a conversation-search hit asks the opened chat to jump to a query;
   // handed to ChatView (nonce-keyed) so it opens in-thread find on the match.
   const [pendingFind, setPendingFind] = useState<{ query: string; nonce: number } | null>(null);
@@ -152,6 +180,9 @@ export const ChatRouter = forwardRef<ChatRouterHandle, Props>(function ChatRoute
   const [selection, setSelection] = useState<ProjectSelection>("all");
   const [sidebarHydrated, setSidebarHydrated] = useState(false);
   const isMobile = useIsMobile();
+  // Splits belong to the full-width desktop chat: the opted-in main surface
+  // only (enableSplitPanes), never mobile, never the Codex surface.
+  const enableSplit = enableSplitPanes && !isMobile && !caveChatoutCodex();
   const activeSession = view.kind === "chat" && view.sessionId
     ? sessions.find((s) => s.id === view.sessionId) ?? null
     : null;
@@ -274,17 +305,132 @@ export const ChatRouter = forwardRef<ChatRouterHandle, Props>(function ChatRoute
     setSplit((prev) => removeChatSplitPane(prev, primarySessionId));
   }, [primarySessionId]);
 
+  // ── Split persistence (cave-e3dj) ──────────────────────────────────────────
+  // The split survives reloads: layout + pane sizes hydrate from localStorage
+  // once, then every change writes back. Only the opted-in main chat surface
+  // participates — other mounts (companion rail) must not fight it over the
+  // same key.
+  useEffect(() => {
+    if (!enableSplitPanes || splitHydratedRef.current || typeof window === "undefined") return;
+    splitHydratedRef.current = true;
+    const restored = parsePersistedChatSplit(window.localStorage.getItem(CHAT_SPLIT_STORAGE_KEY));
+    if (!restored || !hasChatSplit(restored.layout)) return;
+    setSplit(restored.layout);
+    setSplitSizes(restored.sizes);
+  }, [enableSplitPanes]);
+  useEffect(() => {
+    if (!enableSplitPanes || !splitHydratedRef.current || typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(CHAT_SPLIT_STORAGE_KEY, serializeChatSplit(split, splitSizes));
+    } catch {
+      /* storage full/blocked — the split just won't survive this reload */
+    }
+  }, [enableSplitPanes, split, splitSizes]);
+  // Once the session list is authoritative, drop restored panes whose session
+  // was deleted while we were away (render already hides them; this stops the
+  // dead ids from persisting forever).
+  useEffect(() => {
+    if (sessionsLoaded !== true) return;
+    setSplit((prev) => pruneChatSplitPanes(prev, (id) => sessions.some((entry) => entry.id === id)));
+  }, [sessionsLoaded, sessions]);
+
+  // The pane that actually holds focus, after closes/promotions/deletes.
+  const effectiveFocusedPane = resolveChatSplitFocus(split, focusedPane);
+
+  const paneTitle = useCallback(
+    (paneId: string): string => {
+      if (paneId === CHAT_SPLIT_PRIMARY) return "current chat";
+      const session = sessions.find((entry) => entry.id === paneId);
+      return session ? sessionRailTitle(session) : "chat";
+    },
+    [sessions],
+  );
+
+  // Land real DOM focus on a pane container (double rAF: pane-set changes
+  // remount the RRP group, so the node may not exist until after re-render).
+  const focusPaneElement = useCallback((paneId: string) => {
+    if (typeof document === "undefined") return;
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        document
+          .querySelector<HTMLElement>(`[${CHAT_SPLIT_PANE_ATTR}="${CSS.escape(paneId)}"]`)
+          ?.focus({ preventScroll: true });
+      }),
+    );
+  }, []);
+
   function handleDropSession(sessionId: string, zone: ChatDropZone) {
     if (sessionId === primarySessionId) return; // already the open chat
     if (!sessions.some((entry) => entry.id === sessionId)) return;
     setSplit((prev) => dropSessionIntoChatSplit(prev, sessionId, zone));
+    setFocusedPane(sessionId);
+    announce(`${paneTitle(sessionId)} opened in a split pane`);
+  }
+
+  // Open a thread-rail conversation in a split pane from the keyboard (⌥↵ on
+  // the row) — the keyboard twin of drag-to-split. Lands at the end of the
+  // strip on the current axis and moves focus into the new pane.
+  function handleOpenSessionInSplit(session: SessionRow) {
+    if (!enableSplit) return;
+    handleDropSession(session.id, chatSplitKeyboardZone(split));
+    focusPaneElement(session.id);
+  }
+
+  function handleClosePane(paneId: string) {
+    const next = removeChatSplitPane(split, paneId);
+    if (next === split) return;
+    setFocusedPane(chatSplitFocusAfterClose(split, paneId));
+    setSplit(next);
+    announce(`${paneTitle(paneId)} split pane closed`);
   }
 
   function handlePromotePane(sessionId: string) {
     const session = sessions.find((entry) => entry.id === sessionId);
     const next = selectFamiliarForChat(session?.familiarId ?? null);
     setView({ kind: "chat", sessionId, familiarId: next?.id ?? session?.familiarId ?? null });
+    setFocusedPane(CHAT_SPLIT_PRIMARY);
+    announce(`${paneTitle(sessionId)} opened as main chat`);
   }
+
+  // ── Split keyboard control (cave-e3dj) ─────────────────────────────────────
+  // ⌥⌘←/↑ and ⌥⌘→/↓ move pane focus along the strip (wrapping), ⌥⌘W closes
+  // the focused secondary pane. Composer-safe: ⌥⌘ combos never type text, so
+  // the handler runs regardless of where focus sits — but not under a modal,
+  // which owns the keyboard while open. Letters match on e.code ("KeyW"):
+  // on macOS ⌥ composes e.key into symbols (⌥W → "∑").
+  useEffect(() => {
+    if (!enableSplit || !hasChatSplit(split)) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || !e.altKey) return;
+      const active = document.activeElement as HTMLElement | null;
+      if (active?.closest?.('[aria-modal="true"]')) return;
+      const delta =
+        e.key === "ArrowLeft" || e.key === "ArrowUp"
+          ? (-1 as const)
+          : e.key === "ArrowRight" || e.key === "ArrowDown"
+            ? (1 as const)
+            : null;
+      if (delta !== null) {
+        const target = chatSplitFocusTarget(split, focusedPane, delta);
+        if (!target) return;
+        e.preventDefault();
+        setFocusedPane(target);
+        focusPaneElement(target);
+        announce(`${paneTitle(target)} pane focused`);
+        return;
+      }
+      if (e.code === "KeyW") {
+        const closing = resolveChatSplitFocus(split, focusedPane);
+        if (closing === CHAT_SPLIT_PRIMARY) return; // primary can't close
+        e.preventDefault();
+        const nextFocus = chatSplitFocusAfterClose(split, closing);
+        handleClosePane(closing);
+        focusPaneElement(nextFocus);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   useEffect(() => {
     const nextFamiliarId = familiar?.id ?? null;
@@ -378,11 +524,23 @@ export const ChatRouter = forwardRef<ChatRouterHandle, Props>(function ChatRoute
         const fq = findQuery?.trim();
         if (fq) setPendingFind({ query: fq, nonce: Date.now() });
       },
+      openSessionInSplit: (sessionId: string) => {
+        const session = sessions.find((entry) => entry.id === sessionId);
+        if (!session) return;
+        // Splitting needs an open chat to sit beside; from the list view (or
+        // when splits are unavailable) fall back to a plain open.
+        if (!enableSplit || view.kind !== "chat") {
+          const next = selectFamiliarForChat(session.familiarId ?? null);
+          setView({ kind: "chat", sessionId, familiarId: next?.id ?? session.familiarId ?? null });
+          return;
+        }
+        handleOpenSessionInSplit(session);
+      },
       currentSessionId: () => (view.kind === "chat" ? view.sessionId : null),
       clearTranscript: () => viewHandle.current?.clearTranscript(),
       runSlash: (command: string) => viewHandle.current?.runSlash(command),
     }),
-    [fallbackFamiliar, familiar, familiars, onSetActiveFamiliar, sessions, view],
+    [fallbackFamiliar, familiar, familiars, onSetActiveFamiliar, sessions, view, enableSplit, split],
   );
 
   if (familiars.length === 0 && !familiar) {
@@ -555,11 +713,10 @@ export const ChatRouter = forwardRef<ChatRouterHandle, Props>(function ChatRoute
     />
   );
 
-  // Split panes only render on the full-width desktop chat: the compact
-  // companion rail and mobile have no room, and the Codex surface is its own
-  // world. Panes whose session vanished (deleted) resolve to nothing here —
-  // the layout state simply stops matching and the strip collapses.
-  const enableSplit = !compact && !isMobile && !caveChatoutCodex();
+  // Split panes only render on the full-width desktop chat (enableSplit,
+  // declared with the split state above). Panes whose session vanished
+  // (deleted) resolve to nothing here — the layout state simply stops
+  // matching and the strip collapses.
   const splitPaneTiles: ChatSplitTile[] = (enableSplit ? split.panes : [CHAT_SPLIT_PRIMARY]).flatMap(
     (paneId): ChatSplitTile[] => {
       if (paneId === CHAT_SPLIT_PRIMARY) {
@@ -610,6 +767,7 @@ export const ChatRouter = forwardRef<ChatRouterHandle, Props>(function ChatRoute
           const next = selectFamiliarForChat(s.familiarId);
           setView({ kind: "chat", sessionId: s.id, familiarId: next?.id ?? s.familiarId ?? null });
         }}
+        onOpenSessionInSplit={enableSplit ? handleOpenSessionInSplit : undefined}
         onNewChat={(root) => {
           const group = sidebarGroups.find((g) => g.projectRoot === root);
           const nextFamiliarId = group?.defaultFamiliarId ?? fallbackFamiliarId;
@@ -630,8 +788,12 @@ export const ChatRouter = forwardRef<ChatRouterHandle, Props>(function ChatRoute
           axis={split.axis}
           enableDrop={enableSplit}
           onDropSession={handleDropSession}
-          onClosePane={(paneId) => setSplit((prev) => removeChatSplitPane(prev, paneId))}
+          onClosePane={handleClosePane}
           onPromotePane={handlePromotePane}
+          focusedPaneId={effectiveFocusedPane}
+          onFocusPane={setFocusedPane}
+          sizes={splitSizes}
+          onSizesChange={setSplitSizes}
         />
       </div>
     </div>
