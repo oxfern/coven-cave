@@ -7,6 +7,7 @@ import { allowedResearchActions, type ResearchMission } from "../research-missio
 import {
   makeResearchMissionRunner,
   parseResearchSourcesFile,
+  sessionAlreadyGone,
   type ResearchMissionRunnerDeps,
 } from "./research-mission-runner.ts";
 
@@ -902,4 +903,23 @@ test("malformed sources checkpoint the mission instead of publishing", async () 
   const result = await runner.reconcile(stored);
   assert.equal(result.status, "checkpoint");
   assert.match(result.lastError ?? "", /sources\.json is malformed/);
+});
+
+test("cancel treats an already-gone session as stopped (cave-malz)", () => {
+  // Verified against the live daemon: an already-exited session kills as 409;
+  // unknown/pruned (and Cave-direct) sessions are 404/410; 0 = no daemon.
+  assert.equal(sessionAlreadyGone({ ok: false, status: 404 }), true);
+  assert.equal(sessionAlreadyGone({ ok: false, status: 409 }), true);
+  assert.equal(sessionAlreadyGone({ ok: false, status: 410 }), true);
+  assert.equal(sessionAlreadyGone({ ok: false, status: 0 }), true);
+  // Auth/rate-limit rejections: the daemon or hub is alive and the session
+  // may still be running — cancel stays blocked.
+  assert.equal(sessionAlreadyGone({ ok: false, status: 401 }), false);
+  assert.equal(sessionAlreadyGone({ ok: false, status: 403 }), false);
+  assert.equal(sessionAlreadyGone({ ok: false, status: 429 }), false);
+  // A live daemon actively erroring may still be running the session.
+  assert.equal(sessionAlreadyGone({ ok: false, status: 500 }), false);
+  assert.equal(sessionAlreadyGone({ ok: false, status: 502 }), false);
+  // A successful kill was a genuinely running session, not a gone one.
+  assert.equal(sessionAlreadyGone({ ok: true, status: 200 }), false);
 });
