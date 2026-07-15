@@ -206,8 +206,9 @@ export function FamiliarStudioBrainTab({ familiar }: Props) {
     }
     setPreviewNote(null);
 
-    // Local speech rides the browser/system synthesizer — free and offline.
-    if (draftVoiceProvider === "local") {
+    // Local and familiar-brain speech ride the browser/system synthesizer —
+    // free and offline.
+    if (draftVoiceProvider === "local" || draftVoiceProvider === "familiar") {
       if (typeof window === "undefined" || !("speechSynthesis" in window)) {
         setPreviewNote("Speech synthesis isn't available in this environment.");
         return;
@@ -411,6 +412,7 @@ export function FamiliarStudioBrainTab({ familiar }: Props) {
                   className="familiar-studio-brain__input"
                   options={[
                     { value: "", label: "None" },
+                    { value: "familiar", label: "Familiar brain (true voice)" },
                     { value: "openai", label: "OpenAI Realtime" },
                     { value: "local", label: "Local (on-device)" },
                     { value: "gemini", label: "Gemini Live (v1.1)", disabled: true },
@@ -419,8 +421,16 @@ export function FamiliarStudioBrainTab({ familiar }: Props) {
               </div>
             </label>
 
-            {(draftVoiceProvider === "openai" || draftVoiceProvider === "local") && (
+            {draftVoiceProvider === "familiar" && (
+              <p className="familiar-studio-brain__hint">
+                Calls run through this familiar&apos;s own runtime — every spoken turn
+                is a real chat turn with its full identity, memory, and skills.
+              </p>
+            )}
+
+            {(draftVoiceProvider === "openai" || draftVoiceProvider === "local" || draftVoiceProvider === "familiar") && (
               <>
+                {draftVoiceProvider !== "familiar" && (
                 <label className="familiar-studio-brain__row">
                   <span className="familiar-studio-brain__label">
                     {draftVoiceProvider === "local" ? "Local model" : "Voice model"}
@@ -436,6 +446,7 @@ export function FamiliarStudioBrainTab({ familiar }: Props) {
                     />
                   </div>
                 </label>
+                )}
 
                 {draftVoiceProvider === "openai" ? (
                   <label className="familiar-studio-brain__row">
@@ -475,8 +486,8 @@ export function FamiliarStudioBrainTab({ familiar }: Props) {
                     ) : null}
                   </label>
                 ) : (
-                  // Local speech rides the system synthesizer — the voice is a
-                  // system voice name (leave empty for the platform default).
+                  // Local and familiar-brain speech ride the system synthesizer —
+                  // the voice is a system voice name (empty = platform default).
                   <label className="familiar-studio-brain__row">
                     <span className="familiar-studio-brain__label">Voice</span>
                     <div className="familiar-studio-brain__control">
