@@ -54,8 +54,9 @@ export const SIDECAR_RUNTIME_BUDGETS = Object.freeze({
   // to 5,450 with narrow headroom.
   // 2026-07-15 (integrated main): the voice routes landed after the manual
   // export/restore routes, producing 5,452–5,458 files across CI platforms.
-  // Keep seven files of measured headroom without changing runtime contents.
-  fileCount: 5_465,
+  // The onboarding readiness/update split and shared SWR cache then traced at
+  // 5,459–5,463, so retain seven files of measured headroom.
+  fileCount: 5_470,
   unpackedBytes: 200 * 1024 * 1024 - 1,
 });
 

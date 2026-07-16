@@ -22,7 +22,7 @@ export type OpenCovenToolDisplayStatus = {
   outdated: boolean;
   compatible: boolean;
   packageVerified?: boolean;
-  latestCheck?: LatestCheckDisplay;
+  latestCheck?: LatestCheckDisplay | null;
 };
 
 export function hasVerifiedLatestVersion(tool: OpenCovenToolDisplayStatus): boolean {
