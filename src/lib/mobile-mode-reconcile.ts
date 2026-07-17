@@ -1,3 +1,5 @@
+import type { PairingStep } from "@/lib/mobile-handoff";
+
 export type MobileModeResponse = {
   ok: boolean;
   status: number;
@@ -6,6 +8,9 @@ export type MobileModeResponse = {
   appInviteUrl?: string | null;
   qrSvg?: string | null;
   lastSeenAt?: number | null;
+  /** Guided pairing ladder (cave-jr4r.1) — present on success and
+   *  unavailable responses so the Phone card can show which rung broke. */
+  steps?: PairingStep[];
   error?: string;
   stderr?: string;
   unavailable?: boolean;
