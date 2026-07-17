@@ -1,0 +1,64 @@
+name: Native VNC QA (inactive template)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-vnc:
+    if: ${{ false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76
+        with:
+          bun-version: 1.3.14
+
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990
+        with:
+          version: "0.11.23"
+
+      - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8
+
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Install native desktop and virtual-display dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential dbus-x11 feh ffmpeg imagemagick \
+            libayatana-appindicator3-dev libgtk-3-dev libjavascriptcoregtk-4.1-dev \
+            librsvg2-dev libsoup-3.0-dev libssl-dev libwebkit2gtk-4.1-dev \
+            libxdo-dev lxpanel novnc openbox pkg-config websockify x11-utils \
+            x11vnc xauth xdotool xvfb
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Install the Coven CLI used by the isolated daemon
+        run: npm install --global @opencoven/cli@0.1.1
+
+      - name: Run native VNC smoke and scenario matrix
+        env:
+          CAVE_VNC_FORCE_UVX: "1"
+        run: bun qa/native-vnc/cli/ci.ts
+
+      - name: Retain native VNC evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-vnc-qa
+          path: artifacts/openvnc-qa
+          if-no-files-found: error
+          retention-days: 14
