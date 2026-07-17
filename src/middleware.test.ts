@@ -56,6 +56,8 @@ assert.doesNotMatch(
   "the API content-type gate must not admit active SVG backdrop payloads",
 );
 assert.match(source, /isProductionWebhookGet\(req\.nextUrl\.pathname, req\.method\)/, "state-changing GET webhooks should have a dedicated tokenless-tailnet CSRF guard");
+assert.match(source, /isLocalOnlyAutomationRun\(req\.nextUrl\.pathname, req\.method\)/, "run-now automation execution should have a dedicated local-only proxy guard");
+assert.match(source, /mobileAccessAuthenticated \|\| tailnetTrusted \|\| !isLoopbackHost\(requestHost\)/, "run-now automation execution must deny mobile, tailnet, and non-loopback proxy ingress");
 assert.match(source, /missing request source/, "tokenless tailnet GET webhooks should reject absent Origin and Referer headers");
 // cave-gzje: a verified signed mobile invite is the paired phone's credential.
 // The final sidecar gate must admit it (the phone can never learn the
