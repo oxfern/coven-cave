@@ -36,6 +36,11 @@ chmod +x "$ROOT/dev-isolated.sh"
 # first real dev command doesn't pay the download mid-task.
 "$ROOT/dev-isolated.sh" true
 
+# Provision the Cave-owned Node/npm lane and reviewed runtime CLIs used by the
+# app inside this fake home. The setup program is idempotent and reads its exact
+# versions and integrity values from the onboarding prerequisite manifest.
+"$ROOT/dev-isolated.sh" node --experimental-strip-types scripts/setup-isolated-dev-tools.ts
+
 # Minimal seed state (empty familiars; onboarding free to run)
 if [ ! -f "$ROOT/.isolated-home/.coven/familiars.toml" ]; then
   printf '# isolated dev familiars registry\n' > "$ROOT/.isolated-home/.coven/familiars.toml"

@@ -27,6 +27,9 @@ $ROOT/
     .npm/
     .config/  .local/  .cache/   # XDG_*
     Library/
+      Application Support/OpenCoven/CovenCave/toolchains/
+        node/v…/                  # Cave-managed Node/npm runtime
+        npm/                      # reviewed global CLI packages + launchers
       Application Support/ai.opencoven.cave/
       Logs/ai.opencoven.cave/
   src-tauri/target/              # $CARGO_TARGET_DIR
@@ -56,6 +59,8 @@ $ROOT/
 - pnpm — `"packageManager"` in the checkout's `package.json`.
 - rust — not auto-installed; `COVEN_CAVE_ENSURE_RUST=1` installs rustup into
   the isolated `CARGO_HOME`/`RUSTUP_HOME`; a host cargo is used as fallback.
+- Cave-managed runtime tools — `scripts/setup-isolated-dev-tools.ts` reads the
+  exact Node and npm package pins from `src/lib/onboarding-prerequisites.ts`.
 
 ## Why both `HOME` and `COVEN_HOME`
 
