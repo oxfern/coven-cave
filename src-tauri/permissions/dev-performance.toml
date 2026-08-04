@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-dev-performance-snapshot"
+description = "Allows the trusted development UI to sample system CPU and memory metrics."
+commands.allow = ["dev_performance_snapshot"]

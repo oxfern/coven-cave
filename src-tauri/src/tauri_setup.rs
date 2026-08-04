@@ -161,7 +161,11 @@ pub fn run() {
     #[cfg(mobile)]
     {
         builder
-            .invoke_handler(tauri::generate_handler![webview_probe_report])
+            .invoke_handler(tauri::generate_handler![
+                webview_probe_report,
+                #[cfg(debug_assertions)]
+                dev_performance::dev_performance_snapshot,
+            ])
             .setup(|app| {
                 if cfg!(debug_assertions) {
                     app.handle().plugin(
@@ -213,12 +217,17 @@ pub fn run() {
                     tauri::WebviewUrl::App("index.html".into())
                 };
 
+                let product_name = app
+                    .config()
+                    .product_name
+                    .clone()
+                    .unwrap_or_else(|| "CovenCave".to_string());
                 tauri::WebviewWindowBuilder::new(
                     app,
                     "main",
                     webview_url,
                 )
-                .title("CovenCave")
+                .title(product_name)
                 .build()?;
 
                 Ok(())
@@ -246,6 +255,8 @@ pub fn run() {
             pty::pty_snapshot,
             pty::pty_diagnose,
             webview_probe_report,
+            #[cfg(debug_assertions)]
+            dev_performance::dev_performance_snapshot,
             browser::browser_commands::browser_navigate,
             browser::browser_commands::browser_set_bounds,
             browser::browser_commands::browser_hide,
@@ -287,6 +298,12 @@ pub fn run() {
     #[cfg(desktop)]
     builder
         .setup(move |app| {
+            let product_name = app
+                .config()
+                .product_name
+                .clone()
+                .unwrap_or_else(|| "CovenCave".to_string());
+
             // The updater's Windows pre-exit path clears the application
             // resource table after validating the package and before starting
             // msiexec. Dropping this guard stops/reaps the sidecar even though
@@ -342,7 +359,7 @@ pub fn run() {
                 #[cfg(target_os = "windows")]
                 {
                     WebviewWindowBuilder::new(app, "main", WebviewUrl::App("startup.html".into()))
-                        .title("CovenCave")
+                        .title(product_name.clone())
                         .inner_size(1320.0, 820.0)
                         .min_inner_size(960.0, 600.0)
                         .resizable(true)
@@ -372,7 +389,7 @@ pub fn run() {
                 remember_main_startup_url(&main_url);
                 let mut main_window =
                     WebviewWindowBuilder::new(app, "main", WebviewUrl::External(main_url))
-                        .title("CovenCave")
+                        .title(product_name.clone())
                         .inner_size(1320.0, 820.0)
                         .min_inner_size(960.0, 600.0)
                         .resizable(true)

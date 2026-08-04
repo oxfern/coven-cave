@@ -1,0 +1,7 @@
+interface:
+  display_name: "Coven Cave"
+  short_description: "Keep Coven Cave development isolated"
+  default_prompt: "Use $coven-cave to work safely in the Coven Cave repository."
+
+policy:
+  allow_implicit_invocation: true

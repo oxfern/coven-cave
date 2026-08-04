@@ -49,6 +49,8 @@ pub mod browser;
 mod discord_presence;
 #[cfg(desktop)]
 mod desktop_reachability;
+#[cfg(debug_assertions)]
+mod dev_performance;
 #[cfg(desktop)]
 mod platform_lifecycle;
 #[cfg(all(desktop, target_os = "macos"))]

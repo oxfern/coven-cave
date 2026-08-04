@@ -1,0 +1,118 @@
+.perf-overlay {
+  position: fixed;
+  inset-inline-end: max(var(--space-2), var(--sai-right));
+  inset-block-end: max(var(--space-2), var(--sai-bottom));
+  z-index: 2147483000;
+  width: min(17rem, calc(100vw - var(--space-4)));
+  max-height: calc(100vh - var(--space-4));
+  overflow: auto;
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-card);
+  background: var(--bg-elevated);
+  box-shadow: 0 var(--space-2) var(--space-6) color-mix(in oklch, var(--shadow-color) 42%, transparent);
+  color: var(--text-secondary);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: var(--text-xs);
+}
+
+.perf-overlay__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--space-8);
+  padding: var(--space-1) var(--space-2) var(--space-1) var(--space-3);
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.perf-overlay__title,
+.perf-overlay__section-label {
+  color: var(--text-primary);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+}
+
+.perf-overlay__dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-8);
+  height: var(--space-8);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.perf-overlay__dismiss:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.perf-overlay__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+}
+
+.perf-overlay__section + .perf-overlay__section {
+  border-top: 1px solid var(--border-hairline);
+}
+
+.perf-overlay__section-label {
+  margin-bottom: var(--space-1);
+  color: var(--text-muted);
+}
+
+.perf-overlay__metric {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.perf-overlay__value {
+  flex: none;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.perf-overlay__metric[data-tone="good"] .perf-overlay__value {
+  color: var(--color-success);
+}
+
+.perf-overlay__metric[data-tone="needs-improvement"] .perf-overlay__value {
+  color: var(--color-warning);
+}
+
+.perf-overlay__metric[data-tone="poor"] .perf-overlay__value {
+  color: var(--color-danger);
+}
+
+.perf-overlay__status,
+.perf-overlay__note {
+  margin: var(--space-1) 0 0;
+  color: var(--text-muted);
+  line-height: var(--leading-normal);
+}
+
+.perf-overlay__note {
+  font-size: var(--text-2xs);
+}
+
+.perf-overlay__measure-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .perf-overlay__dismiss {
+    width: var(--touch-target);
+    height: var(--touch-target);
+  }
+}
