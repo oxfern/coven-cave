@@ -319,6 +319,26 @@ assert.doesNotMatch(
     /isMacDesktopShell\(\)/,
     "the marker uses the shared macOS-desktop-shell detection",
   );
+  assert.match(
+    marker,
+    /const IS_DEVELOPMENT = process\.env\.NODE_ENV === "development";/,
+    "the native development marker is derived from the build environment",
+  );
+  assert.match(
+    marker,
+    /if \(IS_DEVELOPMENT\) root\.dataset\.caveDevelopment = "";/,
+    "development shells publish the frame marker on the root element",
+  );
+  assert.match(
+    marker,
+    /useMountEffect\(/,
+    "the root marker uses the mount-only external synchronization hook",
+  );
+  assert.doesNotMatch(
+    marker,
+    /\buseEffect\(/,
+    "the root marker does not call useEffect directly",
+  );
   assert.doesNotMatch(
     shell,
     /dataset\.tauriTitlebar =/,
@@ -357,6 +377,11 @@ assert.doesNotMatch(
     css,
     /:root\[data-tauri-titlebar\] \.shell-top \{[\s\S]{0,340}?backdrop-filter: blur\(var\(--glass-blur\)\) saturate\(var\(--glass-saturate\)\);/,
     "the native shell titlebar carries subtle glass",
+  );
+  assert.match(
+    css,
+    /:root\[data-tauri-titlebar\]\[data-cave-development\] body::after \{[\s\S]{0,520}?pointer-events: none;[\s\S]{0,240}?border: calc\(var\(--ring-width\) \* 1\.5\) solid[\s\S]{0,180}?var\(--accent-presence\)[\s\S]{0,240}?var\(--radius-control\)/,
+    "the native development shell carries a pointer-inert, token-derived app frame",
   );
   const dashboardCss = readFileSync(new URL("../styles/dashboard.css", import.meta.url), "utf8");
   assert.match(

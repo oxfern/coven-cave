@@ -104,6 +104,23 @@ button:active > .edge-rail-chip {
   --titlebar-lights-inset: 78px;
 }
 
+/* Development shell signature. The native app name and icon carry the literal
+   environment label; this token-derived inner frame keeps that context visible
+   inside the window without adding another permanent piece of chrome. The
+   combined selector makes it impossible to leak into browsers or production. */
+:root[data-tauri-titlebar][data-cave-development] body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 2147482000;
+  pointer-events: none;
+  border: calc(var(--ring-width) * 1.5) solid color-mix(in oklch, var(--accent-presence) 66%, var(--border-strong));
+  border-radius: var(--radius-control);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklch, var(--accent-presence) 16%, transparent),
+    inset 0 0 var(--space-3) color-mix(in oklch, var(--accent-presence) 10%, transparent);
+}
+
 /* Fit at EVERY window width: the lights float over the webview no matter how
    narrow the window is, so the reserve can't be desktop-media-gated — in a
    sub-1024 window the mobile top-bar's controls sat underneath the buttons. */
