@@ -115,6 +115,8 @@ export const SUITES = {
     "src/components/home/use-home-model-state.test.ts",
     "src/lib/model-selection-mutation-queue.test.ts",
     "src/lib/perf/web-vitals-format.test.ts",
+    "src/lib/perf/system-performance-format.test.ts",
+    "src/components/perf/perf-overlay-contract.test.ts",
     "src/lib/app-version.test.ts",
     "src/lib/endpoint-validators.test.ts",
     "src/lib/x-api.test.ts",

@@ -35,6 +35,11 @@ once_cell = "1"
 parking_lot = "0.12"
 rand = "0.8"
 tauri-plugin-os = "2"
+# The development performance monitor samples only CPU and RAM. Disable the
+# default disk/network/component collectors so the monitor does not become a
+# meaningful source of the load it is measuring. The Apple Store feature keeps
+# the same implementation valid for debug iOS builds.
+sysinfo = { version = "=0.35.2", default-features = false, features = ["system", "apple-app-store"] }
 
 # Desktop-only deps. `portable-pty` cannot build on iOS/Android (no
 # fork, no /dev/ptmx); the bottom-terminal surface gates its frontend
