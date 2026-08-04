@@ -106,9 +106,9 @@ button:active > .edge-rail-chip {
 
 /* Development shell signature. The native app name and icon carry the literal
    environment label; this token-derived inner frame keeps that context visible
-   inside the window without adding another permanent piece of chrome. The
-   combined selector makes it impossible to leak into browsers or production. */
-:root[data-tauri-titlebar][data-cave-development] body::after {
+   inside the window without adding another permanent piece of chrome. The root
+   marker is published only in desktop Tauri development shells. */
+:root[data-cave-development] body::after {
   content: "";
   position: fixed;
   inset: 0;

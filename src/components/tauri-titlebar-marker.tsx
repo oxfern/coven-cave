@@ -13,22 +13,22 @@
  * Mounted once in the root layout; the overlay title bar is a property of
  * the window, not of a route, so the marker is never removed. globals.css
  * (and dashboard.css) key their traffic-light insets and titlebar glass off
- * `:root[data-tauri-titlebar]`. Development shells also publish a dedicated
- * marker for their in-app frame treatment. Browser, Windows, Linux, Tauri-mobile,
- * and production builds never receive the combined development selector.
+ * `:root[data-tauri-titlebar]`. Every desktop development shell also publishes
+ * a dedicated marker for its in-app frame treatment. Browser, Tauri-mobile,
+ * and production builds never receive the development marker.
  */
 
-import { isMacDesktopShell } from "@/lib/tauri-platform";
+import { isMacDesktopShell, isTauriDesktopShell } from "@/lib/tauri-platform";
 import { useMountEffect } from "@/lib/use-mount-effect";
 
 const IS_DEVELOPMENT = process.env.NODE_ENV === "development";
 
 function useTauriTitlebarMarker() {
   useMountEffect(() => {
-    if (!isMacDesktopShell()) return;
+    if (!isTauriDesktopShell()) return;
 
     const root = document.documentElement;
-    root.dataset.tauriTitlebar = "";
+    if (isMacDesktopShell()) root.dataset.tauriTitlebar = "";
     if (IS_DEVELOPMENT) root.dataset.caveDevelopment = "";
   });
 }

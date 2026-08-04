@@ -24,6 +24,22 @@ export function isTauri(): boolean {
   return (window as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ !== undefined;
 }
 
+function runtimePlatformHint(): string {
+  const nav = navigator as Navigator & { userAgentData?: { platform?: string } };
+  return nav.userAgentData?.platform || nav.userAgent || nav.platform || "";
+}
+
+/**
+ * Synchronous desktop-shell detection for mount-time DOM markers. The async
+ * platform hook remains authoritative for native capabilities; this narrower
+ * check distinguishes desktop Tauri from its iOS and Android shells without a
+ * second render.
+ */
+export function isTauriDesktopShell(): boolean {
+  if (!isTauri()) return false;
+  return !/iPhone|iPad|iPod|Android/i.test(runtimePlatformHint());
+}
+
 let cachedPlatform: TauriPlatform | null = null;
 
 async function resolvePlatform(): Promise<TauriPlatform> {
@@ -99,9 +115,5 @@ export function useIsTauriMobile(): boolean {
  * UAs contain "like Mac OS X", so Tauri-mobile is excluded explicitly.
  */
 export function isMacDesktopShell(): boolean {
-  if (typeof window === "undefined" || !isTauri()) return false;
-  const nav = navigator as Navigator & { userAgentData?: { platform?: string } };
-  const platform = nav.userAgentData?.platform || nav.userAgent || nav.platform || "";
-  if (/iPhone|iPad|iPod/i.test(platform)) return false;
-  return /Mac/i.test(platform);
+  return isTauriDesktopShell() && /Mac/i.test(runtimePlatformHint());
 }
