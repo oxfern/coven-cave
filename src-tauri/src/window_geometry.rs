@@ -198,12 +198,14 @@ pub(super) fn show_quick_chat_window(app: &tauri::AppHandle, quick_chat_url: &Ur
     };
 
     let (x, y) = quick_chat_position(app);
+    let product_name = app.config().product_name.as_deref().unwrap_or("CovenCave");
+    let title = format!("{product_name} Quick Chat");
     let builder = WebviewWindowBuilder::new(
         app,
         QUICK_CHAT_WINDOW_LABEL,
         WebviewUrl::External(quick_chat_url.clone()),
     )
-    .title("CovenCave Quick Chat")
+    .title(title)
     .inner_size(QUICK_CHAT_WIDTH, QUICK_CHAT_HEIGHT)
     .min_inner_size(340.0, 420.0)
     // Resizable since the window holds multiple chats now — the min size
@@ -572,12 +574,14 @@ pub(super) fn show_notch_window(app: &tauri::AppHandle, notch_url: &Url) {
 
     let (width, height) = notch_collapsed_size(&config, strip_height);
     let (x, y) = notch_position(app, width);
+    let product_name = app.config().product_name.as_deref().unwrap_or("CovenCave");
+    let title = format!("{product_name} Notch");
     let builder = WebviewWindowBuilder::new(
         app,
         NOTCH_WINDOW_LABEL,
         WebviewUrl::External(notch_url.clone()),
     )
-    .title("CovenCave Notch")
+    .title(title)
     .inner_size(width, height)
     // The shell resizes it between the two fixed states; user resize would
     // fight the collapse animation.

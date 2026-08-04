@@ -165,7 +165,23 @@ fi
 # must never start another one. This makes initial startup fail in the terminal
 # rather than presenting a black native window.
 cat >"$TAURI_OVERRIDE_CONFIG" <<CONF
-{"build":{"beforeDevCommand":null,"devUrl":"${dev_url}"}}
+{
+  "productName": "ocd",
+  "identifier": "ai.opencoven.cave.dev",
+  "build": {
+    "beforeDevCommand": null,
+    "devUrl": "${dev_url}"
+  },
+  "bundle": {
+    "icon": [
+      "icons/dev/32x32.png",
+      "icons/dev/128x128.png",
+      "icons/dev/128x128@2x.png",
+      "icons/dev/icon.icns",
+      "icons/dev/icon.ico"
+    ]
+  }
+}
 CONF
 
 watch_dev_server() {
@@ -185,6 +201,21 @@ watch_dev_server() {
     sleep 2
   done
 }
+
+# `tauri dev` normally executes a raw Cargo binary on macOS, so LaunchServices
+# sees a generic `app` process with no bundle ID or application icon. A Cargo
+# runner places only the development executable inside a lightweight .app
+# wrapper; release builds continue through the ordinary Tauri bundler.
+if [ "$(uname -s)" = "Darwin" ]; then
+  rust_host="$(rustc -vV | sed -n 's/^host: //p')"
+  if [ -z "$rust_host" ]; then
+    echo "[dev:app] ERROR: could not determine the Rust host target" >&2
+    exit 1
+  fi
+  runner_variable="CARGO_TARGET_$(printf '%s' "$rust_host" | tr '[:lower:]-' '[:upper:]_')_RUNNER"
+  export "${runner_variable}=$PWD/scripts/tauri-dev-macos-runner.sh"
+  echo "[dev:app] macOS identity: ocd (ai.opencoven.cave.dev)"
+fi
 
 pnpm exec tauri dev --config "$TAURI_OVERRIDE_CONFIG" "$@" &
 tauri_pid=$!

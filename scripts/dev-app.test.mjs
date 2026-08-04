@@ -30,8 +30,78 @@ assert.match(
 );
 assert.match(
   source,
-  /"beforeDevCommand":null,"devUrl":"\$\{dev_url\}"/,
+  /"beforeDevCommand": null,[\s\S]*?"devUrl": "\$\{dev_url\}"/,
   "Tauri must not launch a second server after the launcher has verified the first root document",
+);
+
+assert.match(
+  source,
+  /"productName": "ocd"/,
+  "the development shell must have an unmistakable application name",
+);
+assert.match(
+  source,
+  /"identifier": "ai\.opencoven\.cave\.dev"/,
+  "the development shell must use a distinct OS and WebView data identity",
+);
+for (const icon of ["32x32.png", "128x128.png", "128x128@2x.png", "icon.icns", "icon.ico"]) {
+  assert.match(
+    source,
+    new RegExp(`"icons/dev/${icon.replace(".", "\\.")}"`),
+    `the development override must select ${icon}`,
+  );
+  assert.ok(
+    readFileSync(new URL(`../src-tauri/icons/dev/${icon}`, import.meta.url)).length > 0,
+    `${icon} must be a non-empty development icon asset`,
+  );
+}
+assert.notDeepEqual(
+  readFileSync(new URL("../src-tauri/icons/dev/128x128.png", import.meta.url)),
+  readFileSync(new URL("../src-tauri/icons/128x128.png", import.meta.url)),
+  "the development icon must remain visually distinct from the production icon",
+);
+
+const productionConfig = JSON.parse(
+  readFileSync(new URL("../src-tauri/tauri.conf.json", import.meta.url), "utf8"),
+);
+assert.equal(productionConfig.productName, "CovenCave");
+assert.equal(productionConfig.identifier, "ai.opencoven.cave");
+assert.ok(
+  productionConfig.bundle.icon.every((icon) => !icon.includes("icons/dev/")),
+  "production bundles must keep the production icon set",
+);
+
+const nativeWindows = ["tauri_setup.rs", "window_geometry.rs"]
+  .map((file) => readFileSync(new URL(`../src-tauri/src/${file}`, import.meta.url), "utf8"))
+  .join("\n");
+assert.doesNotMatch(
+  nativeWindows,
+  /\.title\("CovenCave(?: Quick Chat| Notch)?"\)/,
+  "native window titles must follow the configured product name in both development and production",
+);
+assert.match(
+  nativeWindows,
+  /app\.config\(\)\.product_name/,
+  "native window titles must be derived from Tauri's active product configuration",
+);
+
+assert.match(
+  source,
+  /if \[ "\$\(uname -s\)" = "Darwin" \]; then[\s\S]*?CARGO_TARGET_[\s\S]*?_RUNNER[\s\S]*?tauri-dev-macos-runner\.sh[\s\S]*?pnpm exec tauri dev/,
+  "macOS development must launch through the app-bundle runner instead of a generic raw binary",
+);
+const macosRunner = readFileSync(
+  new URL("./tauri-dev-macos-runner.sh", import.meta.url),
+  "utf8",
+);
+assert.match(macosRunner, /ocd\.app/);
+assert.match(macosRunner, /<string>ocd<\/string>/);
+assert.match(macosRunner, /<string>ai\.opencoven\.cave\.dev<\/string>/);
+assert.match(macosRunner, /icons\/dev\/icon\.icns/);
+assert.match(
+  macosRunner,
+  /exec "\$bundle_executable" "\$@"/,
+  "the runner must preserve Cargo's child-process lifecycle for Tauri's watcher and teardown",
 );
 
 assert.match(
@@ -41,7 +111,7 @@ assert.match(
 );
 assert.match(
   source,
-  /"devUrl":"\$\{dev_url\}"/,
+  /"devUrl": "\$\{dev_url\}"/,
   "both launcher paths must use the token-bearing dev URL",
 );
 
@@ -77,7 +147,7 @@ assert.match(
 );
 assert.match(
   source,
-  /initial_timeout_ms=\$\(\(DEV_SERVER_GRACE_SECONDS \* 1000\)\)[\s\S]*?origin_is_ready "\$dev_port" "\$initial_timeout_ms"[\s\S]*?desktop shell was not opened[\s\S]*?beforeDevCommand":null[\s\S]*?pnpm exec tauri dev/,
+  /initial_timeout_ms=\$\(\(DEV_SERVER_GRACE_SECONDS \* 1000\)\)[\s\S]*?origin_is_ready "\$dev_port" "\$initial_timeout_ms"[\s\S]*?desktop shell was not opened[\s\S]*?beforeDevCommand": null[\s\S]*?pnpm exec tauri dev/,
   "the launcher must validate the root document before opening Tauri, avoiding an initial black window",
 );
 assert.match(
