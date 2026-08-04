@@ -6,6 +6,7 @@
 # homebrew/nvm on PATH.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
+export COVEN_CAVE_ISOLATED_ROOT="$ROOT"
 export HOME="$ROOT/.isolated-home"
 export USERPROFILE="$HOME"
 export HOMEDRIVE=""

@@ -884,6 +884,7 @@ export const SUITES = {
     "src/lib/onboarding-gate.test.ts",
     "src/lib/onboarding-prerequisites.test.ts",
     "src/lib/server/managed-node-toolchain.test.ts",
+    "scripts/setup-isolated-dev-tools.test.ts",
     "src/lib/onboarding-install-queue.test.ts",
     "src/lib/onboarding-setup-failure.test.ts",
     "src/app/onboarding-install-route.test.ts",

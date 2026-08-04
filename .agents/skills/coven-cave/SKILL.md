@@ -73,8 +73,10 @@ bash "<SKILL_DIR>/scripts/ensure-isolated.sh"
 ```
 
 That clones `https://github.com/OpenCoven/coven-cave` into the isolated root if
-needed, seeds empty cave state, installs `dev-isolated.sh`, and optionally seeds
-the cargo registry **once** from the host (runtime still never points at real `~`).
+needed, seeds empty cave state, installs `dev-isolated.sh`, provisions the
+Cave-managed Node/npm lane plus the reviewed Coven, Claude Code, Codex, Copilot,
+and OpenClaw packages, and optionally seeds the cargo registry **once** from the
+host (runtime still never points at real `~`).
 
 ## Every command goes through the launcher
 
@@ -112,6 +114,21 @@ download in flight — if the lock is stale (>5 min), the launcher says so;
 remove the dir by hand. This means "pnpm/node: command not found" can no
 longer happen from GUI-spawned shells, cron, or bare-PATH contexts: the
 launcher bootstraps what it needs. Delete `.bin/` to force a re-download.
+
+## Cave-managed runtime tools
+
+The app's runtime lane is separate from the launcher toolchain. Run the
+idempotent setup directly when only these capabilities need repair:
+
+```bash
+./dev-isolated.sh pnpm dev:setup:tools
+```
+
+`scripts/setup-isolated-dev-tools.ts` installs Cave-managed Node/npm and the
+exact reviewed versions of Coven CLI, Claude Code, Codex, GitHub Copilot CLI,
+and OpenClaw from `src/lib/onboarding-prerequisites.ts`. It verifies registry
+integrity before each missing or mismatched package install and verifies every
+launcher afterward. Authentication remains an explicit per-user step.
 
 ## Dev server + Tauri
 
