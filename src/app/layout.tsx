@@ -20,8 +20,6 @@ import { ConfirmProvider } from "@/components/ui/confirm-dialog";
 import { PwaRegister } from "@/components/pwa-register";
 import { DevCacheResetScript } from "@/components/dev-cache-reset-script";
 import { DevShellRecovery } from "@/components/dev-shell-recovery";
-import { WebVitalsReporter } from "@/components/perf/web-vitals-reporter";
-import { PerfOverlay } from "@/components/perf/perf-overlay";
 import { PreferencesBootstrapController } from "@/components/preferences-bootstrap-controller";
 import { DaemonReleaseAlignmentTrigger } from "@/components/update-available";
 import { createDefaultPreferences } from "@/lib/preferences-schema";
@@ -59,11 +57,16 @@ export const viewport: Viewport = {
 
 export const dynamic = "force-dynamic";
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const DevelopmentPerformanceTools =
+    process.env.NODE_ENV === "development"
+      ? (await import("@/components/perf/development-performance-tools"))
+          .DevelopmentPerformanceTools
+      : null;
   // First shell delivery must never enter the reconciled preference store. The
   // uninitialized snapshot is paint-only: ThemeScript may combine it with this
   // origin's compatibility cache, while PreferencesBootstrapController fetches
@@ -102,8 +105,7 @@ export default function RootLayout({
             <RemoteThemeController />
             <TauriTitlebarMarker />
             <PwaRegister />
-            <WebVitalsReporter />
-            <PerfOverlay />
+            {DevelopmentPerformanceTools ? <DevelopmentPerformanceTools /> : null}
             {children}
             </ConfirmProvider>
           </LiveRegionProvider>

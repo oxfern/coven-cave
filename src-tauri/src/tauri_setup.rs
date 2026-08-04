@@ -161,7 +161,11 @@ pub fn run() {
     #[cfg(mobile)]
     {
         builder
-            .invoke_handler(tauri::generate_handler![webview_probe_report])
+            .invoke_handler(tauri::generate_handler![
+                webview_probe_report,
+                #[cfg(debug_assertions)]
+                dev_performance::dev_performance_snapshot,
+            ])
             .setup(|app| {
                 if cfg!(debug_assertions) {
                     app.handle().plugin(
@@ -251,6 +255,8 @@ pub fn run() {
             pty::pty_snapshot,
             pty::pty_diagnose,
             webview_probe_report,
+            #[cfg(debug_assertions)]
+            dev_performance::dev_performance_snapshot,
             browser::browser_commands::browser_navigate,
             browser::browser_commands::browser_set_bounds,
             browser::browser_commands::browser_hide,
