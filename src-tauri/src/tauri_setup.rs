@@ -213,12 +213,17 @@ pub fn run() {
                     tauri::WebviewUrl::App("index.html".into())
                 };
 
+                let product_name = app
+                    .config()
+                    .product_name
+                    .clone()
+                    .unwrap_or_else(|| "CovenCave".to_string());
                 tauri::WebviewWindowBuilder::new(
                     app,
                     "main",
                     webview_url,
                 )
-                .title("CovenCave")
+                .title(product_name)
                 .build()?;
 
                 Ok(())
@@ -287,6 +292,12 @@ pub fn run() {
     #[cfg(desktop)]
     builder
         .setup(move |app| {
+            let product_name = app
+                .config()
+                .product_name
+                .clone()
+                .unwrap_or_else(|| "CovenCave".to_string());
+
             // The updater's Windows pre-exit path clears the application
             // resource table after validating the package and before starting
             // msiexec. Dropping this guard stops/reaps the sidecar even though
@@ -342,7 +353,7 @@ pub fn run() {
                 #[cfg(target_os = "windows")]
                 {
                     WebviewWindowBuilder::new(app, "main", WebviewUrl::App("startup.html".into()))
-                        .title("CovenCave")
+                        .title(product_name.clone())
                         .inner_size(1320.0, 820.0)
                         .min_inner_size(960.0, 600.0)
                         .resizable(true)
@@ -372,7 +383,7 @@ pub fn run() {
                 remember_main_startup_url(&main_url);
                 let mut main_window =
                     WebviewWindowBuilder::new(app, "main", WebviewUrl::External(main_url))
-                        .title("CovenCave")
+                        .title(product_name.clone())
                         .inner_size(1320.0, 820.0)
                         .min_inner_size(960.0, 600.0)
                         .resizable(true)
